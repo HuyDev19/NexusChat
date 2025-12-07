@@ -2,10 +2,12 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Label } from "./ui/label";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Label } from "../ui/label";
+import { useAuthStore } from "@/stores/useAuthStore";
+import { useNavigate } from "react-router";
 
 const signUpSchema = z.object({
   firstname: z.string().min(1, "Tên bắt buộc phải có"),
@@ -14,12 +16,15 @@ const signUpSchema = z.object({
   email: z.email("Email không hợp lệ"),
   password: z.string().min(6, "Mật khẩu phải có ít nhất 6 ký tự"),
 });
+
 type SignUpFormValues = z.infer<typeof signUpSchema>;
 
 export function SignupForm({
   className,
   ...props
 }: React.ComponentProps<"div">) {
+  const { signUp } = useAuthStore();
+  const navigate = useNavigate();
   const {
     register,
     handleSubmit,
@@ -27,7 +32,15 @@ export function SignupForm({
   } = useForm<SignUpFormValues>({
     resolver: zodResolver(signUpSchema),
   });
-  const onSubmit = async (data: SignUpFormValues) => {};
+
+  const onSubmit = async (data: SignUpFormValues) => {
+    const { firstname, lastname, username, email, password } = data;
+
+    // gọi backend để signup
+    await signUp(username, password, email, firstname, lastname);
+
+    navigate("/signin");
+  };
 
   return (
     <div className={cn("flex flex-col gap-6", className)} {...props}>
@@ -41,7 +54,7 @@ export function SignupForm({
                   <img src="/logo.svg" alt="logo" />
                 </a>
 
-                <h1 className="text-2xl font-bold">Tạo tài khoản Moji</h1>
+                <h1 className="text-2xl font-bold">Tạo tài khoản Nexus</h1>
                 <p className="text-muted-foreground text-balance">
                   Chào mừng bạn! Hãy đăng ký để bắt đầu!
                 </p>
@@ -104,7 +117,7 @@ export function SignupForm({
                 <Input
                   type="email"
                   id="email"
-                  placeholder="vinhphu@gmail.com"
+                  placeholder="m@gmail.com"
                   {...register("email")}
                 />
                 {errors.email && (
