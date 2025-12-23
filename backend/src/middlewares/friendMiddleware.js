@@ -1,13 +1,32 @@
 import Conversation from "../models/Conversation.js";
 import Friend from "../models/Friend.js";
 
-const pair = (a, b) => (a < b ? [a, b] : [b, a]);
+// giúp tạo cặp userA và userB theo thứ tự để dễ dàng kiểm tra
+const pair = (a, b) => {
+  const aStr = a?.toString();
+  const bStr = b?.toString();
+
+  if (!aStr || !bStr) return [aStr, bStr];
+
+  return aStr < bStr ? [aStr, bStr] : [bStr, aStr];
+};
 
 export const checkFriendship = async (req, res, next) => {
   try {
-    const me = req.user._id.toString();
+    const me = req.user._id?.toString();
     const recipientId = req.body?.recipientId ?? null;
-    const memberIds = req.body?.memberIds ?? [];
+    const rawMemberIds = Array.isArray(req.body?.memberIds)
+      ? req.body.memberIds
+      : [];
+
+    // xóa trùng lặp và loại bỏ chính mình khỏi danh sách thành viên
+    const memberIds = [
+      ...new Set(
+        rawMemberIds
+          .map((id) => id?.toString())
+          .filter((id) => id && id !== me)
+      ),
+    ];
 
     if (!recipientId && memberIds.length === 0) {
       return res
@@ -16,7 +35,15 @@ export const checkFriendship = async (req, res, next) => {
     }
 
     if (recipientId) {
-      const [userA, userB] = pair(me, recipientId);
+      const targetId = recipientId.toString();
+
+      if (targetId === me) {
+        return res
+          .status(400)
+          .json({ message: "Không thể tạo cuộc trò chuyện với chính mình" });
+      }
+
+      const [userA, userB] = pair(me, targetId);
 
       const isFriend = await Friend.findOne({ userA, userB });
 
@@ -25,6 +52,12 @@ export const checkFriendship = async (req, res, next) => {
       }
 
       return next();
+    }
+
+    if (memberIds.length === 0) {
+      return res
+        .status(400)
+        .json({ message: "Cần ít nhất một thành viên khác ngoài bản thân" });
     }
 
     const friendChecks = memberIds.map(async (memberId) => {
