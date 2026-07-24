@@ -32,7 +32,12 @@ const ProtectedRoute = () => {
   }
 
   if (!accessToken) {
-    return <Navigate to="/signin" replace />;
+    return (
+      <Navigate
+        to="/signin"
+        replace
+      />
+    );
   }
 
   return <Outlet></Outlet>;

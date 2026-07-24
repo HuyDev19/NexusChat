@@ -1,7 +1,7 @@
 import mongoose from "mongoose";
 
 
-// Cấu trúc của user trong cuộc tró chuyện
+// Cấu trúc của user trong cuộc trò chuyện
 const participantSchema = new mongoose.Schema(
   {
     userId: {
