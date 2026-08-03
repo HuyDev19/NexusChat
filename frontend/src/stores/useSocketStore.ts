@@ -4,7 +4,7 @@ import { useAuthStore } from "./useAuthStore";
 import type { SocketState } from "@/types/store";
 import { useChatStore } from "./useChatStore";
 
-const baseURL = import.meta.env.VITE_SOCKET_URL;
+const baseURL = import.meta.env.VITE_SOCKET_URL?.trim();
 
 export const useSocketStore = create<SocketState>((set, get) => ({
   socket: null,
@@ -14,6 +14,11 @@ export const useSocketStore = create<SocketState>((set, get) => ({
     const existingSocket = get().socket;
 
     if (existingSocket) return; // tránh tạo nhiều socket
+    if (!accessToken) return;
+    if (!baseURL) {
+      console.warn("Socket URL chưa được cấu hình, bỏ qua kết nối realtime.");
+      return;
+    }
 
     const socket: Socket = io(baseURL, {
       auth: { token: accessToken },
@@ -24,6 +29,10 @@ export const useSocketStore = create<SocketState>((set, get) => ({
 
     socket.on("connect", () => {
       console.log("Đã kết nối với socket");
+    });
+
+    socket.on("connect_error", (error) => {
+      console.warn("Socket kết nối lỗi:", error.message);
     });
 
     // online users

@@ -149,3 +149,33 @@ export const getMessages = async (req, res) => {
     return res.status(500).json({ message: "Lỗi hệ thống" });
   }
 };
+
+export const markConversationAsSeen = async (req, res) => {
+  try {
+    const { conversationId } = req.params;
+    const userId = req.user._id;
+
+    const conversation = await Conversation.findById(conversationId);
+
+    if (!conversation) {
+      return res.status(404).json({ message: "Không tìm thấy cuộc trò chuyện" });
+    }
+
+    const isMember = conversation.participants.some(
+      (p) => p.userId.toString() === userId.toString()
+    );
+
+    if (!isMember) {
+      return res.status(403).json({ message: "Bạn không ở trong cuộc trò chuyện này" });
+    }
+
+    conversation.seenBy = [userId];
+    conversation.unreadCounts.set(userId.toString(), 0);
+    await conversation.save();
+
+    return res.status(200).json({ message: "Đã đánh dấu là đã xem" });
+  } catch (error) {
+    console.error("Lỗi xảy ra khi đánh dấu đã xem", error);
+    return res.status(500).json({ message: "Lỗi hệ thống" });
+  }
+};

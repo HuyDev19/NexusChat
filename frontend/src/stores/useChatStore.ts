@@ -87,31 +87,97 @@ export const useChatStore = create<ChatState>()(
       sendDirectMessage: async (recipientId, content, imgUrl) => {
         try {
           const { activeConversationId } = get();
-          await chatService.sendDirectMessage(
+          const sentMessage = await chatService.sendDirectMessage(
             recipientId,
             content,
             imgUrl,
             activeConversationId || undefined
           );
-          set((state) => ({
-            conversations: state.conversations.map((c) =>
-              c._id === activeConversationId ? { ...c, seenBy: [] } : c
-            ),
-          }));
+
+          const conversationId = sentMessage.conversationId || activeConversationId;
+
+          if (conversationId) {
+            set((state) => {
+              const prevItems = state.messages[conversationId]?.items ?? [];
+              const exists = prevItems.some((m) => m._id === sentMessage._id);
+
+              return {
+                messages: {
+                  ...state.messages,
+                  [conversationId]: {
+                    items: exists ? prevItems : [...prevItems, { ...sentMessage, isOwn: true }],
+                    hasMore: state.messages[conversationId]?.hasMore ?? false,
+                    nextCursor: state.messages[conversationId]?.nextCursor ?? null,
+                  },
+                },
+                conversations: state.conversations.map((c) =>
+                  c._id === conversationId
+                    ? {
+                        ...c,
+                        lastMessage: {
+                          _id: sentMessage._id,
+                          content: sentMessage.content ?? "",
+                          createdAt: sentMessage.createdAt,
+                          sender: {
+                            _id: sentMessage.senderId,
+                            displayName: "",
+                            avatarUrl: null,
+                          },
+                        },
+                        lastMessageAt: sentMessage.createdAt,
+                        seenBy: [],
+                      }
+                    : c
+                ),
+              };
+            });
+          }
         } catch (error) {
           console.error("Lỗi xảy ra khi gửi direct message", error);
+          throw error;
         }
       },
       sendGroupMessage: async (conversationId, content, imgUrl) => {
         try {
-          await chatService.sendGroupMessage(conversationId, content, imgUrl);
-          set((state) => ({
-            conversations: state.conversations.map((c) =>
-              c._id === get().activeConversationId ? { ...c, seenBy: [] } : c
-            ),
-          }));
+          const sentMessage = await chatService.sendGroupMessage(conversationId, content, imgUrl);
+
+          set((state) => {
+            const prevItems = state.messages[conversationId]?.items ?? [];
+            const exists = prevItems.some((m) => m._id === sentMessage._id);
+
+            return {
+              messages: {
+                ...state.messages,
+                [conversationId]: {
+                  items: exists ? prevItems : [...prevItems, { ...sentMessage, isOwn: true }],
+                  hasMore: state.messages[conversationId]?.hasMore ?? false,
+                  nextCursor: state.messages[conversationId]?.nextCursor ?? null,
+                },
+              },
+              conversations: state.conversations.map((c) =>
+                c._id === conversationId
+                  ? {
+                      ...c,
+                      lastMessage: {
+                        _id: sentMessage._id,
+                        content: sentMessage.content ?? "",
+                        createdAt: sentMessage.createdAt,
+                        sender: {
+                          _id: sentMessage.senderId,
+                          displayName: "",
+                          avatarUrl: null,
+                        },
+                      },
+                      lastMessageAt: sentMessage.createdAt,
+                      seenBy: [],
+                    }
+                  : c
+              ),
+            };
+          });
         } catch (error) {
           console.error("Lỗi xảy ra gửi group message", error);
+          throw error;
         }
       },
       addMessage: async (message) => {
