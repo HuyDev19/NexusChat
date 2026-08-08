@@ -11,6 +11,7 @@ export const useSocketStore = create<SocketState>((set, get) => ({
   onlineUsers: [],
   connectSocket: () => {
     const accessToken = useAuthStore.getState().accessToken;
+    const currentUser = useAuthStore.getState().user;
     const existingSocket = get().socket;
 
     if (existingSocket) return; // tránh tạo nhiều socket
@@ -21,7 +22,10 @@ export const useSocketStore = create<SocketState>((set, get) => ({
     }
 
     const socket: Socket = io(baseURL, {
-      auth: { token: accessToken },
+      auth: { 
+        token: accessToken,
+        userId: currentUser?._id 
+      },
       transports: ["websocket"],
     });
 
@@ -86,10 +90,71 @@ export const useSocketStore = create<SocketState>((set, get) => ({
       useChatStore.getState().addConvo(conversation);
       socket.emit("join-conversation", conversation._id);
     });
+
+    // ─── LẮNG NGHE CÁC SỰ KIỆN VIDEO CALL ───────────────────
+    socket.on("call:incoming", (callInfo) => {
+      // Import store động tránh import tròn (circular dependency)
+      import("./useCallStore").then((store) => {
+        store.useCallStore.getState().setIncomingCall(callInfo);
+      });
+
+      // Gửi thông báo đẩy hệ thống bằng Browser Notification API
+      if ("Notification" in window && Notification.permission === "granted") {
+        const notif = new Notification("Cuộc gọi đến từ NexusChat", {
+          body: `${callInfo.callerName} đang gọi ${callInfo.isVideo ? "video" : "thoại"} cho bạn.`,
+          icon: callInfo.callerAvatar || "/favicon.ico",
+          tag: "nexuschat-call",
+          requireInteraction: true, // Giữ thông báo cho đến khi người dùng tắt hoặc bấm vào
+        });
+
+        notif.onclick = () => {
+          window.focus();
+          notif.close();
+        };
+      }
+    });
+
+    socket.on("call:accepted", ({ roomName }) => {
+      console.log(`[Socket] Thành viên chấp nhận cuộc gọi tại phòng: ${roomName}`);
+    });
+
+    socket.on("call:declined", ({ roomName, declineId, reason }) => {
+      import("./useCallStore").then((store) => {
+        const activeCall = store.useCallStore.getState().activeCall;
+        if (activeCall && activeCall.roomName === roomName) {
+          // Báo hiệu từ chối
+          store.useCallStore.getState().endCall();
+          import("sonner").then(({ toast }) => {
+            toast.info("Cuộc gọi bị từ chối.");
+          });
+        }
+      });
+    });
+
+    socket.on("call:ended", ({ roomName }) => {
+      import("./useCallStore").then((store) => {
+        const activeCall = store.useCallStore.getState().activeCall;
+        const incomingCall = store.useCallStore.getState().incomingCall;
+
+        if ((activeCall && activeCall.roomName === roomName) || 
+            (incomingCall && incomingCall.roomName === roomName)) {
+          store.useCallStore.getState().setActiveCall(null);
+          store.useCallStore.getState().setIncomingCall(null);
+          import("sonner").then(({ toast }) => {
+            toast.info("Cuộc gọi đã kết thúc.");
+          });
+        }
+      });
+    });
   },
   disconnectSocket: () => {
     const socket = get().socket;
     if (socket) {
+      // Huỷ đăng ký sự kiện trước khi disconnect
+      socket.off("call:incoming");
+      socket.off("call:accepted");
+      socket.off("call:declined");
+      socket.off("call:ended");
       socket.disconnect();
       set({ socket: null });
     }

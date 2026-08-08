@@ -8,9 +8,12 @@ import userRoute from "./routes/userRoute.js";
 import friendRoute from "./routes/friendRoute.js";
 import messageRoute from "./routes/messageRoute.js";
 import conversationRoute from "./routes/conversationRoute.js";
+import callRoute from "./routes/callRoute.js";
+import { registerCallSocketHandlers } from "./libs/callSocket.js";
 import cookieParser from "cookie-parser";
 import { protectedRoute } from "./middlewares/authMiddleware.js";
 import cors from "cors";
+import jwt from "jsonwebtoken";
 
 dotenv.config();
 
@@ -40,9 +43,31 @@ app.use("/api/users", userRoute);
 app.use("/api/friends", friendRoute);
 app.use("/api/messages", messageRoute);
 app.use("/api/conversations", conversationRoute);
+app.use("/api/calls", callRoute);
 
 io.on("connection", (socket) => {
   console.log(`Socket connected: ${socket.id}`);
+
+  // Trích xuất userId từ auth handshake hoặc từ JWT token
+  let userId = socket.handshake.auth?.userId || socket.handshake.query?.userId;
+
+  if (!userId && socket.handshake.auth?.token) {
+    try {
+      const token = socket.handshake.auth.token;
+      const decoded = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET);
+      if (decoded && typeof decoded === "object" && decoded.userId) {
+        userId = decoded.userId;
+      }
+    } catch (err) {
+      console.warn("[Socket] Không thể giải mã token để lấy userId:", err.message);
+    }
+  }
+
+  if (userId) {
+    socket.data.userId = userId;
+    socket.join(`user:${userId}`);
+    console.log(`Socket ${socket.id} joined personal room user:${userId}`);
+  }
 
   socket.on("join-conversation", (conversationId) => {
     if (conversationId) {
@@ -50,6 +75,9 @@ io.on("connection", (socket) => {
       console.log(`Socket ${socket.id} joined room ${conversationId}`);
     }
   });
+
+  // Đăng ký handlers cho cuộc gọi
+  registerCallSocketHandlers(io, socket);
 
   socket.on("disconnect", (reason) => {
     console.log(`Socket disconnected: ${socket.id} (${reason})`);
