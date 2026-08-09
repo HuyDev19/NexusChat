@@ -1,7 +1,7 @@
 # NexusChat - Project Specification
 
-**Document Generated**: July 25, 2026
-**Version**: 1.2.0
+**Document Generated**: August 09, 2026
+**Version**: 1.3.0
 **Status**: Active Development
 
 ---
@@ -36,6 +36,8 @@ NexusChat is a web-based messaging application for social communication. The cur
 | dotenv | ^17.2.3 | Environment variables |
 | nodemon | ^3.1.10 | Development auto-reload |
 | livekit-server-sdk | ^2.17.0 | Server token generation for LiveKit SFU |
+| cloudinary | ^2.0.0 | Image hosting for avatars |
+| multer | ^1.4.5 | File upload middleware |
 
 ### Frontend
 | Technology | Version / Note | Purpose |
@@ -187,7 +189,11 @@ The project is organized as a monorepo with two main parts:
 
 ### User management
 - Get current authenticated user via /api/users/me
-- Basic user profile fields such as username, displayName, avatarUrl, email
+- Basic user profile fields such as username, displayName, avatarUrl, email, bio, phone
+- Update user profile information
+- Upload and manage user avatar via Cloudinary
+- Mini Profile Sidebar to quickly view a friend's details
+- Real-time user presence tracking (online, offline, busy)
 
 ### Friend management
 - Send friend requests
@@ -202,6 +208,7 @@ The project is organized as a monorepo with two main parts:
 - Fetch conversation list
 - Fetch messages with pagination
 - Track unread counts and last message metadata per conversation
+- **Real-time synchronization**: Instant message delivery and conversation list updates via Socket.IO
 
 ### Real-Time Video/Audio Call (1:1 and Group)
 - **Call Launchers**: Integrated in `ChatWindowHeader.tsx` (Voice Call & Video Call buttons).
@@ -225,6 +232,10 @@ The project is organized as a monorepo with two main parts:
 
 ### Protected routes
 - GET /api/users/me
+- PUT /api/users/me
+- GET /api/users/search
+- GET /api/users/:id
+- POST /api/users/uploadAvatar
 - POST /api/friends/requests
 - POST /api/friends/requests/:requestId/accept
 - POST /api/friends/requests/:requestId/decline
@@ -250,6 +261,7 @@ The project is organized as a monorepo with two main parts:
 - avatarId
 - bio
 - phone
+- presenceStatus
 
 ### Conversation
 - type: direct | group
@@ -293,6 +305,7 @@ The frontend uses several Zustand stores:
 - useThemeStore: theme state
 - useUserStore: user-specific actions
 - useCallStore: active call state, incoming call state, starts and finishes call session
+- useProfileStore: mini profile sidebar state and data
 
 ---
 
@@ -301,7 +314,6 @@ The frontend uses several Zustand stores:
 ### Backend / API
 - Pagination bug in conversationController.js uses createAt instead of createdAt.
 - The frontend calls a mark-as-seen endpoint, but the backend does not currently expose that route.
-- Some frontend services call endpoints such as /users/search, but the backend does not yet implement that route.
 
 ### Product scope
 - No unfriend action yet.
