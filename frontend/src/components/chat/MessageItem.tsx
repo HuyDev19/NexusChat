@@ -24,8 +24,8 @@ const MessageItem = ({
   const isShowTime =
     index === 0 ||
     new Date(message.createdAt).getTime() -
-      new Date(prev?.createdAt || 0).getTime() >
-      300000; // 5 phút
+    new Date(prev?.createdAt || 0).getTime() >
+    300000; // 5 phút
 
   const isGroupBreak = isShowTime || message.senderId !== prev?.senderId;
 
@@ -52,11 +52,20 @@ const MessageItem = ({
         {!message.isOwn && (
           <div className="w-8">
             {isGroupBreak && (
-              <UserAvatar
-                type="chat"
-                name={participant?.displayName ?? "Moji"}
-                avatarUrl={participant?.avatarUrl ?? undefined}
-              />
+              <div
+                className="cursor-pointer hover:opacity-80 transition-opacity"
+                onClick={() => {
+                  import("@/stores/useProfileStore").then((mod) => {
+                    mod.useProfileStore.getState().openProfile(message.senderId);
+                  });
+                }}
+              >
+                <UserAvatar
+                  type="chat"
+                  name={participant?.displayName ?? "Moji"}
+                  avatarUrl={participant?.avatarUrl ?? undefined}
+                />
+              </div>
             )}
           </div>
         )}

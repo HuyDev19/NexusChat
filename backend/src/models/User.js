@@ -39,6 +39,11 @@ const userSchema = new mongoose.Schema(
       type: String,
       sparse: true, // cho phép null, nhưng không được trùng
     },
+    presenceStatus: {
+      type: String,
+      enum: ['online', 'offline', 'busy'],
+      default: 'online',
+    },
   },
   {
     timestamps: true,

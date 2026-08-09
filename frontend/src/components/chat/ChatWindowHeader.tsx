@@ -55,7 +55,14 @@ const ChatWindowHeader = ({ chat }: { chat?: Conversation }) => {
             {/* avatar */}
             <div className="relative">
               {chat.type === "direct" ? (
-                <>
+                <div
+                  className="cursor-pointer hover:opacity-80 transition-opacity"
+                  onClick={() => {
+                    import("@/stores/useProfileStore").then((mod) => {
+                      mod.useProfileStore.getState().openProfile(otherUser?._id ?? "");
+                    });
+                  }}
+                >
                   <UserAvatar
                     type={"sidebar"}
                     name={otherUser?.displayName || "Moji"}
@@ -63,10 +70,14 @@ const ChatWindowHeader = ({ chat }: { chat?: Conversation }) => {
                   />
                   <StatusBadge
                     status={
-                      onlineUsers.includes(otherUser?._id ?? "") ? "online" : "offline"
+                      !onlineUsers.includes(otherUser?._id ?? "") || otherUser?.presenceStatus === "offline"
+                        ? "offline"
+                        : otherUser?.presenceStatus === "busy"
+                          ? "busy"
+                          : "online"
                     }
                   />
-                </>
+                </div>
               ) : (
                 <GroupChatAvatar
                   participants={chat.participants}

@@ -29,6 +29,8 @@ const io = new Server(server, {
   transports: ["websocket", "polling"],
 });
 
+app.set("io", io);
+
 // middlewares
 app.use(express.json());
 app.use(cookieParser());
@@ -44,6 +46,8 @@ app.use("/api/friends", friendRoute);
 app.use("/api/messages", messageRoute);
 app.use("/api/conversations", conversationRoute);
 app.use("/api/calls", callRoute);
+
+const onlineUsers = new Set();
 
 io.on("connection", (socket) => {
   console.log(`Socket connected: ${socket.id}`);
@@ -67,6 +71,9 @@ io.on("connection", (socket) => {
     socket.data.userId = userId;
     socket.join(`user:${userId}`);
     console.log(`Socket ${socket.id} joined personal room user:${userId}`);
+    
+    onlineUsers.add(userId);
+    io.emit("online-users", Array.from(onlineUsers));
   }
 
   socket.on("join-conversation", (conversationId) => {
@@ -81,6 +88,10 @@ io.on("connection", (socket) => {
 
   socket.on("disconnect", (reason) => {
     console.log(`Socket disconnected: ${socket.id} (${reason})`);
+    if (userId) {
+      onlineUsers.delete(userId);
+      io.emit("online-users", Array.from(onlineUsers));
+    }
   });
 });
 

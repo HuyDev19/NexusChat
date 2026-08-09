@@ -36,8 +36,19 @@ export const sendDirectMessage = async (req, res) => {
     });
 
     updateConversationAfterCreateMessage(conversation, message, senderId);
-
+    
     await conversation.save();
+
+    const io = req.app.get("io");
+    if (io) {
+      conversation.participants.forEach((p) => {
+        io.to(`user:${p.userId}`).emit("new-message", {
+          message,
+          conversation,
+          unreadCounts: Object.fromEntries(conversation.unreadCounts || new Map()),
+        });
+      });
+    }
 
     return res.status(201).json({ message });
   } catch (error) {
@@ -65,6 +76,17 @@ export const sendGroupMessage = async (req, res) => {
     updateConversationAfterCreateMessage(conversation, message, senderId);
 
     await conversation.save();
+
+    const io = req.app.get("io");
+    if (io) {
+      conversation.participants.forEach((p) => {
+        io.to(`user:${p.userId}`).emit("new-message", {
+          message,
+          conversation,
+          unreadCounts: Object.fromEntries(conversation.unreadCounts || new Map()),
+        });
+      });
+    }
 
     return res.status(201).json({ message });
   } catch (error) {

@@ -92,7 +92,7 @@ export const acceptFriendRequest = async (req, res) => {
 
     // Lấy thông tin người gửi lời mời để trả về
     const from = await User.findById(request.from)
-      .select("_id displayName avatarUrl")
+      .select("_id displayName avatarUrl presenceStatus")
       .lean();
 
     return res.status(200).json({
@@ -153,8 +153,8 @@ export const getAllFriends = async (req, res) => {
         },
       ],
     })
-      .populate("userA", "_id displayName avatarUrl")
-      .populate("userB", "_id displayName avatarUrl")
+      .populate("userA", "_id displayName avatarUrl presenceStatus")
+      .populate("userB", "_id displayName avatarUrl presenceStatus")
       .lean();
 
     if (!friendships.length) {
@@ -178,7 +178,7 @@ export const getFriendRequests = async (req, res) => {
   try {
     const userId = req.user._id;
 
-    const populateFields = "_id username displayName avatarUrl";
+    const populateFields = "_id username displayName avatarUrl presenceStatus";
 
     const [sent, received] = await Promise.all([
       FriendRequest.find({ from: userId }).populate("to", populateFields),

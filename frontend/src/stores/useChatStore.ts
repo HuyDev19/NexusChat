@@ -295,6 +295,29 @@ export const useChatStore = create<ChatState>()(
           set({ loading: false });
         }
       },
+      updateParticipantData: (updatedUser) => {
+        set((state) => ({
+          conversations: state.conversations.map((c) => {
+            const hasParticipant = c.participants.some(p => p._id === updatedUser._id);
+            if (!hasParticipant) return c;
+            
+            return {
+              ...c,
+              participants: c.participants.map(p => 
+                p._id === updatedUser._id ? { ...p, displayName: updatedUser.displayName || p.displayName, avatarUrl: updatedUser.avatarUrl ?? p.avatarUrl } : p
+              ),
+              lastMessage: c.lastMessage && c.lastMessage.sender._id === updatedUser._id ? {
+                ...c.lastMessage,
+                sender: {
+                  ...c.lastMessage.sender,
+                  displayName: updatedUser.displayName || c.lastMessage.sender.displayName,
+                  avatarUrl: updatedUser.avatarUrl ?? c.lastMessage.sender.avatarUrl,
+                }
+              } : c.lastMessage
+            };
+          })
+        }));
+      },
     }),
     {
       name: "chat-storage",

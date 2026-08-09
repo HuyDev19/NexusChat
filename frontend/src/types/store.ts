@@ -69,6 +69,7 @@ export interface ChatState {
     name: string,
     memberIds: string[]
   ) => Promise<void>;
+  updateParticipantData: (user: Partial<User> & { _id: string }) => void;
 }
 
 export interface SocketState {
@@ -89,8 +90,10 @@ export interface FriendState {
   acceptRequest: (requestId: string) => Promise<void>;
   declineRequest: (requestId: string) => Promise<void>;
   getFriends: () => Promise<void>;
+  updateFriendData: (user: Partial<User> & { _id: string }) => void;
 }
 
 export interface UserState {
   updateAvatarUrl: (formData: FormData) => Promise<void>;
+  updateProfile: (data: { displayName?: string; phone?: string; bio?: string; presenceStatus?: 'online' | 'offline' | 'busy' }) => Promise<void>;
 }

@@ -88,4 +88,11 @@ export const useFriendStore = create<FriendState>((set, get) => ({
       set({ loading: false });
     }
   },
+  updateFriendData: (updatedUser) => {
+    set((state) => ({
+      friends: state.friends.map((f) =>
+        f._id === updatedUser._id ? { ...f, ...updatedUser } : f
+      ),
+    }));
+  },
 }));

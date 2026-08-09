@@ -2,6 +2,7 @@ export interface Participant {
   _id: string;
   displayName: string;
   avatarUrl?: string | null;
+  presenceStatus?: 'online' | 'offline' | 'busy';
   joinedAt: string;
 }
 

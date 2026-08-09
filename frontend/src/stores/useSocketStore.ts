@@ -4,7 +4,7 @@ import { useAuthStore } from "./useAuthStore";
 import type { SocketState } from "@/types/store";
 import { useChatStore } from "./useChatStore";
 
-const baseURL = import.meta.env.VITE_SOCKET_URL?.trim();
+const baseURL = import.meta.env.VITE_SOCKET_URL?.trim() || "http://localhost:5001";
 
 export const useSocketStore = create<SocketState>((set, get) => ({
   socket: null,
@@ -44,6 +44,16 @@ export const useSocketStore = create<SocketState>((set, get) => ({
       set({ onlineUsers: userIds });
     });
 
+    // user updated
+    socket.on("user:updated", (updatedUser) => {
+      import("./useFriendStore").then((store) => {
+        store.useFriendStore.getState().updateFriendData(updatedUser);
+      });
+      import("./useChatStore").then((store) => {
+        store.useChatStore.getState().updateParticipantData(updatedUser);
+      });
+    });
+
     // new message
     socket.on("new-message", ({ message, conversation, unreadCounts }) => {
       useChatStore.getState().addMessage(message);
@@ -60,7 +70,8 @@ export const useSocketStore = create<SocketState>((set, get) => ({
       };
 
       const updatedConversation = {
-        ...conversation,
+        _id: conversation._id,
+        lastMessageAt: conversation.lastMessageAt,
         lastMessage,
         unreadCounts,
       };
@@ -155,6 +166,7 @@ export const useSocketStore = create<SocketState>((set, get) => ({
       socket.off("call:accepted");
       socket.off("call:declined");
       socket.off("call:ended");
+      socket.off("user:updated");
       socket.disconnect();
       set({ socket: null });
     }

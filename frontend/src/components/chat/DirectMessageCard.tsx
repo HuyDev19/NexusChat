@@ -50,7 +50,11 @@ const DirectMessageCard = ({ convo }: { convo: Conversation }) => {
           />
           <StatusBadge
             status={
-              onlineUsers.includes(otherUser?._id ?? "") ? "online" : "offline"
+              !onlineUsers.includes(otherUser?._id ?? "") || otherUser?.presenceStatus === "offline"
+                ? "offline"
+                : otherUser?.presenceStatus === "busy"
+                  ? "busy"
+                  : "online"
             }
           />
           {unreadCount > 0 && <UnreadCountBadge unreadCount={unreadCount} />}

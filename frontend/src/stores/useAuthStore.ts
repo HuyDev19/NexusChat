@@ -29,10 +29,16 @@ export const useAuthStore = create<AuthState>()(
           set({ loading: true });
 
           //  gọi api
-          await authService.signUp(username, password, email, firstName, lastName);
+          await authService.signUp(
+            username,
+            password,
+            email,
+            firstName,
+            lastName,
+          );
 
           toast.success(
-            "Đăng ký thành công! Bạn sẽ được chuyển sang trang đăng nhập."
+            "Đăng ký thành công! Bạn sẽ được chuyển sang trang đăng nhập.",
           );
         } catch (error) {
           console.error(error);
@@ -107,6 +113,6 @@ export const useAuthStore = create<AuthState>()(
     {
       name: "auth-storage",
       partialize: (state) => ({ user: state.user }), // chỉ persist user
-    }
-  )
+    },
+  ),
 );
