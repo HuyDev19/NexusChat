@@ -103,7 +103,10 @@ export const uploadAvatar = async (req, res) => {
     }
 
     // Upload to cloudinary
-    const result = await cloudinary.uploader.upload(file.path, {
+    const b64 = Buffer.from(file.buffer).toString("base64");
+    const dataURI = "data:" + file.mimetype + ";base64," + b64;
+    
+    const result = await cloudinary.uploader.upload(dataURI, {
       folder: "nexuschat_avatars",
       transformation: [{ width: 400, height: 400, crop: "fill" }],
     });
@@ -112,9 +115,6 @@ export const uploadAvatar = async (req, res) => {
     if (user.avatarId) {
       await cloudinary.uploader.destroy(user.avatarId);
     }
-
-    // Delete local file after upload
-    fs.unlinkSync(file.path);
 
     user.avatarUrl = result.secure_url;
     user.avatarId = result.public_id;
@@ -128,9 +128,6 @@ export const uploadAvatar = async (req, res) => {
     });
   } catch (error) {
     console.error("Lỗi khi upload avatar:", error);
-    if (req.file) {
-      fs.unlinkSync(req.file.path);
-    }
     return res.status(500).json({ message: "Lỗi hệ thống khi tải ảnh lên" });
   }
 };

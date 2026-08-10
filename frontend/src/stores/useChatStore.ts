@@ -275,7 +275,9 @@ export const useChatStore = create<ChatState>()(
 
           return {
             conversations: exists
-              ? state.conversations
+              ? state.conversations.map((c) =>
+                  c._id.toString() === convo._id.toString() ? convo : c
+                )
               : [convo, ...state.conversations],
             activeConversationId: convo._id,
           };
