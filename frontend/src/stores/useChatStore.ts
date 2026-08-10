@@ -93,9 +93,9 @@ export const useChatStore = create<ChatState>()(
           const sentMessage = await chatService.sendDirectMessage(
             recipientId,
             content,
-            imgUrl,
+            imgUrl || undefined,
             activeConversationId || undefined,
-            audioUrl,
+            audioUrl || undefined,
             expiresIn,
             isViewOnce
           );
@@ -143,9 +143,9 @@ export const useChatStore = create<ChatState>()(
           throw error;
         }
       },
-      sendGroupMessage: async (conversationId, content, imgUrl, audioUrl, expiresIn, isViewOnce) => {
+      sendGroupMessage: async (conversationId, content, imgUrl, audioUrl, expiresIn, isViewOnce, poll) => {
         try {
-          const sentMessage = await chatService.sendGroupMessage(conversationId, content, imgUrl, audioUrl, expiresIn, isViewOnce);
+          const sentMessage = await chatService.sendGroupMessage(conversationId, content, imgUrl || undefined, audioUrl || undefined, expiresIn, isViewOnce, poll);
 
           set((state) => {
             const prevItems = state.messages[conversationId]?.items ?? [];
@@ -222,12 +222,28 @@ export const useChatStore = create<ChatState>()(
           console.error("Lỗi xảy khi ra add message:", error);
         }
       },
-      updateConversation: (conversation) => {
+      updateConversation: (conversation: any) => {
         set((state) => ({
           conversations: state.conversations.map((c) =>
             c._id === conversation._id ? { ...c, ...conversation } : c
           ),
         }));
+      },
+      removeConversation: (id: string) => {
+        set((state) => ({
+          conversations: state.conversations.filter((c) => c._id !== id),
+          activeConversationId: state.activeConversationId === id ? null : state.activeConversationId,
+        }));
+      },
+      deleteConversation: async (id: string) => {
+        try {
+          await chatService.deleteConversation(id);
+          get().removeConversation(id);
+          toast.success("Đã xóa cuộc trò chuyện");
+        } catch (error) {
+          console.error("Lỗi xóa cuộc trò chuyện", error);
+          toast.error("Không thể xóa cuộc trò chuyện");
+        }
       },
       markAsSeen: async () => {
         try {
@@ -467,6 +483,66 @@ export const useChatStore = create<ChatState>()(
           unlockedConversations: [...state.unlockedConversations, conversationId]
         }));
       },
+      addGroupMembers: async (conversationId, memberIds) => {
+        try {
+          const res = await chatService.addGroupMembers(conversationId, memberIds);
+          set((state) => ({
+            conversations: state.conversations.map((c) =>
+              c._id === conversationId ? { ...c, participants: res.participants } : c
+            )
+          }));
+          toast.success("Thêm thành viên thành công!");
+        } catch (error: any) {
+          toast.error(error.response?.data?.message || "Lỗi thêm thành viên");
+        }
+      },
+      removeGroupMember: async (conversationId, memberId) => {
+        try {
+          const res = await chatService.removeGroupMember(conversationId, memberId);
+          set((state) => ({
+            conversations: state.conversations.map((c) =>
+              c._id === conversationId ? { ...c, participants: res.participants } : c
+            )
+          }));
+          toast.success("Xóa thành viên thành công!");
+        } catch (error: any) {
+          toast.error(error.response?.data?.message || "Lỗi xóa thành viên");
+        }
+      },
+      updateGroupRole: async (conversationId, memberId, role) => {
+        try {
+          const res = await chatService.updateGroupRole(conversationId, memberId, role);
+          set((state) => ({
+            conversations: state.conversations.map((c) =>
+              c._id === conversationId ? { ...c, participants: res.participants } : c
+            )
+          }));
+          toast.success("Cập nhật quyền thành công!");
+        } catch (error: any) {
+          toast.error(error.response?.data?.message || "Lỗi phân quyền");
+        }
+      },
+      updateGroupInfo: async (conversationId, name, description) => {
+        try {
+          const res = await chatService.updateGroupInfo(conversationId, name, description);
+          set((state) => ({
+            conversations: state.conversations.map((c) =>
+              c._id === conversationId ? { ...c, group: res.group } : c
+            )
+          }));
+          toast.success("Cập nhật nhóm thành công!");
+        } catch (error: any) {
+          toast.error(error.response?.data?.message || "Lỗi cập nhật nhóm");
+        }
+      },
+      voteOnPoll: async (messageId, optionIndex) => {
+        try {
+          await chatService.voteOnPoll(messageId, optionIndex);
+        } catch (error: any) {
+          toast.error(error.response?.data?.message || "Lỗi bình chọn");
+        }
+      },
+
     }),
     {
       name: "chat-storage",

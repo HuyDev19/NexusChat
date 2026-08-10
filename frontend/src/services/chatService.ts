@@ -50,7 +50,8 @@ export const chatService = {
     imgUrl?: string,
     audioUrl?: string,
     expiresIn?: number,
-    isViewOnce?: boolean
+    isViewOnce?: boolean,
+    poll?: any
   ) {
     const res = await api.post("/messages/group", {
       conversationId,
@@ -59,6 +60,7 @@ export const chatService = {
       audioUrl,
       expiresIn,
       isViewOnce,
+      poll,
     });
     return res.data.message;
   },
@@ -126,5 +128,35 @@ export const chatService = {
   async updateNickname(conversationId: string, targetUserId: string, nickname: string) {
     const res = await api.post(`/conversations/${conversationId}/nickname`, { targetUserId, nickname });
     return res.data;
+  },
+
+  async addGroupMembers(conversationId: string, memberIds: string[]) {
+    const res = await api.post(`/conversations/${conversationId}/members`, { memberIds });
+    return res.data;
+  },
+
+  async removeGroupMember(conversationId: string, memberId: string) {
+    const res = await api.delete(`/conversations/${conversationId}/members/${memberId}`);
+    return res.data;
+  },
+
+  async updateGroupRole(conversationId: string, memberId: string, role: "leader" | "member") {
+    const res = await api.patch(`/conversations/${conversationId}/role`, { memberId, role });
+    return res.data;
+  },
+
+  async updateGroupInfo(conversationId: string, name?: string, description?: string) {
+    const res = await api.patch(`/conversations/${conversationId}/info`, { name, description });
+    return res.data;
+  },
+
+  async voteOnPoll(messageId: string, optionIndex: number) {
+    const res = await api.post(`/messages/${messageId}/vote`, { optionIndex });
+    return res.data;
+  },
+
+  deleteConversation: async (conversationId: string) => {
+    const response = await api.delete(`/conversations/${conversationId}`);
+    return response.data;
   },
 };

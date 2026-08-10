@@ -65,8 +65,11 @@ export interface ChatState {
     imgUrl?: string | null,
     audioUrl?: string,
     expiresIn?: number,
-    isViewOnce?: boolean
+    isViewOnce?: boolean,
+    poll?: any
   ) => Promise<void>;
+  deleteConversation: (id: string) => Promise<void>;
+  removeConversation: (id: string) => void;
   // add message
   addMessage: (message: Message) => Promise<void>;
   // update convo
@@ -92,6 +95,11 @@ export interface ChatState {
   updateMessagePinStatus: (conversationId: string, messageId: string, isPinned: boolean) => void;
   updateMessageFields: (conversationId: string, messageId: string, fields: Partial<Message>) => void;
   unlockConversation: (conversationId: string) => void;
+  addGroupMembers: (conversationId: string, memberIds: string[]) => Promise<void>;
+  removeGroupMember: (conversationId: string, memberId: string) => Promise<void>;
+  updateGroupRole: (conversationId: string, memberId: string, role: "leader" | "member") => Promise<void>;
+  updateGroupInfo: (conversationId: string, name?: string, description?: string) => Promise<void>;
+  voteOnPoll: (messageId: string, optionIndex: number) => Promise<void>;
 }
 
 export interface SocketState {

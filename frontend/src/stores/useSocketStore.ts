@@ -122,6 +122,25 @@ export const useSocketStore = create<SocketState>((set, get) => ({
       useChatStore.getState().updateConversationFields(conversationId, updates);
     });
 
+    socket.on("conversation:removed", ({ conversationId }) => {
+      import("./useChatStore").then((store) => {
+        const state = store.useChatStore.getState();
+        const filtered = state.conversations.filter(c => c._id !== conversationId);
+        state.reset(); // Hacky but quick to force rerender or just update
+        store.useChatStore.setState({ 
+          conversations: filtered,
+          activeConversationId: state.activeConversationId === conversationId ? null : state.activeConversationId
+        });
+        import("sonner").then(({ toast }) => {
+          toast.info("Bạn đã bị xóa khỏi nhóm.");
+        });
+      });
+    });
+
+    socket.on("conversation:delete", ({ conversationId }) => {
+      useChatStore.getState().removeConversation(conversationId);
+    });
+
     // ─── LẮNG NGHE CÁC SỰ KIỆN VIDEO CALL ───────────────────
     socket.on("call:incoming", (callInfo) => {
       // Import store động tránh import tròn (circular dependency)

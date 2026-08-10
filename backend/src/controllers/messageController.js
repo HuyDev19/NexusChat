@@ -65,12 +65,12 @@ export const sendDirectMessage = async (req, res) => {
 
 export const sendGroupMessage = async (req, res) => {
   try {
-    const { conversationId, content, audioUrl, imgUrl, expiresIn, isViewOnce } = req.body;
+    const { conversationId, content, audioUrl, imgUrl, expiresIn, isViewOnce, poll } = req.body;
     const senderId = req.user._id;
     const conversation = req.conversation;
 
-    if (!content && !audioUrl && !imgUrl) {
-      return res.status(400).json("Thiếu nội dung hoặc file đính kèm");
+    if (!content && !audioUrl && !imgUrl && !poll) {
+      return res.status(400).json("Thiếu nội dung hoặc file đính kèm hoặc bình chọn");
     }
 
     const message = await Message.create({
@@ -81,6 +81,7 @@ export const sendGroupMessage = async (req, res) => {
       imgUrl,
       expiresIn,
       isViewOnce,
+      poll,
     });
 
     updateConversationAfterCreateMessage(conversation, message, senderId);
@@ -342,6 +343,64 @@ export const recallMessage = async (req, res) => {
     return res.status(200).json({ message: "Thu hồi tin nhắn thành công" });
   } catch (error) {
     console.error("Lỗi khi thu hồi tin nhắn:", error);
+    return res.status(500).json({ message: "Lỗi hệ thống" });
+  }
+};
+
+export const voteOnPoll = async (req, res) => {
+  try {
+    const { messageId } = req.params;
+    const { optionIndex } = req.body;
+    const userId = req.user._id;
+
+    if (optionIndex === undefined) return res.status(400).json({ message: "Thiếu lựa chọn vote" });
+
+    const message = await Message.findById(messageId);
+    if (!message || !message.poll) return res.status(404).json({ message: "Không tìm thấy bình chọn" });
+
+    if (optionIndex < 0 || optionIndex >= message.poll.options.length) {
+      return res.status(400).json({ message: "Lựa chọn không hợp lệ" });
+    }
+
+    // Remove user's vote from all other options (single choice logic)
+    if (!message.poll.allowMultiple) {
+      message.poll.options.forEach((opt, idx) => {
+        if (idx !== optionIndex) {
+          opt.votes = opt.votes.filter((id) => id.toString() !== userId.toString());
+        }
+      });
+    }
+
+    const targetOption = message.poll.options[optionIndex];
+    const hasVoted = targetOption.votes.some((id) => id.toString() === userId.toString());
+
+    if (hasVoted) {
+      // Toggle off if they click again
+      targetOption.votes = targetOption.votes.filter((id) => id.toString() !== userId.toString());
+    } else {
+      // Add vote
+      targetOption.votes.push(userId);
+    }
+
+    await message.save();
+
+    const conversation = await Conversation.findById(message.conversationId);
+    if (conversation) {
+      const io = req.app.get("io");
+      if (io) {
+        conversation.participants.forEach((p) => {
+          io.to(`user:${p.userId}`).emit("message:update", {
+            messageId,
+            conversationId: conversation._id,
+            updates: { poll: message.poll }
+          });
+        });
+      }
+    }
+
+    return res.status(200).json({ message: "Bình chọn thành công", poll: message.poll });
+  } catch (error) {
+    console.error("Lỗi khi vote bình chọn:", error);
     return res.status(500).json({ message: "Lỗi hệ thống" });
   }
 };

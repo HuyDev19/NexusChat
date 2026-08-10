@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import WallpaperModal from "./WallpaperModal";
 import NicknameModal from "./NicknameModal";
+import GroupSettingsModal from "./GroupSettingsModal";
 
 const ChatWindowHeader = ({ chat }: { chat?: Conversation }) => {
   const { conversations, activeConversationId } = useChatStore();
@@ -31,7 +32,7 @@ const ChatWindowHeader = ({ chat }: { chat?: Conversation }) => {
   const { onlineUsers } = useSocketStore();
   const { startCall, activeCall } = useCallStore();
 
-  let otherUser;
+  let otherUser: any = null;
 
   chat = chat ?? conversations.find((c) => c._id === activeConversationId);
 
@@ -59,11 +60,12 @@ const ChatWindowHeader = ({ chat }: { chat?: Conversation }) => {
   const [showLockDialog, setShowLockDialog] = useState(false);
   const [showWallpaperModal, setShowWallpaperModal] = useState(false);
   const [showNicknameModal, setShowNicknameModal] = useState(false);
+  const [showGroupSettings, setShowGroupSettings] = useState(false);
   const [newPin, setNewPin] = useState("");
   const { fetchMe, blockUser, unblockUser } = useAuthStore();
   const { unlockConversation } = useChatStore();
 
-  const isBlocked = user?.blockedUsers?.includes(otherUser?._id);
+  const isBlocked = user?.blockedUsers?.includes(otherUser?._id as string);
 
   const handleBlockUser = async () => {
     if (!otherUser) return;
@@ -103,17 +105,17 @@ const ChatWindowHeader = ({ chat }: { chat?: Conversation }) => {
 
   return (
     <header className="sticky top-0 z-10 px-4 py-2 flex items-center bg-background border-b border-border/50">
-      <div className="flex items-center gap-2 w-full justify-between">
-        <div className="flex items-center gap-2">
-          <SidebarTrigger className="-ml-1 text-foreground" />
+      <div className="flex items-center gap-2 w-full justify-between overflow-hidden">
+        <div className="flex items-center gap-2 min-w-0">
+          <SidebarTrigger className="-ml-1 text-foreground shrink-0" />
           <Separator
             orientation="vertical"
-            className="mr-2 data-[orientation=vertical]:h-4"
+            className="mr-2 data-[orientation=vertical]:h-4 shrink-0"
           />
 
-          <div className="p-2 flex items-center gap-3">
+          <div className="p-2 flex items-center gap-3 min-w-0">
             {/* avatar */}
-            <div className="relative">
+            <div className="relative shrink-0">
               {chat.type === "direct" ? (
                 <div
                   className="cursor-pointer hover:opacity-80 transition-opacity"
@@ -147,7 +149,7 @@ const ChatWindowHeader = ({ chat }: { chat?: Conversation }) => {
             </div>
 
             {/* name */}
-            <h2 className="font-semibold text-foreground">
+            <h2 className="font-semibold text-foreground truncate">
               {chat.type === "direct" ? getDisplayName(otherUser) : chat.group?.name}
             </h2>
           </div>
@@ -155,7 +157,7 @@ const ChatWindowHeader = ({ chat }: { chat?: Conversation }) => {
 
         {/* Call Actions */}
         {!activeCall && (
-          <div className="flex items-center gap-2 pr-2">
+          <div className="flex items-center gap-1 sm:gap-2 pr-2 shrink-0">
             {!isLocked && (
               <button
                 onClick={() => setShowLockDialog(true)}
@@ -203,6 +205,12 @@ const ChatWindowHeader = ({ chat }: { chat?: Conversation }) => {
                     {isBlocked ? "Bỏ chặn người dùng" : "Chặn người dùng"}
                   </DropdownMenuItem>
                 )}
+                {chat.type === "group" && (
+                  <DropdownMenuItem onClick={() => setShowGroupSettings(true)} className="cursor-pointer gap-2">
+                    <Settings className="size-4" />
+                    Cài đặt nhóm
+                  </DropdownMenuItem>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
@@ -213,6 +221,9 @@ const ChatWindowHeader = ({ chat }: { chat?: Conversation }) => {
         <>
           <WallpaperModal open={showWallpaperModal} onOpenChange={setShowWallpaperModal} conversationId={chat._id} />
           <NicknameModal open={showNicknameModal} onOpenChange={setShowNicknameModal} conversation={chat} />
+          {chat.type === "group" && (
+            <GroupSettingsModal open={showGroupSettings} onOpenChange={setShowGroupSettings} conversation={chat} />
+          )}
         </>
       )}
 

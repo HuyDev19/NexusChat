@@ -51,13 +51,13 @@ const ChatWindowLayout = () => {
   const isLocked = user?.lockedConversations?.some(
     (l) => l.conversationId === activeConversationId
   );
-  const isUnlockedLocally = unlockedConversations.includes(activeConversationId);
+  const isUnlockedLocally = unlockedConversations.includes(activeConversationId as string);
 
   if (isLocked && !isUnlockedLocally) {
     return (
       <div className="flex w-full h-full overflow-hidden relative">
         <SidebarInset className="flex flex-col h-full flex-1 overflow-hidden rounded-sm shadow-md transition-all duration-300">
-          <LockedChatScreen conversationId={activeConversationId} />
+          <LockedChatScreen conversationId={activeConversationId as string} />
         </SidebarInset>
         <ProfileSidebar />
       </div>

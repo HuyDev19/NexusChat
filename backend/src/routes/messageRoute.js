@@ -10,6 +10,7 @@ import {
   pinMessage,
   markMediaAsViewed,
   recallMessage,
+  voteOnPoll,
 } from "../controllers/messageController.js";
 import {
   checkFriendship,
@@ -27,5 +28,6 @@ router.post("/:messageId/react", reactToMessage);
 router.post("/:messageId/pin", pinMessage);
 router.post("/:messageId/view-media", markMediaAsViewed);
 router.post("/:messageId/recall", recallMessage);
+router.post("/:messageId/vote", voteOnPoll);
 
 export default router;

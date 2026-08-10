@@ -185,9 +185,13 @@ export const markConversationAsSeen = async (req, res) => {
       return res.status(403).json({ message: "Bạn không ở trong cuộc trò chuyện này" });
     }
 
-    conversation.seenBy = [userId];
-    conversation.unreadCounts.set(userId.toString(), 0);
-    await conversation.save();
+    await Conversation.updateOne(
+      { _id: conversationId },
+      {
+        $addToSet: { seenBy: userId },
+        $set: { [`unreadCounts.${userId}`]: 0 }
+      }
+    );
 
     // Start disappearing messages timer
     const expiringMessages = await Message.find({
@@ -198,7 +202,7 @@ export const markConversationAsSeen = async (req, res) => {
     });
 
     const io = req.app.get("io");
-    
+
     for (const msg of expiringMessages) {
       msg.expiresAt = new Date(Date.now() + msg.expiresIn * 1000);
       await msg.save();
@@ -287,13 +291,13 @@ export const updateNickname = async (req, res) => {
     if (!conversation.nicknames) {
       conversation.nicknames = new Map();
     }
-    
+
     if (!nickname || nickname.trim() === "") {
       conversation.nicknames.delete(targetUserId);
     } else {
       conversation.nicknames.set(targetUserId, nickname.trim());
     }
-    
+
     await conversation.save();
 
     const nicknamesObj = Object.fromEntries(conversation.nicknames);
@@ -311,6 +315,180 @@ export const updateNickname = async (req, res) => {
     return res.status(200).json({ message: "Cập nhật biệt danh thành công", nicknames: nicknamesObj });
   } catch (error) {
     console.error("Lỗi cập nhật biệt danh:", error);
+    return res.status(500).json({ message: "Lỗi hệ thống" });
+  }
+};
+
+export const addGroupMembers = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { memberIds } = req.body;
+    const userId = req.user._id;
+
+    const conversation = await Conversation.findById(id);
+    if (!conversation || conversation.type !== "group") return res.status(404).json({ message: "Không tìm thấy nhóm" });
+
+    const currentUser = conversation.participants.find(p => p.userId.toString() === userId.toString());
+    if (!currentUser || currentUser.role !== "leader") return res.status(403).json({ message: "Chỉ trưởng nhóm mới có thể thêm thành viên" });
+
+    memberIds.forEach(mId => {
+      if (!conversation.participants.some(p => p.userId.toString() === mId.toString())) {
+        conversation.participants.push({ userId: mId, role: "member", joinedAt: new Date() });
+      }
+    });
+
+    await conversation.save();
+
+    const io = req.app.get("io");
+    if (io) {
+      conversation.participants.forEach(p => {
+        io.to(`user:${p.userId}`).emit("conversation:update", {
+          conversationId: id,
+          updates: { participants: conversation.participants }
+        });
+        if (memberIds.includes(p.userId.toString())) {
+          io.to(`user:${p.userId}`).emit("new-group", conversation);
+        }
+      });
+    }
+
+    return res.status(200).json({ message: "Thêm thành viên thành công" });
+  } catch (error) {
+    return res.status(500).json({ message: "Lỗi hệ thống" });
+  }
+};
+
+export const removeGroupMember = async (req, res) => {
+  try {
+    const { id, memberId } = req.params;
+    const userId = req.user._id;
+
+    const conversation = await Conversation.findById(id);
+    if (!conversation || conversation.type !== "group") return res.status(404).json({ message: "Không tìm thấy nhóm" });
+
+    const currentUser = conversation.participants.find(p => p.userId.toString() === userId.toString());
+    if (!currentUser || (currentUser.role !== "leader" && userId.toString() !== memberId.toString())) {
+      return res.status(403).json({ message: "Không có quyền" });
+    }
+
+    conversation.participants = conversation.participants.filter(p => p.userId.toString() !== memberId.toString());
+    await conversation.save();
+
+    const io = req.app.get("io");
+    if (io) {
+      io.to(`user:${memberId}`).emit("conversation:removed", { conversationId: id });
+      conversation.participants.forEach(p => {
+        io.to(`user:${p.userId}`).emit("conversation:update", {
+          conversationId: id,
+          updates: { participants: conversation.participants }
+        });
+      });
+    }
+    return res.status(200).json({ message: "Xóa thành viên thành công" });
+  } catch (error) {
+    return res.status(500).json({ message: "Lỗi hệ thống" });
+  }
+};
+
+export const updateGroupRole = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { memberId, role } = req.body;
+    const userId = req.user._id;
+
+    const conversation = await Conversation.findById(id);
+    if (!conversation || conversation.type !== "group") return res.status(404).json({ message: "Không tìm thấy nhóm" });
+
+    const currentUser = conversation.participants.find(p => p.userId.toString() === userId.toString());
+    if (!currentUser || currentUser.role !== "leader") return res.status(403).json({ message: "Chỉ trưởng nhóm" });
+
+    const member = conversation.participants.find(p => p.userId.toString() === memberId.toString());
+    if (member) member.role = role;
+
+    await conversation.save();
+
+    const io = req.app.get("io");
+    if (io) {
+      conversation.participants.forEach(p => {
+        io.to(`user:${p.userId}`).emit("conversation:update", {
+          conversationId: id,
+          updates: { participants: conversation.participants }
+        });
+      });
+    }
+
+    return res.status(200).json({ message: "Cập nhật quyền thành công" });
+  } catch (error) {
+    return res.status(500).json({ message: "Lỗi hệ thống" });
+  }
+};
+
+export const updateGroupInfo = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, description } = req.body;
+    const userId = req.user._id;
+
+    const conversation = await Conversation.findById(id);
+    if (!conversation || conversation.type !== "group") {
+      return res.status(404).json({ message: "Không tìm thấy nhóm" });
+    }
+
+    const currentUser = conversation.participants.find(p => p.userId.toString() === userId.toString());
+    if (!currentUser || currentUser.role !== "leader") {
+      return res.status(403).json({ message: "Chỉ trưởng nhóm mới có thể thay đổi thông tin nhóm" });
+    }
+
+    if (name) conversation.group.name = name;
+    if (description !== undefined) conversation.group.description = description;
+
+    await conversation.save();
+
+    const io = req.app.get("io");
+    if (io) {
+      conversation.participants.forEach((p) => {
+        io.to(`user:${p.userId}`).emit("conversation:update", {
+          conversationId: conversation._id,
+          updates: { group: conversation.group }
+        });
+      });
+    }
+
+    return res.status(200).json({ message: "Cập nhật thông tin nhóm thành công", group: conversation.group });
+  } catch (error) {
+    return res.status(500).json({ message: "Lỗi hệ thống" });
+  }
+};
+
+export const deleteConversation = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user._id;
+
+    const conversation = await Conversation.findById(id);
+    if (!conversation) {
+      return res.status(404).json({ message: "Không tìm thấy cuộc trò chuyện" });
+    }
+
+    const isMember = conversation.participants.some(p => p.userId.toString() === userId.toString());
+    if (!isMember) {
+      return res.status(403).json({ message: "Bạn không có quyền xóa cuộc trò chuyện này" });
+    }
+
+    // eslint-disable-next-line no-undef
+    const Message = (await import("../models/Message.js")).default;
+    await Message.deleteMany({ conversationId: id });
+    await conversation.deleteOne();
+
+    const io = req.app.get("io");
+    if (io) {
+      conversation.participants.forEach((p) => {
+        io.to(`user:${p.userId}`).emit("conversation:delete", { conversationId: id });
+      });
+    }
+
+    return res.status(200).json({ message: "Xóa cuộc trò chuyện thành công" });
+  } catch (error) {
     return res.status(500).json({ message: "Lỗi hệ thống" });
   }
 };

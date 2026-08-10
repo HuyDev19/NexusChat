@@ -13,6 +13,11 @@ const participantSchema = new mongoose.Schema(
       type: Date,
       default: Date.now,
     },
+    role: {
+      type: String,
+      enum: ["member", "leader"],
+      default: "member",
+    },
   },
   {
     _id: false,
@@ -30,6 +35,14 @@ const groupSchema = new mongoose.Schema(
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
+    },
+    avatar: {
+      type: String,
+      default: null,
+    },
+    description: {
+      type: String,
+      default: null,
     },
   },
   {

@@ -116,7 +116,7 @@ const MessageItem = ({
   selectedConvo,
   lastMessageStatus,
 }: MessageItemProps) => {
-  const { reactToMessage, pinMessage, recallMessage, markMediaAsViewed } = useChatStore();
+  const { reactToMessage, pinMessage, recallMessage, markMediaAsViewed, voteOnPoll } = useChatStore();
   const { user } = useAuthStore();
   const prev = index + 1 < messages.length ? messages[index + 1] : undefined;
 
@@ -262,6 +262,38 @@ const MessageItem = ({
                 <VoiceMessagePlayer src={message.audioUrl} isOwn={message.isOwn} />
               ) : message.imgUrl ? (
                 <img src={message.imgUrl} alt="Image" className="rounded-md max-w-full h-auto max-h-[300px]" />
+              ) : message.poll && message.poll.options && message.poll.options.length > 0 ? (
+                <div className="space-y-3 min-w-[200px]">
+                  <p className="font-semibold">{message.poll.question}</p>
+                  <div className="space-y-2">
+                    {message.poll.options.map((option, idx) => {
+                      const votes = option.votes || [];
+                      const totalVotes = message.poll!.options.reduce((sum, o) => sum + (o.votes || []).length, 0);
+                      const percentage = totalVotes > 0 ? Math.round((votes.length / totalVotes) * 100) : 0;
+                      const hasVoted = votes.includes(user?._id || "");
+                      
+                      return (
+                        <div key={option._id || idx} className="relative group cursor-pointer" onClick={() => voteOnPoll(message._id, idx)}>
+                          <div className={cn(
+                            "absolute inset-0 rounded-md transition-all", 
+                            message.isOwn ? "bg-primary-foreground/20" : "bg-primary/20",
+                            hasVoted ? "border border-primary-foreground/50" : ""
+                          )} style={{ width: `${percentage}%` }} />
+                          <div className={cn(
+                            "relative flex justify-between items-center p-2 rounded-md transition-colors",
+                            message.isOwn ? "hover:bg-primary-foreground/10" : "hover:bg-primary/10"
+                          )}>
+                            <span className="text-sm z-10">{option.text}</span>
+                            <span className="text-xs font-medium z-10">{percentage}%</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div className="text-[10px] text-right opacity-70">
+                    {message.poll.options.reduce((sum, o) => sum + (o.votes || []).length, 0)} lượt bình chọn
+                  </div>
+                </div>
               ) : (
                 <p className="text-sm leading-relaxed break-words whitespace-pre-wrap">{message.content}</p>
               )}

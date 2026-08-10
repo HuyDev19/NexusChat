@@ -4,6 +4,7 @@ export interface Participant {
   avatarUrl?: string | null;
   presenceStatus?: 'online' | 'offline' | 'busy';
   joinedAt: string;
+  role?: 'leader' | 'member';
 }
 
 export interface SeenUser {
@@ -15,6 +16,8 @@ export interface SeenUser {
 export interface Group {
   name: string;
   createdBy: string;
+  description?: string;
+  avatar?: string;
 }
 
 export interface LastMessage {
@@ -64,4 +67,13 @@ export interface Message {
   updatedAt?: string | null;
   createdAt: string;
   isOwn?: boolean;
+  poll?: {
+    question: string;
+    options: {
+      _id: string;
+      text: string;
+      votes: string[];
+    }[];
+    allowMultiple: boolean;
+  };
 }

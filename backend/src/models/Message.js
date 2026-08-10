@@ -62,6 +62,16 @@ const messageSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    poll: {
+      question: { type: String },
+      options: [
+        {
+          text: { type: String },
+          votes: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
+        },
+      ],
+      allowMultiple: { type: Boolean, default: false },
+    },
   },
   {
     timestamps: true,

@@ -2,9 +2,10 @@ import { useAuthStore } from "@/stores/useAuthStore";
 import type { Conversation } from "@/types/chat";
 import { useState, useRef, useEffect } from "react";
 import { Button } from "../ui/button";
-import { ImagePlus, Send, Mic, Square, Loader2 } from "lucide-react";
+import { ImagePlus, Send, Mic, Square, Loader2, BarChart2 } from "lucide-react";
 import { Input } from "../ui/input";
 import EmojiPicker from "./EmojiPicker";
+import CreatePollModal from "./CreatePollModal";
 import { useChatStore } from "@/stores/useChatStore";
 import { toast } from "sonner";
 import {
@@ -34,10 +35,11 @@ const MessageInput = ({ selectedConvo }: { selectedConvo: Conversation }) => {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const chunksRef = useRef<BlobPart[]>([]);
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const timerRef = useRef<any>(null);
 
   const [expiresIn, setExpiresIn] = useState<number | undefined>(undefined);
   const [isViewOnce, setIsViewOnce] = useState(false);
+  const [showPollModal, setShowPollModal] = useState(false);
 
   useEffect(() => {
     return () => {
@@ -83,6 +85,19 @@ const MessageInput = ({ selectedConvo }: { selectedConvo: Conversation }) => {
     } finally {
       setIsSendingMedia(false);
       setIsViewOnce(false);
+    }
+  };
+
+  const handleCreatePoll = async (poll: any) => {
+    try {
+      setIsSendingMedia(true);
+      if (selectedConvo.type === "group") {
+        await sendGroupMessage(selectedConvo._id, "", undefined, undefined, undefined, false, poll);
+      }
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || "Lỗi tạo bình chọn");
+    } finally {
+      setIsSendingMedia(false);
     }
   };
 
@@ -183,6 +198,18 @@ const MessageInput = ({ selectedConvo }: { selectedConvo: Conversation }) => {
           >
             {isViewOnce ? <EyeOff className="size-4 text-white" /> : <EyeOff className="size-4" />}
           </Button>
+
+          {selectedConvo.type === "group" && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setShowPollModal(true)}
+              className="hover:bg-primary/10 transition-smooth shrink-0"
+              title="Tạo bình chọn"
+            >
+              <BarChart2 className="size-5" />
+            </Button>
+          )}
         </div>
       ) : (
         <Button
@@ -269,6 +296,12 @@ const MessageInput = ({ selectedConvo }: { selectedConvo: Conversation }) => {
           {isSendingMedia ? <Loader2 className="size-4 animate-spin text-white" /> : <Send className="size-4 text-white" />}
         </Button>
       )}
+
+      <CreatePollModal 
+        open={showPollModal} 
+        onOpenChange={setShowPollModal} 
+        onCreatePoll={handleCreatePoll} 
+      />
     </div>
   );
 };

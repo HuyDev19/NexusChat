@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../ui/dialog";
 import { useChatStore } from "@/stores/useChatStore";
 import { useAuthStore } from "@/stores/useAuthStore";
-import type { Conversation, Participant } from "@/types/chat";
+import type { Conversation } from "@/types/chat";
 import { Input } from "../ui/input";
 import { Button } from "../ui/button";
 import UserAvatar from "./UserAvatar";
@@ -47,7 +47,7 @@ const NicknameModal = ({
                 <UserAvatar 
                   type="sidebar" 
                   name={p.displayName} 
-                  avatarUrl={p.avatarUrl} 
+                  avatarUrl={p.avatarUrl || undefined} 
                 />
                 <div className="flex-1 space-y-1">
                   <div className="text-xs font-semibold text-muted-foreground">
