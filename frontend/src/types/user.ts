@@ -7,6 +7,8 @@ export interface User {
   bio?: string;
   phone?: string;
   presenceStatus?: 'online' | 'offline' | 'busy';
+  lockedConversations?: { conversationId: string; pin: string }[];
+  blockedUsers?: string[];
   createdAt?: string;
   updatedAt?: string;
 }

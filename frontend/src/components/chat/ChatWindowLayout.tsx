@@ -7,14 +7,19 @@ import MessageInput from "./MessageInput";
 import { useEffect } from "react";
 import ChatWindowSkeleton from "../skeleton/ChatWindowSkeleton";
 import ProfileSidebar from "../profile/ProfileSidebar";
+import LockedChatScreen from "./LockedChatScreen";
+import { useAuthStore } from "@/stores/useAuthStore";
 
 const ChatWindowLayout = () => {
   const {
     activeConversationId,
     conversations,
     messageLoading: loading,
+    unlockedConversations,
     markAsSeen,
   } = useChatStore();
+
+  const { user } = useAuthStore();
 
   const selectedConvo =
     conversations.find((c) => c._id === activeConversationId) ?? null;
@@ -41,6 +46,22 @@ const ChatWindowLayout = () => {
 
   if (loading) {
     return <ChatWindowSkeleton />;
+  }
+
+  const isLocked = user?.lockedConversations?.some(
+    (l) => l.conversationId === activeConversationId
+  );
+  const isUnlockedLocally = unlockedConversations.includes(activeConversationId);
+
+  if (isLocked && !isUnlockedLocally) {
+    return (
+      <div className="flex w-full h-full overflow-hidden relative">
+        <SidebarInset className="flex flex-col h-full flex-1 overflow-hidden rounded-sm shadow-md transition-all duration-300">
+          <LockedChatScreen conversationId={activeConversationId} />
+        </SidebarInset>
+        <ProfileSidebar />
+      </div>
+    );
   }
 
   return (

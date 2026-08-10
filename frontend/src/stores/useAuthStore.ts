@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { toast } from "sonner";
 import { authService } from "@/services/authService";
+import { userService } from "@/services/userService";
 import type { AuthState } from "@/types/store";
 import { persist } from "zustand/middleware";
 import { useChatStore } from "./useChatStore";
@@ -107,6 +108,32 @@ export const useAuthStore = create<AuthState>()(
           get().clearState();
         } finally {
           set({ loading: false });
+        }
+      },
+      blockUser: async (userId: string) => {
+        try {
+          const res = await userService.blockUser(userId);
+          const { user } = get();
+          if (user) {
+            set({ user: { ...user, blockedUsers: res.blockedUsers } });
+          }
+          toast.success("Đã chặn người dùng");
+        } catch (error) {
+          console.error("Lỗi chặn người dùng:", error);
+          toast.error("Lỗi khi chặn người dùng");
+        }
+      },
+      unblockUser: async (userId: string) => {
+        try {
+          const res = await userService.unblockUser(userId);
+          const { user } = get();
+          if (user) {
+            set({ user: { ...user, blockedUsers: res.blockedUsers } });
+          }
+          toast.success("Đã bỏ chặn người dùng");
+        } catch (error) {
+          console.error("Lỗi bỏ chặn người dùng:", error);
+          toast.error("Lỗi khi bỏ chặn người dùng");
         }
       },
     }),

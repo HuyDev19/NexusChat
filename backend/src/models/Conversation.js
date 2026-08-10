@@ -94,6 +94,15 @@ const conversationSchema = new mongoose.Schema(
       of: Number,
       default: {},
     },
+    wallpaper: {
+      type: String,
+      default: "default",
+    },
+    nicknames: {
+      type: Map,
+      of: String,
+      default: {},
+    },
   },
   {
     timestamps: true,

@@ -26,13 +26,19 @@ export const chatService = {
     recipientId: string,
     content: string = "",
     imgUrl?: string,
-    conversationId?: string
+    conversationId?: string,
+    audioUrl?: string,
+    expiresIn?: number,
+    isViewOnce?: boolean
   ) {
     const res = await api.post("/messages/direct", {
       recipientId,
       content,
       imgUrl,
       conversationId,
+      audioUrl,
+      expiresIn,
+      isViewOnce,
     });
 
     return res.data.message;
@@ -41,12 +47,18 @@ export const chatService = {
   async sendGroupMessage(
     conversationId: string,
     content: string = "",
-    imgUrl?: string
+    imgUrl?: string,
+    audioUrl?: string,
+    expiresIn?: number,
+    isViewOnce?: boolean
   ) {
     const res = await api.post("/messages/group", {
       conversationId,
       content,
       imgUrl,
+      audioUrl,
+      expiresIn,
+      isViewOnce,
     });
     return res.data.message;
   },
@@ -63,5 +75,56 @@ export const chatService = {
   ) {
     const res = await api.post("/conversations", { type, name, memberIds });
     return res.data.conversation;
+  },
+
+  async uploadAudio(formData: FormData): Promise<{ audioUrl: string }> {
+    const res = await api.post("/messages/upload-audio", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+    return res.data;
+  },
+
+  async uploadImage(formData: FormData): Promise<{ imgUrl: string }> {
+    const res = await api.post("/messages/upload-image", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+    return res.data;
+  },
+
+  async reactToMessage(messageId: string, emoji: string) {
+    const res = await api.post(`/messages/${messageId}/react`, { emoji });
+    return res.data;
+  },
+
+  async pinMessage(messageId: string) {
+    const res = await api.post(`/messages/${messageId}/pin`);
+    return res.data;
+  },
+
+  async markMediaAsViewed(messageId: string) {
+    const res = await api.post(`/messages/${messageId}/view-media`);
+    return res.data;
+  },
+
+  async recallMessage(messageId: string) {
+    const res = await api.post(`/messages/${messageId}/recall`);
+    return res.data;
+  },
+
+  async updateWallpaper(conversationId: string, data: string | FormData) {
+    let res;
+    if (typeof data === "string") {
+      res = await api.post(`/conversations/${conversationId}/wallpaper`, { theme: data });
+    } else {
+      res = await api.post(`/conversations/${conversationId}/wallpaper`, data, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+    }
+    return res.data;
+  },
+
+  async updateNickname(conversationId: string, targetUserId: string, nickname: string) {
+    const res = await api.post(`/conversations/${conversationId}/nickname`, { targetUserId, nickname });
+    return res.data;
   },
 };

@@ -37,6 +37,8 @@ export interface Conversation {
   seenBy: SeenUser[];
   lastMessage: LastMessage | null;
   unreadCounts: Record<string, number>; // key = userId, value = unread count
+  wallpaper?: string;
+  nicknames?: Record<string, string>;
   createdAt: string;
   updatedAt: string;
 }
@@ -51,6 +53,14 @@ export interface Message {
   senderId: string;
   content: string | null;
   imgUrl?: string | null;
+  audioUrl?: string | null;
+  reactions?: { userId: string; emoji: string }[];
+  isPinned?: boolean;
+  expiresIn?: number;
+  expiresAt?: Date | string;
+  isViewOnce?: boolean;
+  viewedBy?: string[];
+  isRecalled?: boolean;
   updatedAt?: string | null;
   createdAt: string;
   isOwn?: boolean;

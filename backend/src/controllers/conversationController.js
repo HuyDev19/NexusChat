@@ -1,5 +1,6 @@
 import Conversation from "../models/Conversation.js";
 import Message from "../models/Message.js";
+import cloudinary from "../libs/cloudinary.js";
 
 export const createConversation = async (req, res) => {
   try {
@@ -174,9 +175,128 @@ export const markConversationAsSeen = async (req, res) => {
     conversation.unreadCounts.set(userId.toString(), 0);
     await conversation.save();
 
+    // Start disappearing messages timer
+    const expiringMessages = await Message.find({
+      conversationId,
+      senderId: { $ne: userId },
+      expiresIn: { $exists: true, $ne: null },
+      expiresAt: { $exists: false }
+    });
+
+    const io = req.app.get("io");
+    
+    for (const msg of expiringMessages) {
+      msg.expiresAt = new Date(Date.now() + msg.expiresIn * 1000);
+      await msg.save();
+
+      if (io) {
+        conversation.participants.forEach((p) => {
+          io.to(`user:${p.userId}`).emit("message:update", {
+            messageId: msg._id,
+            conversationId: conversation._id,
+            updates: { expiresAt: msg.expiresAt }
+          });
+        });
+      }
+    }
+
     return res.status(200).json({ message: "Đã đánh dấu là đã xem" });
   } catch (error) {
     console.error("Lỗi xảy ra khi đánh dấu đã xem", error);
+    return res.status(500).json({ message: "Lỗi hệ thống" });
+  }
+};
+
+export const updateWallpaper = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { theme } = req.body;
+    const userId = req.user._id;
+
+    const conversation = await Conversation.findById(id);
+    if (!conversation) {
+      return res.status(404).json({ message: "Không tìm thấy cuộc trò chuyện" });
+    }
+
+    const isMember = conversation.participants.some(p => p.userId.toString() === userId.toString());
+    if (!isMember) {
+      return res.status(403).json({ message: "Bạn không ở trong cuộc trò chuyện này" });
+    }
+
+    let wallpaperUrl = theme;
+
+    if (req.file) {
+      const b64 = Buffer.from(req.file.buffer).toString("base64");
+      const dataURI = "data:" + req.file.mimetype + ";base64," + b64;
+      const uploadRes = await cloudinary.uploader.upload(dataURI, {
+        folder: "nexuschat_wallpapers",
+      });
+      wallpaperUrl = uploadRes.secure_url;
+    }
+
+    conversation.wallpaper = wallpaperUrl;
+    await conversation.save();
+
+    const io = req.app.get("io");
+    if (io) {
+      conversation.participants.forEach((p) => {
+        io.to(`user:${p.userId}`).emit("conversation:update", {
+          conversationId: conversation._id,
+          updates: { wallpaper: wallpaperUrl }
+        });
+      });
+    }
+
+    return res.status(200).json({ message: "Cập nhật hình nền thành công", wallpaper: wallpaperUrl });
+  } catch (error) {
+    console.error("Lỗi cập nhật hình nền:", error);
+    return res.status(500).json({ message: "Lỗi hệ thống" });
+  }
+};
+
+export const updateNickname = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { targetUserId, nickname } = req.body;
+    const userId = req.user._id;
+
+    const conversation = await Conversation.findById(id);
+    if (!conversation) {
+      return res.status(404).json({ message: "Không tìm thấy cuộc trò chuyện" });
+    }
+
+    const isMember = conversation.participants.some(p => p.userId.toString() === userId.toString());
+    if (!isMember) {
+      return res.status(403).json({ message: "Bạn không ở trong cuộc trò chuyện này" });
+    }
+
+    if (!conversation.nicknames) {
+      conversation.nicknames = new Map();
+    }
+    
+    if (!nickname || nickname.trim() === "") {
+      conversation.nicknames.delete(targetUserId);
+    } else {
+      conversation.nicknames.set(targetUserId, nickname.trim());
+    }
+    
+    await conversation.save();
+
+    const nicknamesObj = Object.fromEntries(conversation.nicknames);
+
+    const io = req.app.get("io");
+    if (io) {
+      conversation.participants.forEach((p) => {
+        io.to(`user:${p.userId}`).emit("conversation:update", {
+          conversationId: conversation._id,
+          updates: { nicknames: nicknamesObj }
+        });
+      });
+    }
+
+    return res.status(200).json({ message: "Cập nhật biệt danh thành công", nicknames: nicknamesObj });
+  } catch (error) {
+    console.error("Lỗi cập nhật biệt danh:", error);
     return res.status(500).json({ message: "Lỗi hệ thống" });
   }
 };

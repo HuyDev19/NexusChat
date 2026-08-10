@@ -102,6 +102,26 @@ export const useSocketStore = create<SocketState>((set, get) => ({
       socket.emit("join-conversation", conversation._id);
     });
 
+    // message reactions
+    socket.on("message:react", ({ messageId, reactions, conversationId }) => {
+      useChatStore.getState().updateMessageReactions(conversationId, messageId, reactions);
+    });
+
+    // message pin
+    socket.on("message:pin", ({ messageId, isPinned, conversationId }) => {
+      useChatStore.getState().updateMessagePinStatus(conversationId, messageId, isPinned);
+    });
+
+    // message update (e.g. expiresAt)
+    socket.on("message:update", ({ messageId, conversationId, updates }) => {
+      useChatStore.getState().updateMessageFields(conversationId, messageId, updates);
+    });
+
+    // conversation update (e.g. wallpaper, nicknames)
+    socket.on("conversation:update", ({ conversationId, updates }) => {
+      useChatStore.getState().updateConversationFields(conversationId, updates);
+    });
+
     // ─── LẮNG NGHE CÁC SỰ KIỆN VIDEO CALL ───────────────────
     socket.on("call:incoming", (callInfo) => {
       // Import store động tránh import tròn (circular dependency)

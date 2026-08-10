@@ -44,6 +44,23 @@ const userSchema = new mongoose.Schema(
       enum: ['online', 'offline', 'busy'],
       default: 'online',
     },
+    lockedConversations: [
+      {
+        conversationId: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "Conversation",
+        },
+        pin: {
+          type: String,
+        }
+      }
+    ],
+    blockedUsers: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+      }
+    ]
   },
   {
     timestamps: true,

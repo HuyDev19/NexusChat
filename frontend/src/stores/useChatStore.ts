@@ -4,6 +4,7 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { useAuthStore } from "./useAuthStore";
 import { useSocketStore } from "./useSocketStore";
+import { toast } from "sonner";
 
 export const useChatStore = create<ChatState>()(
   persist(
@@ -11,6 +12,7 @@ export const useChatStore = create<ChatState>()(
       conversations: [],
       messages: {},
       activeConversationId: null,
+      unlockedConversations: [],
       convoLoading: false, // convo loading
       messageLoading: false,
       loading: false,
@@ -21,6 +23,7 @@ export const useChatStore = create<ChatState>()(
           conversations: [],
           messages: {},
           activeConversationId: null,
+          unlockedConversations: [],
           convoLoading: false,
           messageLoading: false,
         });
@@ -84,14 +87,17 @@ export const useChatStore = create<ChatState>()(
           set({ messageLoading: false });
         }
       },
-      sendDirectMessage: async (recipientId, content, imgUrl) => {
+      sendDirectMessage: async (recipientId, content, imgUrl, audioUrl, expiresIn, isViewOnce) => {
         try {
           const { activeConversationId } = get();
           const sentMessage = await chatService.sendDirectMessage(
             recipientId,
             content,
             imgUrl,
-            activeConversationId || undefined
+            activeConversationId || undefined,
+            audioUrl,
+            expiresIn,
+            isViewOnce
           );
 
           const conversationId = sentMessage.conversationId || activeConversationId;
@@ -137,9 +143,9 @@ export const useChatStore = create<ChatState>()(
           throw error;
         }
       },
-      sendGroupMessage: async (conversationId, content, imgUrl) => {
+      sendGroupMessage: async (conversationId, content, imgUrl, audioUrl, expiresIn, isViewOnce) => {
         try {
-          const sentMessage = await chatService.sendGroupMessage(conversationId, content, imgUrl);
+          const sentMessage = await chatService.sendGroupMessage(conversationId, content, imgUrl, audioUrl, expiresIn, isViewOnce);
 
           set((state) => {
             const prevItems = state.messages[conversationId]?.items ?? [];
@@ -316,6 +322,147 @@ export const useChatStore = create<ChatState>()(
               } : c.lastMessage
             };
           })
+        }));
+      },
+      uploadAudio: async (file) => {
+        const formData = new FormData();
+        formData.append("file", file, "audio.webm");
+        const res = await chatService.uploadAudio(formData);
+        return res.audioUrl;
+      },
+      uploadImage: async (file) => {
+        const formData = new FormData();
+        formData.append("file", file);
+        const res = await chatService.uploadImage(formData);
+        return res.imgUrl;
+      },
+      reactToMessage: async (messageId, emoji) => {
+        try {
+          await chatService.reactToMessage(messageId, emoji);
+        } catch (error) {
+          console.error("Lỗi xảy ra khi gửi reaction:", error);
+        }
+      },
+      pinMessage: async (messageId) => {
+        try {
+          await chatService.pinMessage(messageId);
+        } catch (error: any) {
+          console.error("Lỗi xảy ra khi ghim tin nhắn:", error);
+          if (error.response?.status === 400) {
+            toast.error(error.response.data.message || "Không thể ghim tin nhắn.");
+          } else {
+            toast.error("Lỗi hệ thống khi ghim tin nhắn.");
+          }
+        }
+      },
+      markMediaAsViewed: async (messageId) => {
+        try {
+          await chatService.markMediaAsViewed(messageId);
+        } catch (error) {
+          console.error("Lỗi xảy ra khi đánh dấu xem ảnh:", error);
+        }
+      },
+      recallMessage: async (messageId) => {
+        try {
+          await chatService.recallMessage(messageId);
+        } catch (error: any) {
+          console.error("Lỗi xảy ra khi thu hồi tin nhắn:", error);
+          toast.error(error.response?.data?.message || "Lỗi hệ thống khi thu hồi tin nhắn.");
+        }
+      },
+      updateWallpaper: async (conversationId, data) => {
+        try {
+          let payload: string | FormData;
+          if (data instanceof File) {
+            payload = new FormData();
+            payload.append("image", data);
+          } else {
+            payload = data as string;
+          }
+          await chatService.updateWallpaper(conversationId, payload);
+          toast.success("Cập nhật hình nền thành công!");
+        } catch (error) {
+          console.error("Lỗi khi cập nhật hình nền:", error);
+          toast.error("Không thể cập nhật hình nền.");
+        }
+      },
+      updateNickname: async (conversationId, targetUserId, nickname) => {
+        try {
+          await chatService.updateNickname(conversationId, targetUserId, nickname);
+          toast.success("Cập nhật biệt danh thành công!");
+        } catch (error) {
+          console.error("Lỗi khi cập nhật biệt danh:", error);
+          toast.error("Không thể cập nhật biệt danh.");
+        }
+      },
+      updateConversationFields: (conversationId, fields) => {
+        set((state) => {
+          const index = state.conversations.findIndex(c => c._id === conversationId);
+          if (index !== -1) {
+            const newConvos = [...state.conversations];
+            newConvos[index] = { ...newConvos[index], ...fields };
+            return { conversations: newConvos };
+          }
+          return state;
+        });
+      },
+      updateMessageReactions: (conversationId, messageId, reactions) => {
+        set((state) => {
+          const currentItems = state.messages[conversationId]?.items;
+          if (!currentItems) return state;
+
+          return {
+            messages: {
+              ...state.messages,
+              [conversationId]: {
+                ...state.messages[conversationId],
+                items: currentItems.map((m) =>
+                  m._id === messageId ? { ...m, reactions } : m
+                ),
+              },
+            },
+          };
+        });
+      },
+      updateMessagePinStatus: (conversationId, messageId, isPinned) => {
+        set((state) => {
+          const currentItems = state.messages[conversationId]?.items;
+          if (!currentItems) return state;
+
+          return {
+            messages: {
+              ...state.messages,
+              [conversationId]: {
+                ...state.messages[conversationId],
+                items: currentItems.map((m) =>
+                  m._id === messageId ? { ...m, isPinned } : m
+                ),
+              },
+            },
+          };
+        });
+      },
+      updateMessageFields: (conversationId, messageId, fields) => {
+        set((state) => {
+          const currentItems = state.messages[conversationId]?.items;
+          if (!currentItems) return state;
+
+          return {
+            messages: {
+              ...state.messages,
+              [conversationId]: {
+                ...state.messages[conversationId],
+                items: currentItems.map((m) =>
+                  m._id === messageId ? { ...m, ...fields } : m
+                ),
+              },
+            },
+          };
+        });
+      },
+      unlockConversation: (conversationId) => {
+        set((state) => ({
+          unlockedConversations: [...state.unlockedConversations, conversationId]
         }));
       },
     }),

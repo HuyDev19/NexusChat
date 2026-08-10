@@ -208,6 +208,15 @@ The project is organized as a monorepo with two main parts:
 - Fetch conversation list
 - Fetch messages with pagination
 - Track unread counts and last message metadata per conversation
+- **Pin Messages**
+- **Recall Messages**
+- **Disappearing Messages** with customizable expiration timers (5 mins, 1 hour, 24 hours)
+- **View Once Media** for images and voice messages
+- **Voice Messages** with built-in audio recording
+- **Chat Lock** using a 4-digit PIN for sensitive conversations
+- **Chat Wallpapers** allowing custom backgrounds for each conversation
+- **Shared Nicknames** for participants in a conversation
+- **Block/Unblock Users** in direct conversations
 - **Real-time synchronization**: Instant message delivery and conversation list updates via Socket.IO
 
 ### Real-Time Video/Audio Call (1:1 and Group)
@@ -241,11 +250,24 @@ The project is organized as a monorepo with two main parts:
 - POST /api/friends/requests/:requestId/decline
 - GET /api/friends
 - GET /api/friends/requests
+- POST /api/users/lock-conversation/:conversationId
+- POST /api/users/verify-lock/:conversationId
+- POST /api/users/reset-lock/:conversationId
+- POST /api/users/:id/block
+- POST /api/users/:id/unblock
 - POST /api/messages/direct
 - POST /api/messages/group
+- POST /api/messages/uploadAudio
+- POST /api/messages/uploadImage
+- POST /api/messages/:id/react
+- POST /api/messages/:id/pin
+- POST /api/messages/:id/recall
+- POST /api/messages/:id/view
 - POST /api/conversations
 - GET /api/conversations
 - GET /api/conversations/:conversationId/messages
+- POST /api/conversations/:id/wallpaper
+- POST /api/conversations/:id/nickname
 - POST /api/calls/token (Requests token and room details for LiveKit call room)
 
 ---
@@ -262,6 +284,8 @@ The project is organized as a monorepo with two main parts:
 - bio
 - phone
 - presenceStatus
+- lockedConversations
+- blockedUsers
 
 ### Conversation
 - type: direct | group
@@ -271,12 +295,22 @@ The project is organized as a monorepo with two main parts:
 - seenBy
 - lastMessage
 - unreadCounts
+- wallpaper
+- nicknames
 
 ### Message
 - conversationId
 - senderId
 - content
 - imgUrl
+- audioUrl
+- isPinned
+- isRecalled
+- expiresIn
+- expiresAt
+- isViewOnce
+- viewedBy
+- reactions
 - timestamps
 
 ### Friend
