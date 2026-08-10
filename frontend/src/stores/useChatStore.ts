@@ -68,7 +68,9 @@ export const useChatStore = create<ChatState>()(
 
           set((state) => {
             const prev = state.messages[convoId]?.items ?? [];
-            const merged = prev.length > 0 ? [...processed, ...prev] : processed;
+            const prevIds = new Set(prev.map((m: any) => m._id));
+            const newProcessed = processed.filter((m: any) => !prevIds.has(m._id));
+            const merged = prev.length > 0 ? [...newProcessed, ...prev] : processed;
 
             return {
               messages: {
@@ -239,10 +241,30 @@ export const useChatStore = create<ChatState>()(
         try {
           await chatService.deleteConversation(id);
           get().removeConversation(id);
-          toast.success("Đã xóa cuộc trò chuyện");
+          toast.success("Đã giải tán nhóm");
         } catch (error) {
-          console.error("Lỗi xóa cuộc trò chuyện", error);
-          toast.error("Không thể xóa cuộc trò chuyện");
+          console.error("Lỗi giải tán nhóm", error);
+          toast.error("Không thể giải tán nhóm");
+        }
+      },
+      clearChatHistory: async (id: string) => {
+        try {
+          await chatService.clearChatHistory(id);
+          get().removeConversation(id);
+          toast.success("Đã xóa đoạn chat");
+        } catch (error) {
+          console.error("Lỗi xóa đoạn chat", error);
+          toast.error("Không thể xóa đoạn chat");
+        }
+      },
+      leaveGroup: async (id: string) => {
+        try {
+          await chatService.leaveGroup(id);
+          get().removeConversation(id);
+          toast.success("Đã rời nhóm");
+        } catch (error) {
+          console.error("Lỗi rời nhóm", error);
+          toast.error("Không thể rời nhóm");
         }
       },
       markAsSeen: async () => {
@@ -486,11 +508,13 @@ export const useChatStore = create<ChatState>()(
       addGroupMembers: async (conversationId, memberIds) => {
         try {
           const res = await chatService.addGroupMembers(conversationId, memberIds);
-          set((state) => ({
-            conversations: state.conversations.map((c) =>
-              c._id === conversationId ? { ...c, participants: res.participants } : c
-            )
-          }));
+          if (res.participants) {
+            set((state) => ({
+              conversations: state.conversations.map((c) =>
+                c._id === conversationId ? { ...c, participants: res.participants } : c
+              )
+            }));
+          }
           toast.success("Thêm thành viên thành công!");
         } catch (error: any) {
           toast.error(error.response?.data?.message || "Lỗi thêm thành viên");
@@ -499,11 +523,13 @@ export const useChatStore = create<ChatState>()(
       removeGroupMember: async (conversationId, memberId) => {
         try {
           const res = await chatService.removeGroupMember(conversationId, memberId);
-          set((state) => ({
-            conversations: state.conversations.map((c) =>
-              c._id === conversationId ? { ...c, participants: res.participants } : c
-            )
-          }));
+          if (res.participants) {
+            set((state) => ({
+              conversations: state.conversations.map((c) =>
+                c._id === conversationId ? { ...c, participants: res.participants } : c
+              )
+            }));
+          }
           toast.success("Xóa thành viên thành công!");
         } catch (error: any) {
           toast.error(error.response?.data?.message || "Lỗi xóa thành viên");
@@ -512,11 +538,13 @@ export const useChatStore = create<ChatState>()(
       updateGroupRole: async (conversationId, memberId, role) => {
         try {
           const res = await chatService.updateGroupRole(conversationId, memberId, role);
-          set((state) => ({
-            conversations: state.conversations.map((c) =>
-              c._id === conversationId ? { ...c, participants: res.participants } : c
-            )
-          }));
+          if (res.participants) {
+            set((state) => ({
+              conversations: state.conversations.map((c) =>
+                c._id === conversationId ? { ...c, participants: res.participants } : c
+              )
+            }));
+          }
           toast.success("Cập nhật quyền thành công!");
         } catch (error: any) {
           toast.error(error.response?.data?.message || "Lỗi phân quyền");
@@ -533,6 +561,21 @@ export const useChatStore = create<ChatState>()(
           toast.success("Cập nhật nhóm thành công!");
         } catch (error: any) {
           toast.error(error.response?.data?.message || "Lỗi cập nhật nhóm");
+        }
+      },
+      updateGroupAvatar: async (conversationId, file) => {
+        try {
+          const formData = new FormData();
+          formData.append("avatar", file);
+          const res = await chatService.updateGroupAvatar(conversationId, formData);
+          set((state) => ({
+            conversations: state.conversations.map((c) =>
+              c._id === conversationId ? { ...c, group: res.group } : c
+            )
+          }));
+          toast.success("Cập nhật ảnh đại diện nhóm thành công!");
+        } catch (error: any) {
+          toast.error(error.response?.data?.message || "Lỗi cập nhật ảnh đại diện");
         }
       },
       voteOnPoll: async (messageId, optionIndex) => {

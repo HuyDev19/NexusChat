@@ -124,13 +124,7 @@ export const useSocketStore = create<SocketState>((set, get) => ({
 
     socket.on("conversation:removed", ({ conversationId }) => {
       import("./useChatStore").then((store) => {
-        const state = store.useChatStore.getState();
-        const filtered = state.conversations.filter(c => c._id !== conversationId);
-        state.reset(); // Hacky but quick to force rerender or just update
-        store.useChatStore.setState({ 
-          conversations: filtered,
-          activeConversationId: state.activeConversationId === conversationId ? null : state.activeConversationId
-        });
+        store.useChatStore.getState().removeConversation(conversationId);
         import("sonner").then(({ toast }) => {
           toast.info("Bạn đã bị xóa khỏi nhóm.");
         });

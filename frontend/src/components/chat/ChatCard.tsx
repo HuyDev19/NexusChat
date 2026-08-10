@@ -24,6 +24,8 @@ interface ChatCardProps {
   convoId: string;
   name: string;
   timestamp?: Date;
+  isGroup?: boolean;
+  isLeader?: boolean;
   isActive: boolean;
   onSelect: (id: string) => void;
   unreadCount?: number;
@@ -40,12 +42,20 @@ const ChatCard = ({
   unreadCount,
   leftSection,
   subtitle,
+  isGroup,
+  isLeader,
 }: ChatCardProps) => {
   const [showConfirm, setShowConfirm] = useState(false);
-  const { deleteConversation } = useChatStore();
+  const [confirmType, setConfirmType] = useState<"clear" | "leave" | "disband" | null>(null);
+  
+  const { clearChatHistory, leaveGroup, deleteConversation } = useChatStore();
 
-  const handleDelete = async () => {
-    await deleteConversation(convoId);
+  const handleConfirm = async () => {
+    if (confirmType === "clear") await clearChatHistory(convoId);
+    else if (confirmType === "leave") await leaveGroup(convoId);
+    else if (confirmType === "disband") await deleteConversation(convoId);
+    setShowConfirm(false);
+    setConfirmType(null);
   };
 
   return (
@@ -88,15 +98,44 @@ const ChatCard = ({
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   <DropdownMenuItem
-                    className="text-destructive cursor-pointer"
+                    className="cursor-pointer"
                     onClick={(e) => {
                       e.stopPropagation();
+                      setConfirmType("clear");
                       setShowConfirm(true);
                     }}
                   >
                     <Trash2 className="size-4 mr-2" />
                     Xóa đoạn chat
                   </DropdownMenuItem>
+
+                  {isGroup && (
+                    <DropdownMenuItem
+                      className="cursor-pointer"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setConfirmType("leave");
+                        setShowConfirm(true);
+                      }}
+                    >
+                      <Trash2 className="size-4 mr-2" />
+                      Rời nhóm
+                    </DropdownMenuItem>
+                  )}
+
+                  {isGroup && isLeader && (
+                    <DropdownMenuItem
+                      className="text-destructive cursor-pointer"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setConfirmType("disband");
+                        setShowConfirm(true);
+                      }}
+                    >
+                      <Trash2 className="size-4 mr-2" />
+                      Giải tán nhóm
+                    </DropdownMenuItem>
+                  )}
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
@@ -107,17 +146,26 @@ const ChatCard = ({
       <AlertDialog open={showConfirm} onOpenChange={setShowConfirm}>
         <AlertDialogContent onClick={(e) => e.stopPropagation()}>
           <AlertDialogHeader>
-            <AlertDialogTitle>Bạn có chắc chắn muốn xóa không ?</AlertDialogTitle>
+            <AlertDialogTitle>
+              {confirmType === "clear" && "Bạn có chắc chắn muốn xóa đoạn chat này?"}
+              {confirmType === "leave" && "Bạn có chắc chắn muốn rời nhóm?"}
+              {confirmType === "disband" && "Bạn có chắc chắn muốn giải tán nhóm?"}
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              Hành động này không thể hoàn tác. Đoạn chat này sẽ bị xóa vĩnh viễn.
+              {confirmType === "clear" && "Hành động này sẽ xóa/ẩn lịch sử tin nhắn ở phía bạn."}
+              {confirmType === "leave" && "Bạn sẽ không thể nhận tin nhắn từ nhóm này nữa trừ khi được thêm lại."}
+              {confirmType === "disband" && "Hành động này không thể hoàn tác. Nhóm sẽ bị xóa vĩnh viễn với tất cả mọi người."}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={(e) => e.stopPropagation()}>Hủy</AlertDialogCancel>
+            <AlertDialogCancel onClick={(e) => {
+              e.stopPropagation();
+              setConfirmType(null);
+            }}>Hủy</AlertDialogCancel>
             <AlertDialogAction
               onClick={(e) => {
                 e.stopPropagation();
-                handleDelete();
+                handleConfirm();
               }}
               className="bg-destructive hover:bg-destructive/90 text-white"
             >

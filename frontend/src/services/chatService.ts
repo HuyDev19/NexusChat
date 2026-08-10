@@ -150,6 +150,13 @@ export const chatService = {
     return res.data;
   },
 
+  async updateGroupAvatar(conversationId: string, formData: FormData) {
+    const res = await api.post(`/conversations/${conversationId}/avatar`, formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+    return res.data;
+  },
+
   async voteOnPoll(messageId: string, optionIndex: number) {
     const res = await api.post(`/messages/${messageId}/vote`, { optionIndex });
     return res.data;
@@ -157,6 +164,16 @@ export const chatService = {
 
   deleteConversation: async (conversationId: string) => {
     const response = await api.delete(`/conversations/${conversationId}`);
+    return response.data;
+  },
+
+  clearChatHistory: async (conversationId: string) => {
+    const response = await api.post(`/conversations/${conversationId}/clear`);
+    return response.data;
+  },
+
+  leaveGroup: async (conversationId: string) => {
+    const response = await api.post(`/conversations/${conversationId}/leave`);
     return response.data;
   },
 };

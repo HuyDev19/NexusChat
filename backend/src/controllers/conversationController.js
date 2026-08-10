@@ -43,7 +43,7 @@ export const createConversation = async (req, res) => {
     if (type === "group") {
       conversation = new Conversation({
         type: "group",
-        participants: [{ userId }, ...memberIds.map((id) => ({ userId: id }))],
+        participants: [{ userId, role: "leader" }, ...memberIds.map((id) => ({ userId: id }))],
         group: {
           name,
           createdBy: userId,
@@ -73,6 +73,7 @@ export const createConversation = async (req, res) => {
       avatarUrl: p.userId?.avatarUrl ?? null,
       presenceStatus: p.userId?.presenceStatus ?? 'online',
       joinedAt: p.joinedAt,
+      role: p.role,
     }));
 
     const formattedConversation = {
@@ -80,6 +81,15 @@ export const createConversation = async (req, res) => {
       unreadCounts: conversation.unreadCounts || {},
       participants: formattedParticipants,
     };
+
+    const io = req.app.get("io");
+    if (io) {
+      formattedConversation.participants.forEach((p) => {
+        if (p._id.toString() !== userId.toString()) {
+          io.to(`user:${p._id}`).emit("new-group", formattedConversation);
+        }
+      });
+    }
 
     return res.status(201).json({ conversation: formattedConversation });
   } catch (error) {
@@ -115,6 +125,7 @@ export const getConversations = async (req, res) => {
         avatarUrl: p.userId?.avatarUrl ?? null,
         presenceStatus: p.userId?.presenceStatus ?? 'online',
         joinedAt: p.joinedAt,
+        role: p.role,
       }));
 
       return {
@@ -122,6 +133,25 @@ export const getConversations = async (req, res) => {
         unreadCounts: convo.unreadCounts || {},
         participants,
       };
+    }).filter(convo => {
+      // Ignore conversations if cleared and no new messages
+      if (convo.clearedAt && convo.clearedAt instanceof Map) {
+        const clearedTime = convo.clearedAt.get(userId.toString());
+        if (clearedTime && convo.lastMessageAt) {
+          if (new Date(convo.lastMessageAt) <= new Date(clearedTime)) {
+            return false;
+          }
+        }
+      } else if (convo.clearedAt) {
+        // Fallback if it's a plain object after toObject()
+        const clearedTime = convo.clearedAt[userId.toString()];
+        if (clearedTime && convo.lastMessageAt) {
+          if (new Date(convo.lastMessageAt) <= new Date(clearedTime)) {
+            return false;
+          }
+        }
+      }
+      return true;
     });
 
     return res.status(200).json({ conversations: formatted });
@@ -138,8 +168,23 @@ export const getMessages = async (req, res) => {
 
     const query = { conversationId };
 
+    const conversation = await Conversation.findById(conversationId);
+    if (!conversation) {
+      return res.status(404).json({ message: "Conversation not found" });
+    }
+
+    const userId = req.user._id;
+    let clearedTime = null;
+    if (conversation.clearedAt && conversation.clearedAt.get) {
+      clearedTime = conversation.clearedAt.get(userId.toString());
+    }
+
     if (cursor) {
-      query.createAt = { $lt: new Date(cursor) };
+      query.createdAt = { $lt: new Date(cursor) };
+    }
+    
+    if (clearedTime) {
+      query.createdAt = { ...query.createdAt, $gt: new Date(clearedTime) };
     }
 
     let messages = await Message.find(query)
@@ -339,22 +384,39 @@ export const addGroupMembers = async (req, res) => {
 
     await conversation.save();
 
+    await conversation.populate("participants.userId", "displayName avatarUrl presenceStatus");
+    const formattedParticipants = conversation.participants.map(p => ({
+      _id: p.userId?._id,
+      displayName: p.userId?.displayName,
+      avatarUrl: p.userId?.avatarUrl ?? null,
+      presenceStatus: p.userId?.presenceStatus ?? 'online',
+      joinedAt: p.joinedAt,
+      role: p.role,
+    }));
+
+    const formattedConversation = {
+      ...conversation.toObject(),
+      participants: formattedParticipants,
+    };
+
     const io = req.app.get("io");
     if (io) {
       conversation.participants.forEach(p => {
-        io.to(`user:${p.userId}`).emit("conversation:update", {
+        io.to(`user:${p.userId._id}`).emit("conversation:update", {
           conversationId: id,
-          updates: { participants: conversation.participants }
+          updates: { participants: formattedParticipants }
         });
-        if (memberIds.includes(p.userId.toString())) {
-          io.to(`user:${p.userId}`).emit("new-group", conversation);
+        if (memberIds.includes(p.userId._id.toString())) {
+          io.to(`user:${p.userId._id}`).emit("new-group", formattedConversation);
         }
       });
     }
 
-    return res.status(200).json({ message: "Thêm thành viên thành công" });
+    return res.status(200).json({ message: "Thêm thành viên thành công", participants: formattedParticipants });
   } catch (error) {
-    return res.status(500).json({ message: "Lỗi hệ thống" });
+    console.error("Error in addGroupMembers:", error);
+    import("fs").then(fs => fs.writeFileSync("error_log_add.txt", error.stack));
+    return res.status(500).json({ message: "Lỗi hệ thống: " + error.message });
   }
 };
 
@@ -374,19 +436,31 @@ export const removeGroupMember = async (req, res) => {
     conversation.participants = conversation.participants.filter(p => p.userId.toString() !== memberId.toString());
     await conversation.save();
 
+    await conversation.populate("participants.userId", "displayName avatarUrl presenceStatus");
+    const formattedParticipants = conversation.participants.map(p => ({
+      _id: p.userId?._id,
+      displayName: p.userId?.displayName,
+      avatarUrl: p.userId?.avatarUrl ?? null,
+      presenceStatus: p.userId?.presenceStatus ?? 'online',
+      joinedAt: p.joinedAt,
+      role: p.role,
+    }));
+
     const io = req.app.get("io");
     if (io) {
       io.to(`user:${memberId}`).emit("conversation:removed", { conversationId: id });
       conversation.participants.forEach(p => {
-        io.to(`user:${p.userId}`).emit("conversation:update", {
+        io.to(`user:${p.userId._id}`).emit("conversation:update", {
           conversationId: id,
-          updates: { participants: conversation.participants }
+          updates: { participants: formattedParticipants }
         });
       });
     }
-    return res.status(200).json({ message: "Xóa thành viên thành công" });
+    return res.status(200).json({ message: "Xóa thành viên thành công", participants: formattedParticipants });
   } catch (error) {
-    return res.status(500).json({ message: "Lỗi hệ thống" });
+    console.error("Error in removeGroupMember:", error);
+    import("fs").then(fs => fs.writeFileSync("error_log_remove.txt", error.stack));
+    return res.status(500).json({ message: "Lỗi hệ thống: " + error.message });
   }
 };
 
@@ -407,17 +481,27 @@ export const updateGroupRole = async (req, res) => {
 
     await conversation.save();
 
+    await conversation.populate("participants.userId", "displayName avatarUrl presenceStatus");
+    const formattedParticipants = conversation.participants.map(p => ({
+      _id: p.userId?._id,
+      displayName: p.userId?.displayName,
+      avatarUrl: p.userId?.avatarUrl ?? null,
+      presenceStatus: p.userId?.presenceStatus ?? 'online',
+      joinedAt: p.joinedAt,
+      role: p.role,
+    }));
+
     const io = req.app.get("io");
     if (io) {
       conversation.participants.forEach(p => {
-        io.to(`user:${p.userId}`).emit("conversation:update", {
+        io.to(`user:${p.userId._id}`).emit("conversation:update", {
           conversationId: id,
-          updates: { participants: conversation.participants }
+          updates: { participants: formattedParticipants }
         });
       });
     }
 
-    return res.status(200).json({ message: "Cập nhật quyền thành công" });
+    return res.status(200).json({ message: "Cập nhật quyền thành công", participants: formattedParticipants });
   } catch (error) {
     return res.status(500).json({ message: "Lỗi hệ thống" });
   }
@@ -460,6 +544,63 @@ export const updateGroupInfo = async (req, res) => {
   }
 };
 
+export const updateGroupAvatar = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const file = req.file;
+    const userId = req.user._id;
+
+    if (!file) {
+      return res.status(400).json({ message: "Không có file được tải lên" });
+    }
+
+    const conversation = await Conversation.findById(id);
+    if (!conversation || conversation.type !== "group") {
+      return res.status(404).json({ message: "Không tìm thấy nhóm" });
+    }
+
+    const currentUser = conversation.participants.find(p => p.userId.toString() === userId.toString());
+    if (!currentUser) {
+      return res.status(403).json({ message: "Không có quyền" });
+    }
+
+    // Upload to cloudinary
+    const b64 = Buffer.from(file.buffer).toString("base64");
+    const dataURI = "data:" + file.mimetype + ";base64," + b64;
+    
+    // Import cloudinary at the top or dynamically
+    const cloudinary = (await import("../libs/cloudinary.js")).default;
+    
+    const result = await cloudinary.uploader.upload(dataURI, {
+      folder: "nexuschat_avatars",
+      transformation: [{ width: 400, height: 400, crop: "fill" }],
+    });
+
+    // Delete old avatar from Cloudinary if exists
+    if (conversation.group.avatarId) {
+      await cloudinary.uploader.destroy(conversation.group.avatarId);
+    }
+
+    conversation.group.avatar = result.secure_url;
+    conversation.group.avatarId = result.public_id;
+    await conversation.save();
+
+    const io = req.app.get("io");
+    if (io) {
+      conversation.participants.forEach((p) => {
+        io.to(`user:${p.userId}`).emit("conversation:update", {
+          conversationId: conversation._id,
+          updates: { group: conversation.group }
+        });
+      });
+    }
+
+    return res.status(200).json({ message: "Cập nhật ảnh đại diện nhóm thành công", group: conversation.group });
+  } catch (error) {
+    return res.status(500).json({ message: "Lỗi hệ thống" });
+  }
+};
+
 export const deleteConversation = async (req, res) => {
   try {
     const { id } = req.params;
@@ -470,9 +611,13 @@ export const deleteConversation = async (req, res) => {
       return res.status(404).json({ message: "Không tìm thấy cuộc trò chuyện" });
     }
 
-    const isMember = conversation.participants.some(p => p.userId.toString() === userId.toString());
-    if (!isMember) {
+    const currentUser = conversation.participants.find(p => p.userId.toString() === userId.toString());
+    if (!currentUser) {
       return res.status(403).json({ message: "Bạn không có quyền xóa cuộc trò chuyện này" });
+    }
+
+    if (conversation.type === "group" && currentUser.role !== "leader") {
+      return res.status(403).json({ message: "Chỉ trưởng nhóm mới được giải tán nhóm" });
     }
 
     // eslint-disable-next-line no-undef
@@ -489,6 +634,106 @@ export const deleteConversation = async (req, res) => {
 
     return res.status(200).json({ message: "Xóa cuộc trò chuyện thành công" });
   } catch (error) {
+    return res.status(500).json({ message: "Lỗi hệ thống" });
+  }
+};
+
+export const clearChatHistory = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user._id;
+
+    const conversation = await Conversation.findById(id);
+    if (!conversation) {
+      return res.status(404).json({ message: "Không tìm thấy cuộc trò chuyện" });
+    }
+
+    const isMember = conversation.participants.some(p => p.userId.toString() === userId.toString());
+    if (!isMember) {
+      return res.status(403).json({ message: "Bạn không ở trong cuộc trò chuyện này" });
+    }
+
+    if (!conversation.clearedAt) {
+      conversation.clearedAt = new Map();
+    }
+    conversation.clearedAt.set(userId.toString(), new Date());
+    await conversation.save();
+
+    const io = req.app.get("io");
+    if (io) {
+      io.to(`user:${userId}`).emit("conversation:clear", { conversationId: id });
+    }
+
+    return res.status(200).json({ message: "Xóa đoạn chat thành công" });
+  } catch (error) {
+    console.error("Lỗi khi xóa đoạn chat:", error);
+    return res.status(500).json({ message: "Lỗi hệ thống" });
+  }
+};
+
+export const leaveGroup = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user._id;
+
+    const conversation = await Conversation.findById(id);
+    if (!conversation || conversation.type !== "group") {
+      return res.status(404).json({ message: "Không tìm thấy nhóm" });
+    }
+
+    const currentUser = conversation.participants.find(p => p.userId.toString() === userId.toString());
+    if (!currentUser) {
+      return res.status(403).json({ message: "Bạn không ở trong nhóm này" });
+    }
+
+    // Remove user
+    conversation.participants = conversation.participants.filter(p => p.userId.toString() !== userId.toString());
+
+    // Auto promote if leader leaves
+    if (currentUser.role === "leader" && conversation.participants.length > 0) {
+      // Find oldest member
+      const oldestMember = conversation.participants.reduce((oldest, current) => {
+        return (new Date(current.joinedAt) < new Date(oldest.joinedAt)) ? current : oldest;
+      });
+      oldestMember.role = "leader";
+    }
+
+    if (conversation.participants.length === 0) {
+      // Disband if empty
+      // eslint-disable-next-line no-undef
+      const Message = (await import("../models/Message.js")).default;
+      await Message.deleteMany({ conversationId: id });
+      await conversation.deleteOne();
+    } else {
+      await conversation.save();
+    }
+
+    const io = req.app.get("io");
+    if (io) {
+      io.to(`user:${userId}`).emit("conversation:delete", { conversationId: id }); // Hide for leaving user
+      if (conversation.participants.length > 0) {
+        await conversation.populate("participants.userId", "displayName avatarUrl presenceStatus");
+        const formattedParticipants = conversation.participants.map(p => ({
+          _id: p.userId?._id,
+          displayName: p.userId?.displayName,
+          avatarUrl: p.userId?.avatarUrl ?? null,
+          presenceStatus: p.userId?.presenceStatus ?? 'online',
+          joinedAt: p.joinedAt,
+          role: p.role,
+        }));
+
+        conversation.participants.forEach((p) => {
+          io.to(`user:${p.userId._id}`).emit("conversation:update", {
+            conversationId: id,
+            updates: { participants: formattedParticipants }
+          });
+        });
+      }
+    }
+
+    return res.status(200).json({ message: "Đã rời nhóm" });
+  } catch (error) {
+    console.error("Lỗi khi rời nhóm:", error);
     return res.status(500).json({ message: "Lỗi hệ thống" });
   }
 };

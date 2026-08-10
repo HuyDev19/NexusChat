@@ -219,6 +219,13 @@ The project is organized as a monorepo with two main parts:
 - **Block/Unblock Users** in direct conversations
 - **Real-time synchronization**: Instant message delivery and conversation list updates via Socket.IO
 
+### Group Management
+- **Role Management**: Distinguish between `leader` (Admin) and `member`.
+- **Leader Permissions**: Leaders can add members, kick/remove members, promote other members to leader, update group info, upload group avatar, and disband the group entirely.
+- **Member Permissions**: Members can invite friends to join the group and voluntarily leave the group.
+- **Group Settings**: Centralized modal to view members, edit group name/description, and update the group avatar (with real-time UI updates for all members).
+- **Clear Chat History**: Independent from disbanding; allows any user to locally clear their message history in the group without affecting other members.
+
 ### Real-Time Video/Audio Call (1:1 and Group)
 - **Call Launchers**: Integrated in `ChatWindowHeader.tsx` (Voice Call & Video Call buttons).
 - **Ringing System**: Emits `call:invite` and triggers a clean visual `<IncomingCallModal />` with pulse animations and Mixkit Ringtone audio on loop for target users.

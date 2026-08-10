@@ -40,6 +40,10 @@ const groupSchema = new mongoose.Schema(
       type: String,
       default: null,
     },
+    avatarId: {
+      type: String,
+      default: null,
+    },
     description: {
       type: String,
       default: null,
@@ -114,6 +118,11 @@ const conversationSchema = new mongoose.Schema(
     nicknames: {
       type: Map,
       of: String,
+      default: {},
+    },
+    clearedAt: {
+      type: Map,
+      of: Date,
       default: {},
     },
   },

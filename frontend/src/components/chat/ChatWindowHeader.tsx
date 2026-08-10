@@ -45,7 +45,8 @@ const ChatWindowHeader = ({ chat }: { chat?: Conversation }) => {
   }
 
   if (chat.type === "direct") {
-    const otherUsers = chat.participants.filter((p) => p._id !== user?._id);
+    const participants = chat.participants || [];
+    const otherUsers = participants.filter((p) => p._id !== user?._id);
     otherUser = otherUsers.length > 0 ? otherUsers[0] : null;
 
     if (!user || !otherUser) return null;
@@ -142,8 +143,10 @@ const ChatWindowHeader = ({ chat }: { chat?: Conversation }) => {
                 </div>
               ) : (
                 <GroupChatAvatar
-                  participants={chat.participants}
+                  participants={chat.participants || []}
                   type="sidebar"
+                  groupAvatar={chat.group?.avatar}
+                  groupName={chat.group?.name}
                 />
               )}
             </div>

@@ -22,7 +22,8 @@ const MessageInput = ({ selectedConvo }: { selectedConvo: Conversation }) => {
   
   let isBlocked = false;
   if (selectedConvo.type === "direct") {
-    const otherUser = selectedConvo.participants.find(p => p._id !== user?._id);
+    const participants = selectedConvo.participants || [];
+    const otherUser = participants.find(p => p._id !== user?._id);
     if (otherUser && user?.blockedUsers?.includes(otherUser._id)) {
       isBlocked = true;
     }
@@ -73,7 +74,7 @@ const MessageInput = ({ selectedConvo }: { selectedConvo: Conversation }) => {
       }
 
       if (selectedConvo.type === "direct") {
-        const participants = selectedConvo.participants;
+        const participants = selectedConvo.participants || [];
         const otherUser = participants.filter((p) => p._id !== user._id)[0];
         await sendDirectMessage(otherUser._id, (!audioBlob && !imageFile) ? currValue : "", imgUrl, audioUrl, expiresIn, isViewOnce);
       } else {

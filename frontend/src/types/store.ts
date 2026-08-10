@@ -69,6 +69,8 @@ export interface ChatState {
     poll?: any
   ) => Promise<void>;
   deleteConversation: (id: string) => Promise<void>;
+  clearChatHistory: (id: string) => Promise<void>;
+  leaveGroup: (id: string) => Promise<void>;
   removeConversation: (id: string) => void;
   // add message
   addMessage: (message: Message) => Promise<void>;
@@ -99,6 +101,7 @@ export interface ChatState {
   removeGroupMember: (conversationId: string, memberId: string) => Promise<void>;
   updateGroupRole: (conversationId: string, memberId: string, role: "leader" | "member") => Promise<void>;
   updateGroupInfo: (conversationId: string, name?: string, description?: string) => Promise<void>;
+  updateGroupAvatar: (conversationId: string, file: File) => Promise<void>;
   voteOnPoll: (messageId: string, optionIndex: number) => Promise<void>;
 }
 

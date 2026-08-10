@@ -128,7 +128,8 @@ const MessageItem = ({
 
   const isGroupBreak = isShowTime || message.senderId !== prev?.senderId;
 
-  const participant = selectedConvo.participants.find(
+  const participants = selectedConvo.participants || [];
+  const participant = participants.find(
     (p: Participant) => p._id.toString() === message.senderId.toString()
   );
 

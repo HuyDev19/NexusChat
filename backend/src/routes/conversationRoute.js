@@ -10,7 +10,10 @@ import {
   removeGroupMember,
   updateGroupRole,
   updateGroupInfo,
+  updateGroupAvatar,
   deleteConversation,
+  clearChatHistory,
+  leaveGroup,
 } from "../controllers/conversationController.js";
 import { checkFriendship } from "../middlewares/friendMiddleware.js";
 import upload from "../middlewares/multerMiddleware.js";
@@ -28,6 +31,9 @@ router.post("/:id/members", addGroupMembers);
 router.delete("/:id/members/:memberId", removeGroupMember);
 router.patch("/:id/role", updateGroupRole);
 router.patch("/:id/info", updateGroupInfo);
+router.post("/:id/avatar", upload.single("avatar"), updateGroupAvatar);
 router.delete("/:id", deleteConversation);
+router.post("/:id/clear", clearChatHistory);
+router.post("/:id/leave", leaveGroup);
 
 export default router;

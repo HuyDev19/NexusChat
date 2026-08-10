@@ -9,10 +9,11 @@ import { useAuthStore } from "@/stores/useAuthStore";
 import type { Conversation } from "@/types/chat";
 import { Button } from "../ui/button";
 import UserAvatar from "./UserAvatar";
-import { Trash2, ShieldAlert, UserPlus, Save } from "lucide-react";
-import { useState } from "react";
+import { Trash2, ShieldAlert, UserPlus, Save, Camera } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
 import { useFriendStore } from "@/stores/useFriendStore";
 import { Input } from "../ui/input";
+import GroupChatAvatar from "./GroupChatAvatar";
 
 export default function GroupSettingsModal({
   open,
@@ -24,22 +25,32 @@ export default function GroupSettingsModal({
   conversation: Conversation;
 }) {
   const { user } = useAuthStore();
-  const { friends } = useFriendStore();
+  const { friends, getFriends } = useFriendStore();
   const {
     addGroupMembers,
     removeGroupMember,
     updateGroupRole,
     updateGroupInfo,
+    updateGroupAvatar,
+    convoLoading,
   } = useChatStore();
 
   const [isAddingMember, setIsAddingMember] = useState(false);
   const [selectedFriends, setSelectedFriends] = useState<string[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (open && friends.length === 0) {
+      getFriends();
+    }
+  }, [open, friends.length, getFriends]);
 
   const [isEditingInfo, setIsEditingInfo] = useState(false);
   const [groupName, setGroupName] = useState(conversation.group?.name || "");
   const [groupDesc, setGroupDesc] = useState(conversation.group?.description || "");
 
-  const currentUser = conversation.participants.find((p) => p._id === user?._id);
+  const participants = conversation.participants || [];
+  const currentUser = participants.find((p) => p._id === user?._id);
   const isLeader = currentUser?.role === "leader";
 
   const handleAddMember = async () => {
@@ -55,8 +66,15 @@ export default function GroupSettingsModal({
     setIsEditingInfo(false);
   };
 
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      await updateGroupAvatar(conversation._id, file);
+    }
+  };
+
   const nonMemberFriends = friends.filter(
-    (f) => !conversation.participants.some((p) => p._id === f._id)
+    (f) => !participants.some((p) => p._id === f._id)
   );
 
   return (
@@ -88,16 +106,41 @@ export default function GroupSettingsModal({
                 </div>
               </div>
             ) : (
-              <div className="flex justify-between items-center bg-secondary/50 p-3 rounded-md">
-                <div>
-                  <p className="font-semibold">{conversation.group?.name}</p>
+              <div className="flex flex-col sm:flex-row justify-between items-center bg-secondary/50 p-4 rounded-md gap-4">
+                <div className="flex flex-col items-center gap-2 relative group">
+                  <div className="size-24 relative">
+                    <GroupChatAvatar
+                      participants={participants}
+                      type="profile"
+                      groupAvatar={conversation.group?.avatar}
+                      groupName={conversation.group?.name}
+                    />
+                    {/* Avatar Upload Overlay */}
+                    <div 
+                      className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer z-20"
+                      onClick={() => !convoLoading && fileInputRef.current?.click()}
+                    >
+                      <Camera className="size-6 text-white" />
+                    </div>
+                    <input
+                      type="file"
+                      ref={fileInputRef}
+                      className="hidden"
+                      accept="image/*"
+                      onChange={handleAvatarChange}
+                      disabled={convoLoading}
+                    />
+                  </div>
+                </div>
+                <div className="flex-1 text-center sm:text-left">
+                  <p className="font-semibold text-lg">{conversation.group?.name}</p>
                   {conversation.group?.description && (
                     <p className="text-sm text-muted-foreground">{conversation.group?.description}</p>
                   )}
                 </div>
                 {isLeader && (
                   <Button variant="ghost" size="sm" onClick={() => setIsEditingInfo(true)}>
-                    Sửa
+                    Sửa thông tin
                   </Button>
                 )}
               </div>
@@ -107,7 +150,7 @@ export default function GroupSettingsModal({
           {/* Members Section */}
           <div className="space-y-4">
             <div className="flex justify-between items-center">
-              <h3 className="font-medium">Thành viên ({conversation.participants.length})</h3>
+              <h3 className="font-medium">Thành viên ({participants.length})</h3>
               <Button size="sm" onClick={() => setIsAddingMember(!isAddingMember)}>
                 <UserPlus className="size-4 mr-2" /> Thêm bạn
               </Button>
@@ -143,7 +186,7 @@ export default function GroupSettingsModal({
             )}
 
             <div className="space-y-2">
-              {conversation.participants.map((p) => (
+              {participants.map((p) => (
                 <div key={p._id} className="flex items-center justify-between bg-secondary p-2 rounded-md">
                   <div className="flex items-center gap-3">
                     <UserAvatar type="chat" name={p.displayName as string} avatarUrl={p.avatarUrl || undefined} />
