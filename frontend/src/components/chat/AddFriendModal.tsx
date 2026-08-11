@@ -68,6 +68,17 @@ const AddFriendModal = () => {
       handleCancel();
     } catch (error) {
       console.error("Lỗi xảy ra khi gửi request từ form", error);
+      const errorMessage =
+        typeof error === "object" &&
+        error !== null &&
+        "response" in error &&
+        typeof (error as { response?: { data?: { message?: string } } })
+          .response?.data?.message === "string"
+          ? (error as { response?: { data?: { message?: string } } }).response
+              ?.data?.message
+          : "Lỗi xảy ra khi gửi kết bạn. Hãy thử lại";
+
+      toast.error(errorMessage);
     }
   });
 

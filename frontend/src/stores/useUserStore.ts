@@ -6,22 +6,39 @@ import { toast } from "sonner";
 import { useChatStore } from "./useChatStore";
 
 export const useUserStore = create<UserState>((set, get) => ({
-    updateAvatarUrl: async (formData) => {
-        try {
-            const { user, setUser } = useAuthStore.getState();
-            const data = await userService.uploadAvatar(formData);
+  updateAvatarUrl: async (formData) => {
+    try {
+      const { user, setUser } = useAuthStore.getState();
+      const data = await userService.uploadAvatar(formData);
 
-            if (user) {
-                setUser({
-                    ...user,
-                    avatarUrl: data.avatarUrl,
-                });
+      if (user) {
+        setUser({
+          ...user,
+          avatarUrl: data.avatarUrl,
+        });
 
-                useChatStore.getState().fetchConversations();
-            }
-        } catch (error) {
-            console.error("Lỗi khi updateAvatarUrl", error);
-            toast.error("Upload avatar không thành công!");
-        }
-    },
+        useChatStore.getState().fetchConversations();
+      }
+    } catch (error) {
+      console.error("Lỗi khi updateAvatarUrl", error);
+      toast.error("Upload avatar không thành công!");
+    }
+  },
+  updateProfile: async (data) => {
+    try {
+      const { user, setUser } = useAuthStore.getState();
+      const resData = await userService.updateProfile(data);
+
+      if (user && resData.user) {
+        setUser({
+          ...user,
+          ...resData.user,
+        });
+        toast.success("Cập nhật thông tin thành công!");
+      }
+    } catch (error) {
+      console.error("Lỗi khi updateProfile", error);
+      toast.error("Cập nhật thông tin thất bại!");
+    }
+  }
 }));

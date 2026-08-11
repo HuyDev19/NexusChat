@@ -39,6 +39,28 @@ const userSchema = new mongoose.Schema(
       type: String,
       sparse: true, // cho phép null, nhưng không được trùng
     },
+    presenceStatus: {
+      type: String,
+      enum: ['online', 'offline', 'busy'],
+      default: 'online',
+    },
+    lockedConversations: [
+      {
+        conversationId: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "Conversation",
+        },
+        pin: {
+          type: String,
+        }
+      }
+    ],
+    blockedUsers: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+      }
+    ]
   },
   {
     timestamps: true,

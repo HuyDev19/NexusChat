@@ -6,14 +6,20 @@ import ChatWindowBody from "./ChatWindowBody";
 import MessageInput from "./MessageInput";
 import { useEffect } from "react";
 import ChatWindowSkeleton from "../skeleton/ChatWindowSkeleton";
+import ProfileSidebar from "../profile/ProfileSidebar";
+import LockedChatScreen from "./LockedChatScreen";
+import { useAuthStore } from "@/stores/useAuthStore";
 
 const ChatWindowLayout = () => {
   const {
     activeConversationId,
     conversations,
     messageLoading: loading,
+    unlockedConversations,
     markAsSeen,
   } = useChatStore();
+
+  const { user } = useAuthStore();
 
   const selectedConvo =
     conversations.find((c) => c._id === activeConversationId) ?? null;
@@ -42,19 +48,39 @@ const ChatWindowLayout = () => {
     return <ChatWindowSkeleton />;
   }
 
-  return (
-    <SidebarInset className="flex flex-col h-full flex-1 overflow-hidden rounded-sm shadow-md">
-      {/* Header */}
-      <ChatWindowHeader chat={selectedConvo} />
+  const isLocked = user?.lockedConversations?.some(
+    (l) => l.conversationId === activeConversationId
+  );
+  const isUnlockedLocally = unlockedConversations.includes(activeConversationId as string);
 
-      {/* Body */}
-      <div className="flex-1 overflow-y-auto bg-primary-foreground">
-        <ChatWindowBody />
+  if (isLocked && !isUnlockedLocally) {
+    return (
+      <div className="flex w-full h-full overflow-hidden relative">
+        <SidebarInset className="flex flex-col h-full flex-1 overflow-hidden rounded-sm shadow-md transition-all duration-300">
+          <LockedChatScreen conversationId={activeConversationId as string} />
+        </SidebarInset>
+        <ProfileSidebar />
       </div>
+    );
+  }
 
-      {/* Footer */}
-      <MessageInput selectedConvo={selectedConvo} />
-    </SidebarInset>
+  return (
+    <div className="flex w-full h-full overflow-hidden relative">
+      <SidebarInset className="flex flex-col h-full flex-1 overflow-hidden rounded-sm shadow-md transition-all duration-300">
+        {/* Header */}
+        <ChatWindowHeader chat={selectedConvo} />
+
+        {/* Body */}
+        <div className="flex-1 overflow-y-auto bg-primary-foreground">
+          <ChatWindowBody />
+        </div>
+
+        {/* Footer */}
+        <MessageInput selectedConvo={selectedConvo} />
+      </SidebarInset>
+
+      <ProfileSidebar />
+    </div>
   );
 };
 

@@ -2,7 +2,9 @@ export interface Participant {
   _id: string;
   displayName: string;
   avatarUrl?: string | null;
+  presenceStatus?: 'online' | 'offline' | 'busy';
   joinedAt: string;
+  role?: 'leader' | 'member';
 }
 
 export interface SeenUser {
@@ -14,6 +16,8 @@ export interface SeenUser {
 export interface Group {
   name: string;
   createdBy: string;
+  description?: string;
+  avatar?: string;
 }
 
 export interface LastMessage {
@@ -36,6 +40,8 @@ export interface Conversation {
   seenBy: SeenUser[];
   lastMessage: LastMessage | null;
   unreadCounts: Record<string, number>; // key = userId, value = unread count
+  wallpaper?: string;
+  nicknames?: Record<string, string>;
   createdAt: string;
   updatedAt: string;
 }
@@ -50,7 +56,24 @@ export interface Message {
   senderId: string;
   content: string | null;
   imgUrl?: string | null;
+  audioUrl?: string | null;
+  reactions?: { userId: string; emoji: string }[];
+  isPinned?: boolean;
+  expiresIn?: number;
+  expiresAt?: Date | string;
+  isViewOnce?: boolean;
+  viewedBy?: string[];
+  isRecalled?: boolean;
   updatedAt?: string | null;
   createdAt: string;
   isOwn?: boolean;
+  poll?: {
+    question: string;
+    options: {
+      _id: string;
+      text: string;
+      votes: string[];
+    }[];
+    allowMultiple: boolean;
+  };
 }

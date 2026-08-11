@@ -46,6 +46,7 @@
     /* Status colors */
     --online: 140 100% 50%;
     --offline: 0 0% 70%;
+    --busy: 0 84.2% 60.2%;
 
     /* Warning */
     --warning: 37.7 92.1% 50.2%;
@@ -158,6 +159,7 @@
     --online: 140 100% 60%;
     --away: 45 100% 65%;
     --offline: 0 0% 50%;
+    --busy: 0 80% 47%;
 
     --destructive: 0 80% 47%;
     --destructive-foreground: 0 0% 100%;
@@ -252,6 +254,10 @@
 
   .status-offline {
     @apply bg-[hsl(var(--offline))];
+  }
+
+  .status-busy {
+    @apply bg-[hsl(var(--busy))] shadow-[0_0_8px_hsl(var(--busy)/0.5)];
   }
 
   /* Gradient backgrounds */

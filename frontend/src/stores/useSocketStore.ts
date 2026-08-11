@@ -4,19 +4,28 @@ import { useAuthStore } from "./useAuthStore";
 import type { SocketState } from "@/types/store";
 import { useChatStore } from "./useChatStore";
 
-const baseURL = import.meta.env.VITE_SOCKET_URL;
+const baseURL = import.meta.env.VITE_SOCKET_URL?.trim() || "http://localhost:5001";
 
 export const useSocketStore = create<SocketState>((set, get) => ({
   socket: null,
   onlineUsers: [],
   connectSocket: () => {
     const accessToken = useAuthStore.getState().accessToken;
+    const currentUser = useAuthStore.getState().user;
     const existingSocket = get().socket;
 
     if (existingSocket) return; // tránh tạo nhiều socket
+    if (!accessToken) return;
+    if (!baseURL) {
+      console.warn("Socket URL chưa được cấu hình, bỏ qua kết nối realtime.");
+      return;
+    }
 
     const socket: Socket = io(baseURL, {
-      auth: { token: accessToken },
+      auth: { 
+        token: accessToken,
+        userId: currentUser?._id 
+      },
       transports: ["websocket"],
     });
 
@@ -26,9 +35,23 @@ export const useSocketStore = create<SocketState>((set, get) => ({
       console.log("Đã kết nối với socket");
     });
 
+    socket.on("connect_error", (error) => {
+      console.warn("Socket kết nối lỗi:", error.message);
+    });
+
     // online users
     socket.on("online-users", (userIds) => {
       set({ onlineUsers: userIds });
+    });
+
+    // user updated
+    socket.on("user:updated", (updatedUser) => {
+      import("./useFriendStore").then((store) => {
+        store.useFriendStore.getState().updateFriendData(updatedUser);
+      });
+      import("./useChatStore").then((store) => {
+        store.useChatStore.getState().updateParticipantData(updatedUser);
+      });
     });
 
     // new message
@@ -47,7 +70,8 @@ export const useSocketStore = create<SocketState>((set, get) => ({
       };
 
       const updatedConversation = {
-        ...conversation,
+        _id: conversation._id,
+        lastMessageAt: conversation.lastMessageAt,
         lastMessage,
         unreadCounts,
       };
@@ -77,10 +101,105 @@ export const useSocketStore = create<SocketState>((set, get) => ({
       useChatStore.getState().addConvo(conversation);
       socket.emit("join-conversation", conversation._id);
     });
+
+    // message reactions
+    socket.on("message:react", ({ messageId, reactions, conversationId }) => {
+      useChatStore.getState().updateMessageReactions(conversationId, messageId, reactions);
+    });
+
+    // message pin
+    socket.on("message:pin", ({ messageId, isPinned, conversationId }) => {
+      useChatStore.getState().updateMessagePinStatus(conversationId, messageId, isPinned);
+    });
+
+    // message update (e.g. expiresAt)
+    socket.on("message:update", ({ messageId, conversationId, updates }) => {
+      useChatStore.getState().updateMessageFields(conversationId, messageId, updates);
+    });
+
+    // conversation update (e.g. wallpaper, nicknames)
+    socket.on("conversation:update", ({ conversationId, updates }) => {
+      useChatStore.getState().updateConversationFields(conversationId, updates);
+    });
+
+    socket.on("conversation:removed", ({ conversationId }) => {
+      import("./useChatStore").then((store) => {
+        store.useChatStore.getState().removeConversation(conversationId);
+        import("sonner").then(({ toast }) => {
+          toast.info("Bạn đã bị xóa khỏi nhóm.");
+        });
+      });
+    });
+
+    socket.on("conversation:delete", ({ conversationId }) => {
+      useChatStore.getState().removeConversation(conversationId);
+    });
+
+    // ─── LẮNG NGHE CÁC SỰ KIỆN VIDEO CALL ───────────────────
+    socket.on("call:incoming", (callInfo) => {
+      // Import store động tránh import tròn (circular dependency)
+      import("./useCallStore").then((store) => {
+        store.useCallStore.getState().setIncomingCall(callInfo);
+      });
+
+      // Gửi thông báo đẩy hệ thống bằng Browser Notification API
+      if ("Notification" in window && Notification.permission === "granted") {
+        const notif = new Notification("Cuộc gọi đến từ NexusChat", {
+          body: `${callInfo.callerName} đang gọi ${callInfo.isVideo ? "video" : "thoại"} cho bạn.`,
+          icon: callInfo.callerAvatar || "/favicon.ico",
+          tag: "nexuschat-call",
+          requireInteraction: true, // Giữ thông báo cho đến khi người dùng tắt hoặc bấm vào
+        });
+
+        notif.onclick = () => {
+          window.focus();
+          notif.close();
+        };
+      }
+    });
+
+    socket.on("call:accepted", ({ roomName }) => {
+      console.log(`[Socket] Thành viên chấp nhận cuộc gọi tại phòng: ${roomName}`);
+    });
+
+    socket.on("call:declined", ({ roomName, declineId, reason }) => {
+      import("./useCallStore").then((store) => {
+        const activeCall = store.useCallStore.getState().activeCall;
+        if (activeCall && activeCall.roomName === roomName) {
+          // Báo hiệu từ chối
+          store.useCallStore.getState().endCall();
+          import("sonner").then(({ toast }) => {
+            toast.info("Cuộc gọi bị từ chối.");
+          });
+        }
+      });
+    });
+
+    socket.on("call:ended", ({ roomName }) => {
+      import("./useCallStore").then((store) => {
+        const activeCall = store.useCallStore.getState().activeCall;
+        const incomingCall = store.useCallStore.getState().incomingCall;
+
+        if ((activeCall && activeCall.roomName === roomName) || 
+            (incomingCall && incomingCall.roomName === roomName)) {
+          store.useCallStore.getState().setActiveCall(null);
+          store.useCallStore.getState().setIncomingCall(null);
+          import("sonner").then(({ toast }) => {
+            toast.info("Cuộc gọi đã kết thúc.");
+          });
+        }
+      });
+    });
   },
   disconnectSocket: () => {
     const socket = get().socket;
     if (socket) {
+      // Huỷ đăng ký sự kiện trước khi disconnect
+      socket.off("call:incoming");
+      socket.off("call:accepted");
+      socket.off("call:declined");
+      socket.off("call:ended");
+      socket.off("user:updated");
       socket.disconnect();
       set({ socket: null });
     }

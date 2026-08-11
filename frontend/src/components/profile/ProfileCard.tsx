@@ -11,14 +11,11 @@ interface ProfileCardProps {
 }
 
 const ProfileCard = ({ user }: ProfileCardProps) => {
-    const { onlineUsers } = useSocketStore();
     if (!user) return;
 
     if (!user.bio) {
         user.bio = "Will code for food 💻";
     }
-
-    const isOnline = onlineUsers.includes(user._id) ? true : false;
 
     return (
         <Card className="overflow-hidden p-0 h-52 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500">
@@ -50,18 +47,23 @@ const ProfileCard = ({ user }: ProfileCardProps) => {
                 {/* status */}
                 <Badge
                     className={cn(
-                        "flex items-center gap-1 capitalize",
-                        isOnline ? "bg-green-100 text-green-700" : "bg-slate-100 text-slate-700"
+                        "flex items-center gap-1 capitalize hover:bg-background/80 transition-colors",
+                        user.presenceStatus === 'online' || !user.presenceStatus ? "bg-green-100 text-green-700" : 
+                        user.presenceStatus === 'busy' ? "bg-red-100 text-red-700" :
+                        "bg-slate-100 text-slate-700"
                     )}
                 >
                     <div
                         className={cn(
                             "size-2 rounded-full",
-                            isOnline ? "bg-green-500 animate-pulse" : "bg-slate-500"
+                            user.presenceStatus === 'online' || !user.presenceStatus ? "bg-green-500 animate-pulse" : 
+                            user.presenceStatus === 'busy' ? "bg-red-500" :
+                            "bg-slate-500"
                         )}
                     />
 
-                    {isOnline ? "online" : "offline"}
+                    {user.presenceStatus === 'busy' ? "đang bận" :
+                     user.presenceStatus === 'offline' ? "ngoại tuyến" : "trực tuyến"}
                 </Badge>
             </CardContent>
         </Card>

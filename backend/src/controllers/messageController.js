@@ -1,16 +1,18 @@
 import Conversation from "../models/Conversation.js";
 import Message from "../models/Message.js";
 import { updateConversationAfterCreateMessage } from "../utils/messageHelper.js";
+import cloudinary from "../libs/cloudinary.js";
+import fs from "fs";
 
 export const sendDirectMessage = async (req, res) => {
   try {
-    const { recipientId, content, conversationId } = req.body;
+    const { recipientId, content, conversationId, audioUrl, expiresIn, isViewOnce } = req.body;
     const senderId = req.user._id;
 
     let conversation;
 
-    if (!content) {
-      return res.status(400).json({ message: "Thiếu nội dung" });
+    if (!content && !audioUrl && !req.body.imgUrl) {
+      return res.status(400).json({ message: "Thiếu nội dung hoặc file đính kèm" });
     }
 
     if (conversationId) {
@@ -33,11 +35,26 @@ export const sendDirectMessage = async (req, res) => {
       conversationId: conversation._id,
       senderId,
       content,
+      audioUrl,
+      imgUrl: req.body.imgUrl,
+      expiresIn,
+      isViewOnce,
     });
 
     updateConversationAfterCreateMessage(conversation, message, senderId);
-
+    
     await conversation.save();
+
+    const io = req.app.get("io");
+    if (io) {
+      conversation.participants.forEach((p) => {
+        io.to(`user:${p.userId}`).emit("new-message", {
+          message,
+          conversation,
+          unreadCounts: Object.fromEntries(conversation.unreadCounts || new Map()),
+        });
+      });
+    }
 
     return res.status(201).json({ message });
   } catch (error) {
@@ -48,27 +65,342 @@ export const sendDirectMessage = async (req, res) => {
 
 export const sendGroupMessage = async (req, res) => {
   try {
-    const { conversationId, content } = req.body;
+    const { conversationId, content, audioUrl, imgUrl, expiresIn, isViewOnce, poll } = req.body;
     const senderId = req.user._id;
     const conversation = req.conversation;
 
-    if (!content) {
-      return res.status(400).json("Thiếu nội dung");
+    if (!content && !audioUrl && !imgUrl && !poll) {
+      return res.status(400).json("Thiếu nội dung hoặc file đính kèm hoặc bình chọn");
     }
 
     const message = await Message.create({
       conversationId,
       senderId,
       content,
+      audioUrl,
+      imgUrl,
+      expiresIn,
+      isViewOnce,
+      poll,
     });
 
     updateConversationAfterCreateMessage(conversation, message, senderId);
 
     await conversation.save();
 
+    const io = req.app.get("io");
+    if (io) {
+      conversation.participants.forEach((p) => {
+        io.to(`user:${p.userId}`).emit("new-message", {
+          message,
+          conversation,
+          unreadCounts: Object.fromEntries(conversation.unreadCounts || new Map()),
+        });
+      });
+    }
+
     return res.status(201).json({ message });
   } catch (error) {
     console.error("Lỗi xảy ra khi gửi tin nhắn nhóm", error);
+    return res.status(500).json({ message: "Lỗi hệ thống" });
+  }
+};
+
+export const uploadAudio = async (req, res) => {
+  try {
+    const file = req.file;
+
+    if (!file) {
+      return res.status(400).json({ message: "Không có file được tải lên" });
+    }
+
+    const result = await cloudinary.uploader.upload(file.path, {
+      folder: "nexuschat_audio",
+      resource_type: "video",
+    });
+
+    fs.unlinkSync(file.path);
+
+    return res.status(200).json({
+      audioUrl: result.secure_url,
+    });
+  } catch (error) {
+    console.error("Lỗi khi upload audio:", error);
+    if (req.file) {
+      fs.unlinkSync(req.file.path);
+    }
+    return res.status(500).json({ message: "Lỗi hệ thống khi tải file lên" });
+  }
+};
+
+export const uploadImage = async (req, res) => {
+  try {
+    const file = req.file;
+
+    if (!file) {
+      return res.status(400).json({ message: "Không có file được tải lên" });
+    }
+
+    const result = await cloudinary.uploader.upload(file.path, {
+      folder: "nexuschat_images",
+      resource_type: "image",
+    });
+
+    fs.unlinkSync(file.path);
+
+    return res.status(200).json({
+      imgUrl: result.secure_url,
+    });
+  } catch (error) {
+    console.error("Lỗi khi upload image:", error);
+    if (req.file) {
+      fs.unlinkSync(req.file.path);
+    }
+    return res.status(500).json({ message: "Lỗi hệ thống khi tải file lên" });
+  }
+};
+
+export const reactToMessage = async (req, res) => {
+  try {
+    const { messageId } = req.params;
+    const { emoji } = req.body;
+    const userId = req.user._id;
+
+    if (!emoji) return res.status(400).json({ message: "Thiếu emoji" });
+
+    const message = await Message.findById(messageId);
+    if (!message) return res.status(404).json({ message: "Không tìm thấy tin nhắn" });
+
+    const existingReactionIndex = message.reactions.findIndex(
+      (r) => r.userId.toString() === userId.toString()
+    );
+
+    if (existingReactionIndex !== -1) {
+      if (message.reactions[existingReactionIndex].emoji === emoji) {
+        // Toggle off
+        message.reactions.splice(existingReactionIndex, 1);
+      } else {
+        // Change emoji
+        message.reactions[existingReactionIndex].emoji = emoji;
+      }
+    } else {
+      // Add new reaction
+      message.reactions.push({ userId, emoji });
+    }
+
+    await message.save();
+
+    const conversation = await Conversation.findById(message.conversationId);
+    if (conversation) {
+      const io = req.app.get("io");
+      if (io) {
+        conversation.participants.forEach((p) => {
+          io.to(`user:${p.userId}`).emit("message:react", {
+            messageId,
+            reactions: message.reactions,
+            conversationId: conversation._id,
+          });
+        });
+      }
+    }
+
+    return res.status(200).json({ message: "Thành công", reactions: message.reactions });
+  } catch (error) {
+    console.error("Lỗi khi thả cảm xúc:", error);
+    return res.status(500).json({ message: "Lỗi hệ thống" });
+  }
+};
+
+export const pinMessage = async (req, res) => {
+  try {
+    const { messageId } = req.params;
+
+    const message = await Message.findById(messageId);
+    if (!message) return res.status(404).json({ message: "Không tìm thấy tin nhắn" });
+
+    if (!message.isPinned) {
+      const pinnedCount = await Message.countDocuments({
+        conversationId: message.conversationId,
+        isPinned: true,
+      });
+      if (pinnedCount >= 3) {
+        return res.status(400).json({ message: "Bạn chỉ có thể ghim tối đa 3 tin nhắn." });
+      }
+    }
+
+    message.isPinned = !message.isPinned;
+    await message.save();
+
+    const conversation = await Conversation.findById(message.conversationId);
+    if (conversation) {
+      const io = req.app.get("io");
+      if (io) {
+        conversation.participants.forEach((p) => {
+          io.to(`user:${p.userId}`).emit("message:pin", {
+            messageId,
+            isPinned: message.isPinned,
+            conversationId: conversation._id,
+          });
+        });
+      }
+    }
+
+    return res.status(200).json({ message: "Thành công", isPinned: message.isPinned });
+  } catch (error) {
+    console.error("Lỗi khi ghim tin nhắn:", error);
+    return res.status(500).json({ message: "Lỗi hệ thống" });
+  }
+};
+
+export const markMediaAsViewed = async (req, res) => {
+  try {
+    const { messageId } = req.params;
+    const userId = req.user._id;
+
+    const message = await Message.findById(messageId);
+    if (!message) return res.status(404).json({ message: "Không tìm thấy tin nhắn" });
+
+    if (!message.isViewOnce) return res.status(400).json({ message: "Không phải tin nhắn xem một lần" });
+
+    if (!message.viewedBy.includes(userId)) {
+      message.viewedBy.push(userId);
+      await message.save();
+    }
+
+    const conversation = await Conversation.findById(message.conversationId);
+    if (conversation) {
+      const io = req.app.get("io");
+      if (io) {
+        conversation.participants.forEach((p) => {
+          io.to(`user:${p.userId}`).emit("message:update", {
+            messageId,
+            conversationId: conversation._id,
+            updates: { viewedBy: message.viewedBy }
+          });
+        });
+      }
+    }
+
+    return res.status(200).json({ message: "Thành công", viewedBy: message.viewedBy });
+  } catch (error) {
+    console.error("Lỗi khi đánh dấu xem ảnh:", error);
+    return res.status(500).json({ message: "Lỗi hệ thống" });
+  }
+};
+
+export const recallMessage = async (req, res) => {
+  try {
+    const { messageId } = req.params;
+    const userId = req.user._id;
+
+    const message = await Message.findById(messageId);
+    if (!message) return res.status(404).json({ message: "Không tìm thấy tin nhắn" });
+
+    if (message.senderId.toString() !== userId.toString()) {
+      return res.status(403).json({ message: "Không có quyền thu hồi tin nhắn này" });
+    }
+
+    if (message.isRecalled) {
+      return res.status(400).json({ message: "Tin nhắn đã được thu hồi" });
+    }
+
+    // Delete media from cloudinary if present
+    if (message.imgUrl) {
+      const publicId = message.imgUrl.split("/").pop().split(".")[0];
+      if (publicId) await cloudinary.uploader.destroy(`nexuschat_images/${publicId}`, { resource_type: "image" }).catch(() => {});
+    }
+    if (message.audioUrl) {
+      const publicId = message.audioUrl.split("/").pop().split(".")[0];
+      if (publicId) await cloudinary.uploader.destroy(`nexuschat_audio/${publicId}`, { resource_type: "video" }).catch(() => {});
+    }
+
+    message.isRecalled = true;
+    message.content = undefined;
+    message.imgUrl = undefined;
+    message.audioUrl = undefined;
+    
+    await message.save();
+
+    const conversation = await Conversation.findById(message.conversationId);
+    if (conversation) {
+      const io = req.app.get("io");
+      if (io) {
+        conversation.participants.forEach((p) => {
+          io.to(`user:${p.userId}`).emit("message:update", {
+            messageId,
+            conversationId: conversation._id,
+            updates: { 
+              isRecalled: true,
+              content: undefined,
+              imgUrl: undefined,
+              audioUrl: undefined
+            }
+          });
+        });
+      }
+    }
+
+    return res.status(200).json({ message: "Thu hồi tin nhắn thành công" });
+  } catch (error) {
+    console.error("Lỗi khi thu hồi tin nhắn:", error);
+    return res.status(500).json({ message: "Lỗi hệ thống" });
+  }
+};
+
+export const voteOnPoll = async (req, res) => {
+  try {
+    const { messageId } = req.params;
+    const { optionIndex } = req.body;
+    const userId = req.user._id;
+
+    if (optionIndex === undefined) return res.status(400).json({ message: "Thiếu lựa chọn vote" });
+
+    const message = await Message.findById(messageId);
+    if (!message || !message.poll) return res.status(404).json({ message: "Không tìm thấy bình chọn" });
+
+    if (optionIndex < 0 || optionIndex >= message.poll.options.length) {
+      return res.status(400).json({ message: "Lựa chọn không hợp lệ" });
+    }
+
+    // Remove user's vote from all other options (single choice logic)
+    if (!message.poll.allowMultiple) {
+      message.poll.options.forEach((opt, idx) => {
+        if (idx !== optionIndex) {
+          opt.votes = opt.votes.filter((id) => id.toString() !== userId.toString());
+        }
+      });
+    }
+
+    const targetOption = message.poll.options[optionIndex];
+    const hasVoted = targetOption.votes.some((id) => id.toString() === userId.toString());
+
+    if (hasVoted) {
+      // Toggle off if they click again
+      targetOption.votes = targetOption.votes.filter((id) => id.toString() !== userId.toString());
+    } else {
+      // Add vote
+      targetOption.votes.push(userId);
+    }
+
+    await message.save();
+
+    const conversation = await Conversation.findById(message.conversationId);
+    if (conversation) {
+      const io = req.app.get("io");
+      if (io) {
+        conversation.participants.forEach((p) => {
+          io.to(`user:${p.userId}`).emit("message:update", {
+            messageId,
+            conversationId: conversation._id,
+            updates: { poll: message.poll }
+          });
+        });
+      }
+    }
+
+    return res.status(200).json({ message: "Bình chọn thành công", poll: message.poll });
+  } catch (error) {
+    console.error("Lỗi khi vote bình chọn:", error);
     return res.status(500).json({ message: "Lỗi hệ thống" });
   }
 };

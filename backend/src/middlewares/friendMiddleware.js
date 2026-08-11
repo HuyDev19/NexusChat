@@ -1,5 +1,6 @@
 import Conversation from "../models/Conversation.js";
 import Friend from "../models/Friend.js";
+import User from "../models/User.js";
 
 // giúp tạo cặp userA và userB theo thứ tự để dễ dàng kiểm tra
 const pair = (a, b) => {
@@ -49,6 +50,18 @@ export const checkFriendship = async (req, res, next) => {
 
       if (!isFriend) {
         return res.status(403).json({ message: "Bạn chưa kết bạn với người này" });
+      }
+
+      // Kiểm tra chặn
+      const sender = await User.findById(me);
+      const recipient = await User.findById(targetId);
+
+      if (sender.blockedUsers?.includes(targetId)) {
+        return res.status(403).json({ message: "Bạn đã chặn người dùng này" });
+      }
+
+      if (recipient.blockedUsers?.includes(me)) {
+        return res.status(403).json({ message: "Tài khoản này hiện không liên lạc được" });
       }
 
       return next();

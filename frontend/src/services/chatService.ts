@@ -26,13 +26,19 @@ export const chatService = {
     recipientId: string,
     content: string = "",
     imgUrl?: string,
-    conversationId?: string
+    conversationId?: string,
+    audioUrl?: string,
+    expiresIn?: number,
+    isViewOnce?: boolean
   ) {
     const res = await api.post("/messages/direct", {
       recipientId,
       content,
       imgUrl,
       conversationId,
+      audioUrl,
+      expiresIn,
+      isViewOnce,
     });
 
     return res.data.message;
@@ -41,12 +47,20 @@ export const chatService = {
   async sendGroupMessage(
     conversationId: string,
     content: string = "",
-    imgUrl?: string
+    imgUrl?: string,
+    audioUrl?: string,
+    expiresIn?: number,
+    isViewOnce?: boolean,
+    poll?: any
   ) {
     const res = await api.post("/messages/group", {
       conversationId,
       content,
       imgUrl,
+      audioUrl,
+      expiresIn,
+      isViewOnce,
+      poll,
     });
     return res.data.message;
   },
@@ -63,5 +77,103 @@ export const chatService = {
   ) {
     const res = await api.post("/conversations", { type, name, memberIds });
     return res.data.conversation;
+  },
+
+  async uploadAudio(formData: FormData): Promise<{ audioUrl: string }> {
+    const res = await api.post("/messages/upload-audio", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+    return res.data;
+  },
+
+  async uploadImage(formData: FormData): Promise<{ imgUrl: string }> {
+    const res = await api.post("/messages/upload-image", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+    return res.data;
+  },
+
+  async reactToMessage(messageId: string, emoji: string) {
+    const res = await api.post(`/messages/${messageId}/react`, { emoji });
+    return res.data;
+  },
+
+  async pinMessage(messageId: string) {
+    const res = await api.post(`/messages/${messageId}/pin`);
+    return res.data;
+  },
+
+  async markMediaAsViewed(messageId: string) {
+    const res = await api.post(`/messages/${messageId}/view-media`);
+    return res.data;
+  },
+
+  async recallMessage(messageId: string) {
+    const res = await api.post(`/messages/${messageId}/recall`);
+    return res.data;
+  },
+
+  async updateWallpaper(conversationId: string, data: string | FormData) {
+    let res;
+    if (typeof data === "string") {
+      res = await api.post(`/conversations/${conversationId}/wallpaper`, { theme: data });
+    } else {
+      res = await api.post(`/conversations/${conversationId}/wallpaper`, data, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+    }
+    return res.data;
+  },
+
+  async updateNickname(conversationId: string, targetUserId: string, nickname: string) {
+    const res = await api.post(`/conversations/${conversationId}/nickname`, { targetUserId, nickname });
+    return res.data;
+  },
+
+  async addGroupMembers(conversationId: string, memberIds: string[]) {
+    const res = await api.post(`/conversations/${conversationId}/members`, { memberIds });
+    return res.data;
+  },
+
+  async removeGroupMember(conversationId: string, memberId: string) {
+    const res = await api.delete(`/conversations/${conversationId}/members/${memberId}`);
+    return res.data;
+  },
+
+  async updateGroupRole(conversationId: string, memberId: string, role: "leader" | "member") {
+    const res = await api.patch(`/conversations/${conversationId}/role`, { memberId, role });
+    return res.data;
+  },
+
+  async updateGroupInfo(conversationId: string, name?: string, description?: string) {
+    const res = await api.patch(`/conversations/${conversationId}/info`, { name, description });
+    return res.data;
+  },
+
+  async updateGroupAvatar(conversationId: string, formData: FormData) {
+    const res = await api.post(`/conversations/${conversationId}/avatar`, formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+    return res.data;
+  },
+
+  async voteOnPoll(messageId: string, optionIndex: number) {
+    const res = await api.post(`/messages/${messageId}/vote`, { optionIndex });
+    return res.data;
+  },
+
+  deleteConversation: async (conversationId: string) => {
+    const response = await api.delete(`/conversations/${conversationId}`);
+    return response.data;
+  },
+
+  clearChatHistory: async (conversationId: string) => {
+    const response = await api.post(`/conversations/${conversationId}/clear`);
+    return response.data;
+  },
+
+  leaveGroup: async (conversationId: string) => {
+    const response = await api.post(`/conversations/${conversationId}/leave`);
+    return response.data;
   },
 };

@@ -16,7 +16,8 @@ const DirectMessageCard = ({ convo }: { convo: Conversation }) => {
 
   if (!user) return null;
 
-  const otherUser = convo.participants.find((p) => p._id !== user._id);
+  const participants = convo.participants || [];
+  const otherUser = participants.find((p) => p._id !== user._id);
   if (!otherUser) return null;
 
   const unreadCount = convo.unreadCounts[user._id];
@@ -50,7 +51,11 @@ const DirectMessageCard = ({ convo }: { convo: Conversation }) => {
           />
           <StatusBadge
             status={
-              onlineUsers.includes(otherUser?._id ?? "") ? "online" : "offline"
+              !onlineUsers.includes(otherUser?._id ?? "") || otherUser?.presenceStatus === "offline"
+                ? "offline"
+                : otherUser?.presenceStatus === "busy"
+                  ? "busy"
+                  : "online"
             }
           />
           {unreadCount > 0 && <UnreadCountBadge unreadCount={unreadCount} />}

@@ -12,4 +12,32 @@ export const userService = {
 
     return res.data;
   },
+  updateProfile: async (data: { displayName?: string; phone?: string; bio?: string }) => {
+    const res = await api.put("/users/me", data);
+    return res.data;
+  },
+  fetchUserProfile: async (userId: string) => {
+    const res = await api.get(`/users/${userId}`);
+    return res.data.user;
+  },
+  lockConversation: async (conversationId: string, pin: string) => {
+    const res = await api.post(`/users/lock-conversation/${conversationId}`, { pin });
+    return res.data;
+  },
+  verifyLock: async (conversationId: string, pin: string) => {
+    const res = await api.post(`/users/verify-lock/${conversationId}`, { pin });
+    return res.data;
+  },
+  resetLock: async (conversationId: string, password: string, newPin?: string) => {
+    const res = await api.post(`/users/reset-lock/${conversationId}`, { password, newPin });
+    return res.data;
+  },
+  blockUser: async (userId: string) => {
+    const res = await api.post(`/users/${userId}/block`);
+    return res.data;
+  },
+  unblockUser: async (userId: string) => {
+    const res = await api.post(`/users/${userId}/unblock`);
+    return res.data;
+  },
 };

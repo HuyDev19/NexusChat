@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { toast } from "sonner";
 import { authService } from "@/services/authService";
+import { userService } from "@/services/userService";
 import type { AuthState } from "@/types/store";
 import { persist } from "zustand/middleware";
 import { useChatStore } from "./useChatStore";
@@ -29,14 +30,20 @@ export const useAuthStore = create<AuthState>()(
           set({ loading: true });
 
           //  gọi api
-          await authService.signUp(username, password, email, firstName, lastName);
+          await authService.signUp(
+            username,
+            password,
+            email,
+            firstName,
+            lastName,
+          );
 
           toast.success(
-            "Đăng ký thành công! Bạn sẽ được chuyển sang trang đăng nhập."
+            "Đăng ký thành công! Bạn sẽ được chuyển sang trang đăng nhập.",
           );
-        } catch (error) {
+        } catch (error: any) {
           console.error(error);
-          toast.error("Đăng ký không thành công");
+          toast.error(error.response?.data?.message || "Đăng ký không thành công");
         } finally {
           set({ loading: false });
         }
@@ -103,10 +110,36 @@ export const useAuthStore = create<AuthState>()(
           set({ loading: false });
         }
       },
+      blockUser: async (userId: string) => {
+        try {
+          const res = await userService.blockUser(userId);
+          const { user } = get();
+          if (user) {
+            set({ user: { ...user, blockedUsers: res.blockedUsers } });
+          }
+          toast.success("Đã chặn người dùng");
+        } catch (error) {
+          console.error("Lỗi chặn người dùng:", error);
+          toast.error("Lỗi khi chặn người dùng");
+        }
+      },
+      unblockUser: async (userId: string) => {
+        try {
+          const res = await userService.unblockUser(userId);
+          const { user } = get();
+          if (user) {
+            set({ user: { ...user, blockedUsers: res.blockedUsers } });
+          }
+          toast.success("Đã bỏ chặn người dùng");
+        } catch (error) {
+          console.error("Lỗi bỏ chặn người dùng:", error);
+          toast.error("Lỗi khi bỏ chặn người dùng");
+        }
+      },
     }),
     {
       name: "auth-storage",
       partialize: (state) => ({ user: state.user }), // chỉ persist user
-    }
-  )
+    },
+  ),
 );

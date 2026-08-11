@@ -1,1118 +1,389 @@
 # NexusChat - Project Specification
 
-**Document Generated**: April 7, 2026  
-**Version**: 1.0.0 (Based on Current Codebase)  
+**Document Generated**: August 09, 2026
+**Version**: 1.3.0
 **Status**: Active Development
 
 ---
 
-## 📋 PROJECT OVERVIEW
+## 1. Project Overview
 
-**NexusChat** is a web-based real-time messaging application designed for social communication. It enables users to:
+NexusChat is a web-based messaging application for social communication. The current implementation focuses on a chat MVP with authentication, friend requests, direct conversations, group conversations, conversation history, and real-time Video/Audio calls (1:1 and Group).
 
-- Register and authenticate securely
-- Build a friend network through friend requests
-- Send and receive messages in direct conversations (1-on-1)
-- Create and participate in group conversations
-- Track unread messages and conversation history
-- Manage user profiles with avatars and personal information
-
-**Primary Use Case**: Social networking and instant messaging platform similar to Messenger or WhatsApp Web.
+### Main goals
+- Allow users to sign up and sign in securely.
+- Support friendship management through friend requests.
+- Enable direct and group messaging.
+- Show conversations and message history in a chat UI.
+- Keep authentication state in the frontend using Zustand stores.
+- Provide premium, real-time Video & Audio calling (both 1:1 and Group) using LiveKit SFU and Socket.IO signaling.
 
 ---
 
-## 🛠️ TECH STACK
+## 2. Current Tech Stack
 
 ### Backend
-| Technology | Version | Purpose |
+| Technology | Version / Note | Purpose |
 |---|---|---|
-| **Node.js** | (via Express) | Runtime environment |
-| **Express.js** | ^5.1.0 | Web server framework |
-| **MongoDB** | (Mongoose ^8.19.0) | Database (NoSQL) |
-| **Mongoose** | ^8.19.0 | MongoDB ODM |
-| **JWT (jsonwebtoken)** | ^9.0.2 | Authentication tokens |
-| **bcrypt** | ^6.0.0 | Password hashing |
-| **cookie-parser** | ^1.4.7 | Cookie parsing middleware |
-| **CORS** | ^2.8.5 | Cross-origin resource sharing |
-| **dotenv** | ^17.2.3 | Environment variables |
-| **nodemon** | ^3.1.10 | Dev server auto-reload |
+| Node.js | via Express runtime | Backend runtime |
+| Express.js | ^5.1.0 | Web server and routing |
+| MongoDB | via Mongoose | Database |
+| Mongoose | ^8.19.0 | ODM for MongoDB |
+| JWT | jsonwebtoken ^9.0.2 | Access token generation |
+| bcrypt | ^6.0.0 | Password hashing |
+| cookie-parser | ^1.4.7 | Parse refresh-token cookies |
+| cors | ^2.8.5 | Cross-origin request handling |
+| dotenv | ^17.2.3 | Environment variables |
+| nodemon | ^3.1.10 | Development auto-reload |
+| livekit-server-sdk | ^2.17.0 | Server token generation for LiveKit SFU |
+| cloudinary | ^2.0.0 | Image hosting for avatars |
+| multer | ^1.4.5 | File upload middleware |
 
 ### Frontend
-| Technology | Version | Purpose |
+| Technology | Version / Note | Purpose |
 |---|---|---|
-| **React** | ^19.2.0 | UI framework |
-| **TypeScript** | ~5.9.3 | Type safety |
-| **Vite** | ^7.2.4 | Build tool & dev server |
-| **React Router** | ^7.13.2 | Client-side routing |
-| **React Router DOM** | ^7.13.2 | DOM-specific routing |
-| **Zustand** | ^5.0.9 | State management |
-| **Axios** | ^1.13.2 | HTTP client |
-| **TailwindCSS** | ^4.1.17 | Utility-first CSS framework |
-| **React Hook Form** | ^7.68.0 | Form state management |
-| **Zod** | ^4.1.13 | Schema validation |
-| **Radix UI** | Various | Unstyled UI components |
-| **lucide-react** | ^0.555.0 | Icon library |
-| **sonner** | ^2.0.7 | Toast notifications |
-| **clsx** | ^2.1.1 | Conditional classnames |
-| **tailwind-merge** | ^3.4.0 | Merge TailwindCSS classes |
+| React | ^19.2.0 | UI library |
+| TypeScript | ~5.9.3 | Static typing |
+| Vite | ^7.2.4 | Build tool and dev server |
+| React Router | ^7.10.1 / ^7.13.2 | Client-side routing |
+| Zustand | ^5.0.9 | State management |
+| Axios | ^1.13.2 | API client |
+| Tailwind CSS | ^4.1.17 | Styling |
+| React Hook Form | ^7.68.0 | Form handling |
+| Zod | ^4.1.13 | Form validation |
+| Radix UI | various | UI primitives |
+| lucide-react | ^0.555.0 | Icons |
+| sonner | ^2.0.7 | Toast notifications |
+| clsx / tailwind-merge | ^2.1.1 / ^3.4.0 | Utility class handling |
+| livekit-client | ^2.28.1 | WebRTC Media & SFU client |
+| @livekit/components-react | ^2.6.9 | LiveKit official React UI component set |
+| @livekit/components-styles | ^1.0.16 | LiveKit prebuilt styles |
+
+### Root workspace
+- framer-motion ^12.38.0
+- tailwind-scrollbar ^4.0.2
 
 ---
 
-## 🏗️ SYSTEM ARCHITECTURE
+## 3. Architecture
 
-### High-Level Architecture
+The project is organized as a monorepo with two main parts:
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                     Frontend (React + TypeScript)            │
-│  ┌──────────────────────────────────────────────────────┐   │
-│  │ Pages: SignIn, SignUp, ChatApp                       │   │
-│  │ Components: Auth, UI, Layout                          │   │
-│  │ State: Zustand (useAuthStore)                        │   │
-│  │ HTTP: Axios with JWT interceptors                    │   │
-│  └──────────────────────────────────────────────────────┘   │
-└──────────────────┬──────────────────────────────────────────┘
-                   │
-        HTTP/REST API (JSON)
-        Cookies (refreshToken)
-                   │
-┌──────────────────▼──────────────────────────────────────────┐
-│                Backend (Node.js + Express)                   │
-│  ┌──────────────────────────────────────────────────────┐   │
-│  │ Routes: Auth, Users, Friends, Messages, Conversations│   │
-│  │ Controllers: Business logic layer                    │   │
-│  │ Middlewares: Auth, Friend validation                 │   │
-│  │ Models: Mongoose schemas for data                    │   │
-│  │ Utils: Message helpers                               │   │
-│  └──────────────────────────────────────────────────────┘   │
-└──────────────────┬──────────────────────────────────────────┘
-                   │
-        MongoDB Driver (Mongoose)
-                   │
-┌──────────────────▼──────────────────────────────────────────┐
-│              MongoDB Database (NoSQL)                         │
-│  Collections: users, conversations, messages, friends,       │
-│              friendrequests, sessions                         │
-└──────────────────────────────────────────────────────────────┘
-```
+- Backend: Node.js + Express API
+- Frontend: React + TypeScript SPA
 
-### Authentication Flow
+### Request flow
+1. User signs in or signs up from the frontend.
+2. The frontend stores the access token in Zustand and sends it in the Authorization header.
+3. The backend verifies the token through auth middleware.
+4. Protected endpoints handle users, friends, messages, and conversations.
+5. Data is persisted in MongoDB through Mongoose models.
 
-1. **Sign Up**: User provides credentials → bcrypt hash → User stored in DB
-2. **Sign In**: Username lookup → bcrypt compare → JWT access token issued → Refresh token in HttpOnly cookie
-3. **Protected Routes**: Access token in Authorization header → JWT verification → User attached to request
-4. **Token Refresh**: Expired access token detected → Refresh token from cookie → New access token issued
-5. **Sign Out**: Clear cookie → Delete session from DB
+### Real-time & Calling Architecture
+1. **Socket.IO Real-time Connection**:
+   - Built for signaling events (ringing, invite, accept, decline, end).
+   - Backend automatically assigns socket connections to a personal room (`user:${userId}`) using parsed JWT credentials from auth handshake.
+2. **SFU WebRTC Engine (LiveKit)**:
+   - When a call begins or is accepted, the backend generates an Access Token using `livekit-server-sdk`.
+   - The frontend connects to the LiveKit Server via `livekit-client` using the token, handling video/audio stream subscription and publishing automatically.
+
+### Current frontend routing
+- /signin
+- /signup
+- / (protected, main chat UI)
+
+### Current backend protection model
+- The server applies auth middleware globally to private routes using app.use(protectedRoute).
+- Public routes are mounted under /api/auth.
 
 ---
 
-## 📁 FOLDER STRUCTURE
+## 4. Current Folder Structure
 
-### Root Directory
-```
-d:/DH_GTVT_HCM/Lập_Trình_Web/NexusChat/
-├── package.json                          (Root dependencies: framer-motion)
-├── backend/                              (Node.js + Express server)
-│   ├── package.json
-│   ├── src/
-│   │   ├── server.js                     (Entry point, middleware setup)
-│   │   ├── controllers/
-│   │   │   ├── authController.js         (signUp, signIn, signOut, refreshToken)
-│   │   │   ├── userController.js         (authMe - get current user)
-│   │   │   ├── friendController.js       (Friend requests & friend list)
-│   │   │   ├── messageController.js      (Send direct & group messages)
-│   │   │   └── conversationController.js (Create, get, & fetch messages)
-│   │   ├── models/
-│   │   │   ├── User.js                   (User schema)
-│   │   │   ├── Conversation.js           (Conversation schema: direct & group)
-│   │   │   ├── Message.js                (Message schema)
-│   │   │   ├── Friend.js                 (Friend relationship)
-│   │   │   ├── FriendRequest.js          (Friend request schema)
-│   │   │   └── Session.js                (Refresh token session)
-│   │   ├── routes/
-│   │   │   ├── authRoute.js              (Auth endpoints)
-│   │   │   ├── userRoute.js              (User endpoints)
-│   │   │   ├── friendRoute.js            (Friend endpoints)
-│   │   │   ├── messageRoute.js           (Message endpoints)
-│   │   │   └── conversationRoute.js      (Conversation endpoints)
-│   │   ├── middlewares/
-│   │   │   ├── authMiddleware.js         (JWT verification)
-│   │   │   └── friendMiddleware.js       (Friendship & group membership check)
-│   │   ├── libs/
-│   │   │   └── db.js                     (MongoDB connection)
-│   │   └── utils/
-│   │       └── messageHelper.js          (Update conversation after message)
-│
-└── frontend/                             (React + TypeScript app)
-    ├── package.json
-    ├── vite.config.ts
-    ├── tsconfig.json
-    ├── tailwind.config.ts
-    ├── components.json                   (Shadcn/UI config for Radix UI)
-    ├── index.html
-    ├── src/
-    │   ├── main.tsx                      (React entry point)
-    │   ├── App.tsx                       (Routes, Toaster setup)
-    │   ├── index.css
-    │   ├── pages/
-    │   │   ├── SignInPage.tsx            (Sign in page)
-    │   │   ├── SignUpPage.tsx            (Sign up page)
-    │   │   └── ChatAppPage.tsx           (Main chat interface)
-    │   ├── components/
-    │   │   ├── auth/
-    │   │   │   ├── ProtectedRoute.tsx    (Route guard)
-    │   │   │   ├── Logout.tsx            (Logout button)
-    │   │   │   ├── signin-form.tsx        (Sign in form with validation)
-    │   │   │   └── signup-form.tsx        (Sign up form with validation)
-    │   │   ├── layout/                   (⚠️ Folder exists but empty)
-    │   │   └── ui/                       (Radix UI shadcn components)
-    │   │       ├── button.tsx
-    │   │       ├── card.tsx
-    │   │       ├── input.tsx
-    │   │       ├── label.tsx
-    │   │       ├── field.tsx
-    │   │       └── separator.tsx
-    │   ├── lib/
-    │   │   ├── axios.ts                  (Axios instance with JWT interceptors)
-    │   │   ├── utils.ts                  (Utility functions)
-    │   │   └── mockApi.ts                (⚠️ Mock API - status unclear)
-    │   ├── services/
-    │   │   └── authService.ts            (API calls for auth endpoints)
-    │   ├── stores/
-    │   │   └── useAuthStore.ts           (Zustand auth state)
-    │   ├── types/
-    │   │   ├── store.ts                  (AuthState interface)
-    │   │   └── user.ts                   (User interface)
-    │   ├── assets/                       (Images, icons)
-    │   └── styles/                       (Additional CSS)
-    └── public/                           (Static files)
-```
+### Root
+- package.json
+- backend/
+- frontend/
+
+### Backend structure
+- backend/src/server.js
+- backend/src/controllers/
+   - authController.js
+   - userController.js
+   - friendController.js
+   - messageController.js
+   - conversationController.js
+   - callController.js
+- backend/src/models/
+   - User.js
+   - Conversation.js
+   - Message.js
+   - Friend.js
+   - FriendRequest.js
+   - Session.js
+- backend/src/routes/
+   - authRoute.js
+   - userRoute.js
+   - friendRoute.js
+   - messageRoute.js
+   - conversationRoute.js
+   - callRoute.js
+- backend/src/middlewares/
+   - authMiddleware.js
+   - friendMiddleware.js
+- backend/src/libs/db.js
+- backend/src/libs/callSocket.js
+- backend/src/utils/messageHelper.js
+
+### Frontend structure
+- frontend/src/App.tsx
+- frontend/src/pages/
+   - SignInPage.tsx
+   - SignUpPage.tsx
+   - ChatAppPage.tsx
+- frontend/src/components/
+   - auth/
+   - chat/
+   - friendRequest/
+   - newGroupChat/
+   - profile/
+   - sidebar/
+   - skeleton/
+   - ui/
+   - call/
+      - IncomingCallModal.tsx
+      - CallRoomModal.tsx
+- frontend/src/services/
+   - authService.ts
+   - chatService.ts
+   - friendService.ts
+   - userService.ts
+   - callService.ts
+- frontend/src/stores/
+   - useAuthStore.ts
+   - useChatStore.ts
+   - useFriendStore.ts
+   - useSocketStore.ts
+   - useThemeStore.ts
+   - useUserStore.ts
+   - useCallStore.ts
+- frontend/src/types/
+   - chat.ts
+   - store.ts
+   - user.ts
+- frontend/src/lib/
+   - axios.ts
+   - utils.ts
 
 ---
 
-## 🔌 API ENDPOINTS
+## 5. Implemented Features
+
+### Authentication
+- User sign up
+- User sign in
+- JWT access token issuance
+- Refresh token stored in HttpOnly cookie
+- Sign out and clear refresh-token session
+- Protected route access through auth middleware
+
+### User management
+- Get current authenticated user via /api/users/me
+- Basic user profile fields such as username, displayName, avatarUrl, email, bio, phone
+- Update user profile information
+- Upload and manage user avatar via Cloudinary
+- Mini Profile Sidebar to quickly view a friend's details
+- Real-time user presence tracking (online, offline, busy)
+
+### Friend management
+- Send friend requests
+- Accept or decline requests
+- View sent and received requests
+- List friends
+
+### Messaging
+- Send direct messages
+- Send group messages
+- Create direct or group conversations
+- Fetch conversation list
+- Fetch messages with pagination
+- Track unread counts and last message metadata per conversation
+- **Pin Messages**
+- **Recall Messages**
+- **Disappearing Messages** with customizable expiration timers (5 mins, 1 hour, 24 hours)
+- **View Once Media** for images and voice messages
+- **Voice Messages** with built-in audio recording
+- **Chat Lock** using a 4-digit PIN for sensitive conversations
+- **Chat Wallpapers** allowing custom backgrounds for each conversation
+- **Shared Nicknames** for participants in a conversation
+- **Block/Unblock Users** in direct conversations
+- **Real-time synchronization**: Instant message delivery and conversation list updates via Socket.IO
+
+### Group Management
+- **Role Management**: Distinguish between `leader` (Admin) and `member`.
+- **Leader Permissions**: Leaders can add members, kick/remove members, promote other members to leader, update group info, upload group avatar, and disband the group entirely.
+- **Member Permissions**: Members can invite friends to join the group and voluntarily leave the group.
+- **Group Settings**: Centralized modal to view members, edit group name/description, and update the group avatar (with real-time UI updates for all members).
+- **Clear Chat History**: Independent from disbanding; allows any user to locally clear their message history in the group without affecting other members.
+
+### Real-Time Video/Audio Call (1:1 and Group)
+- **Call Launchers**: Integrated in `ChatWindowHeader.tsx` (Voice Call & Video Call buttons).
+- **Ringing System**: Emits `call:invite` and triggers a clean visual `<IncomingCallModal />` with pulse animations and Mixkit Ringtone audio on loop for target users.
+- **Web Push/Browser Notification**: Automatically pops up browser alerts when a call starts, directing the user back to the webapp on click.
+- **Messenger-Style Call Room**: Prebuilt grid via LiveKit SDK inside `<CallRoomModal />` with Mute, Video Toggle, and Screen Share controls. 
+- **Floating Panel Control**: Users can minimize the call layout to a small draggable panel in the corner to continue chatting.
+
+---
+
+## 6. Current API Surface
 
 ### Base URL
-- **Development**: `http://localhost:5001/api`
-- **Production**: Deployed URL + `/api`
+- Development: http://localhost:5002/api
 
-### Authentication Routes (Public)
-**Base**: `/api/auth`
+### Public routes
+- POST /api/auth/signup
+- POST /api/auth/signin
+- POST /api/auth/signout
+- POST /api/auth/refresh
 
-#### POST `/api/auth/signup`
-- **Purpose**: Register a new user
-- **Authentication**: ❌ Not required
-- **Request Body**:
-  ```json
-  {
-    "username": "string",
-    "password": "string",
-    "email": "string",
-    "firstName": "string",
-    "lastName": "string"
-  }
-  ```
-- **Response**: 204 No Content (success) or error
-- **Validation**: All fields required; username must be unique
-
-#### POST `/api/auth/signin`
-- **Purpose**: Authenticate user and issue tokens
-- **Authentication**: ❌ Not required
-- **Request Body**:
-  ```json
-  {
-    "username": "string",
-    "password": "string"
-  }
-  ```
-- **Response**: 200 OK
-  ```json
-  {
-    "message": "User {displayName} đã logged in!",
-    "accessToken": "string"
-  }
-  ```
-- **Cookies Set**: `refreshToken` (httpOnly, secure, sameSite: 'none')
-- **Token TTL**: 
-  - Access: 30 minutes
-  - Refresh: 14 days
-
-#### POST `/api/auth/signout`
-- **Purpose**: Logout user and invalidate tokens
-- **Authentication**: ❌ Not required (but uses refreshToken cookie)
-- **Request Body**: Empty
-- **Response**: 204 No Content
-- **Side Effects**: 
-  - Deletes refresh token from Session collection
-  - Clears refreshToken cookie
-
-#### POST `/api/auth/refresh`
-- **Purpose**: Generate new access token using refresh token
-- **Authentication**: ❌ Not required (uses refreshToken cookie)
-- **Request Body**: Empty
-- **Response**: 200 OK
-  ```json
-  {
-    "accessToken": "string"
-  }
-  ```
-- **Error Cases**: 
-  - 401 if no refresh token
-  - 403 if token invalid or expired
+### Protected routes
+- GET /api/users/me
+- PUT /api/users/me
+- GET /api/users/search
+- GET /api/users/:id
+- POST /api/users/uploadAvatar
+- POST /api/friends/requests
+- POST /api/friends/requests/:requestId/accept
+- POST /api/friends/requests/:requestId/decline
+- GET /api/friends
+- GET /api/friends/requests
+- POST /api/users/lock-conversation/:conversationId
+- POST /api/users/verify-lock/:conversationId
+- POST /api/users/reset-lock/:conversationId
+- POST /api/users/:id/block
+- POST /api/users/:id/unblock
+- POST /api/messages/direct
+- POST /api/messages/group
+- POST /api/messages/uploadAudio
+- POST /api/messages/uploadImage
+- POST /api/messages/:id/react
+- POST /api/messages/:id/pin
+- POST /api/messages/:id/recall
+- POST /api/messages/:id/view
+- POST /api/conversations
+- GET /api/conversations
+- GET /api/conversations/:conversationId/messages
+- POST /api/conversations/:id/wallpaper
+- POST /api/conversations/:id/nickname
+- POST /api/calls/token (Requests token and room details for LiveKit call room)
 
 ---
 
-### User Routes (Protected)
-**Base**: `/api/users`  
-**Authentication**: ✅ Required (Authorization: Bearer {accessToken})
+## 7. Data Models
 
-#### GET `/api/users/me`
-- **Purpose**: Get current authenticated user's profile
-- **Response**: 200 OK
-  ```json
-  {
-    "user": {
-      "_id": "ObjectId",
-      "username": "string",
-      "email": "string",
-      "displayName": "string",
-      "avatarUrl": "string|null",
-      "avatarId": "string|null",
-      "bio": "string|null",
-      "phone": "string|null",
-      "createdAt": "ISO date",
-      "updatedAt": "ISO date"
-    }
-  }
-  ```
+### User
+- username
+- hashedPassword
+- email
+- displayName
+- avatarUrl
+- avatarId
+- bio
+- phone
+- presenceStatus
+- lockedConversations
+- blockedUsers
 
----
+### Conversation
+- type: direct | group
+- participants
+- group.name / group.createdBy
+- lastMessageAt
+- seenBy
+- lastMessage
+- unreadCounts
+- wallpaper
+- nicknames
 
-### Friend Routes (Protected)
-**Base**: `/api/friends`  
-**Authentication**: ✅ Required
+### Message
+- conversationId
+- senderId
+- content
+- imgUrl
+- audioUrl
+- isPinned
+- isRecalled
+- expiresIn
+- expiresAt
+- isViewOnce
+- viewedBy
+- reactions
+- timestamps
 
-#### POST `/api/friends/requests`
-- **Purpose**: Send a friend request
-- **Request Body**:
-  ```json
-  {
-    "to": "ObjectId",
-    "message": "optional string (max 300 chars)"
-  }
-  ```
-- **Response**: 201 Created
-  ```json
-  {
-    "message": "Gửi lời mời kết bạn thành công",
-    "request": {
-      "_id": "ObjectId",
-      "from": "ObjectId",
-      "to": "ObjectId",
-      "message": "string|null",
-      "createdAt": "ISO date",
-      "updatedAt": "ISO date"
-    }
-  }
-  ```
-- **Validation**: 
-  - Cannot send to self
-  - User must exist
-  - Cannot send if already friends
-  - Only one pending request allowed
+### Friend
+- userA
+- userB
 
-#### POST `/api/friends/requests/:requestId/accept`
-- **Purpose**: Accept a friend request
-- **Path Parameter**: `requestId` (FriendRequest ObjectId)
-- **Response**: 200 OK
-  ```json
-  {
-    "message": "Chấp nhận lời mời kết bạn thành công",
-    "newFriend": {
-      "_id": "ObjectId",
-      "displayName": "string",
-      "avatarUrl": "string|null"
-    }
-  }
-  ```
-- **Side Effects**: 
-  - Creates Friend document
-  - Deletes FriendRequest
-- **Authorization**: Only request recipient can accept
+### FriendRequest
+- from
+- to
+- message
 
-#### POST `/api/friends/requests/:requestId/decline`
-- **Purpose**: Decline a friend request
-- **Path Parameter**: `requestId`
-- **Response**: 204 No Content
-- **Authorization**: Only request recipient can decline
-
-#### GET `/api/friends`
-- **Purpose**: Get list of all friends
-- **Response**: 200 OK
-  ```json
-  {
-    "friends": [
-      {
-        "_id": "ObjectId",
-        "displayName": "string",
-        "avatarUrl": "string|null"
-      }
-    ]
-  }
-  ```
-
-#### GET `/api/friends/requests`
-- **Purpose**: Get pending friend requests (sent and received)
-- **Response**: 200 OK
-  ```json
-  {
-    "sent": [
-      {
-        "_id": "ObjectId",
-        "from": "ObjectId",
-        "to": {
-          "_id": "ObjectId",
-          "username": "string",
-          "displayName": "string",
-          "avatarUrl": "string|null"
-        },
-        "message": "string|null",
-        "createdAt": "ISO date"
-      }
-    ],
-    "received": [
-      {
-        "_id": "ObjectId",
-        "from": {
-          "_id": "ObjectId",
-          "username": "string",
-          "displayName": "string",
-          "avatarUrl": "string|null"
-        },
-        "to": "ObjectId",
-        "message": "string|null",
-        "createdAt": "ISO date"
-      }
-    ]
-  }
-  ```
+### Session
+- userId
+- refreshToken
+- expiresAt
 
 ---
 
-### Message Routes (Protected)
-**Base**: `/api/messages`  
-**Authentication**: ✅ Required
+## 8. Frontend State Structure
 
-#### POST `/api/messages/direct`
-- **Purpose**: Send a message in a direct conversation
-- **Middleware**: `checkFriendship` - Validates sender and recipient are friends
-- **Request Body**:
-  ```json
-  {
-    "recipientId": "ObjectId",
-    "content": "string",
-    "conversationId": "ObjectId (optional)"
-  }
-  ```
-- **Response**: 201 Created
-  ```json
-  {
-    "message": {
-      "_id": "ObjectId",
-      "conversationId": "ObjectId",
-      "senderId": "ObjectId",
-      "content": "string",
-      "imgUrl": "string|null",
-      "createdAt": "ISO date",
-      "updatedAt": "ISO date"
-    }
-  }
-  ```
-- **Side Effects**: 
-  - Creates/finds direct conversation if needed
-  - Updates conversation's lastMessage and unreadCounts
-- **Validation**: recipientId must be a friend
-
-#### POST `/api/messages/group`
-- **Purpose**: Send a message in a group conversation
-- **Middleware**: `checkGroupMembership` - Validates user is group member
-- **Request Body**:
-  ```json
-  {
-    "conversationId": "ObjectId",
-    "content": "string"
-  }
-  ```
-- **Response**: 201 Created
-  ```json
-  {
-    "message": {
-      "_id": "ObjectId",
-      "conversationId": "ObjectId",
-      "senderId": "ObjectId",
-      "content": "string",
-      "imgUrl": "string|null",
-      "createdAt": "ISO date",
-      "updatedAt": "ISO date"
-    }
-  }
-  ```
-- **Side Effects**: Same as direct message
+The frontend uses several Zustand stores:
+- useAuthStore: authentication state, sign in/out, session refresh
+- useChatStore: conversations, messages, active conversation, chat actions
+- useFriendStore: friend list and friend request operations
+- useSocketStore: client-side socket connection logic, triggers call listeners dynamically
+- useThemeStore: theme state
+- useUserStore: user-specific actions
+- useCallStore: active call state, incoming call state, starts and finishes call session
+- useProfileStore: mini profile sidebar state and data
 
 ---
 
-### Conversation Routes (Protected)
-**Base**: `/api/conversations`  
-**Authentication**: ✅ Required
+## 9. Current Gaps and Known Issues
 
-#### POST `/api/conversations`
-- **Purpose**: Create a new conversation (direct or group)
-- **Middleware**: `checkFriendship` - For direct: validates friendship; for group: validates all members are friends
-- **Request Body**:
-  ```json
-  {
-    "type": "direct|group",
-    "name": "string (required for group only)",
-    "memberIds": ["ObjectId", "ObjectId", ...]
-  }
-  ```
-- **Response**: 201 Created
-  ```json
-  {
-    "conversation": {
-      "_id": "ObjectId",
-      "type": "direct|group",
-      "participants": [
-        {
-          "_id": "ObjectId",
-          "displayName": "string",
-          "avatarUrl": "string|null",
-          "joinedAt": "ISO date"
-        }
-      ],
-      "group": {
-        "name": "string",
-        "createdBy": "ObjectId"
-      },
-      "lastMessageAt": "ISO date",
-      "seenBy": ["ObjectId"],
-      "lastMessage": {
-        "_id": "ObjectId",
-        "content": "string",
-        "senderId": {
-          "_id": "ObjectId",
-          "displayName": "string",
-          "avatarUrl": "string|null"
-        },
-        "createdAt": "ISO date"
-      },
-      "unreadCounts": {}
-    }
-  }
-  ```
-- **Validation**: 
-  - For direct: memberIds[0] must be friend
-  - For group: all memberIds must be friends, name required
+### Backend / API
+- Pagination bug in conversationController.js uses createAt instead of createdAt.
+- The frontend calls a mark-as-seen endpoint, but the backend does not currently expose that route.
 
-#### GET `/api/conversations`
-- **Purpose**: Get all conversations for the current user
-- **Response**: 200 OK
-  ```json
-  {
-    "conversations": [
-      {
-        "_id": "ObjectId",
-        "type": "direct|group",
-        "participants": [...],
-        "lastMessage": {...},
-        "unreadCounts": {
-          "userId": 5,
-          "userId2": 0
-        }
-      }
-    ]
-  }
-  ```
-- **Sorting**: By lastMessageAt (descending), then updatedAt (descending)
-
-#### GET `/api/conversations/:conversationId/messages`
-- **Purpose**: Get messages from a conversation with pagination
-- **Query Parameters**:
-  - `limit` (default: 50) - How many messages to fetch
-  - `cursor` (optional) - ISO date string for pagination
-- **Response**: 200 OK
-  ```json
-  {
-    "messages": [
-      {
-        "_id": "ObjectId",
-        "conversationId": "ObjectId",
-        "senderId": "ObjectId",
-        "content": "string",
-        "imgUrl": "string|null",
-        "createdAt": "ISO date",
-        "updatedAt": "ISO date"
-      }
-    ],
-    "nextCursor": "ISO date string|null"
-  }
-  ```
-- **Pagination Logic**: 
-  - Fetches `limit + 1` messages to determine if more exist
-  - Returns `limit` messages and nextCursor for next page
-  - Messages sorted by createdAt (newest first), then reversed for display
-- **⚠️ Bug**: Uses `createAt` instead of `createdAt` in cursor query (line typo)
+### Product scope
+- No unfriend action yet.
+- No group member management after creation.
+- No message editing or deletion flow.
 
 ---
 
-## 💾 DATABASE DESIGN
+## 10. Summary
 
-### MongoDB Collections & Schemas
-
-#### 1. **User Collection**
-```javascript
-{
-  username: String (unique, lowercase, required),
-  hashedPassword: String (bcrypt, required),
-  email: String (unique, lowercase, required),
-  displayName: String (required),
-  avatarUrl: String (CDN URL, optional),
-  avatarId: String (Cloudinary public_id, optional),
-  bio: String (max 500 chars, optional),
-  phone: String (sparse - allows null but no duplicates, optional),
-  createdAt: Date (auto),
-  updatedAt: Date (auto)
-}
-```
-**Indexes**:
-- `username` (unique)
-- `email` (unique)
-
-**Relationships**:
-- Referenced by: Conversation (participants), Message (senderId), Friend, FriendRequest, Session
+NexusChat is a fully functional web-based messaging app with instant chat capability and high-quality Messenger-style real-time audio and video call features, integrated via Socket.IO and LiveKit SFU.
 
 ---
 
-#### 2. **Conversation Collection**
-```javascript
-{
-  type: String (enum: ["direct", "group"], required),
-  participants: [
-    {
-      userId: ObjectId (ref: User, required),
-      joinedAt: Date (default: now),
-      _id: false
-    }
-  ],
-  group: {
-    name: String (group name),
-    createdBy: ObjectId (ref: User),
-    _id: false
-  },
-  lastMessageAt: Date,
-  seenBy: [ObjectId] (ref: User, array of user IDs who have seen last message),
-  lastMessage: {
-    _id: String (message ObjectId),
-    content: String,
-    senderId: ObjectId (ref: User),
-    createdAt: Date,
-    _id: false
-  },
-  unreadCounts: Map of String => Number (userId => count),
-  createdAt: Date (auto),
-  updatedAt: Date (auto)
-}
-```
-**Indexes**:
-- `participants.userId` - For finding user's conversations
-
-**Type Variants**:
-- **Direct**: Has 2 participants, no group data
-- **Group**: Has 3+ participants, includes group name and creator
-
----
-
-#### 3. **Message Collection**
-```javascript
-{
-  conversationId: ObjectId (ref: Conversation, required, indexed),
-  senderId: ObjectId (ref: User, required),
-  content: String (optional - for text messages),
-  imgUrl: String (optional - for media),
-  createdAt: Date (auto),
-  updatedAt: Date (auto)
-}
-```
-**Indexes**:
-- `conversationId` (single)
-- `{ conversationId: 1, createdAt: -1 }` (compound for efficient querying)
-
-**Constraint**: At least content OR imgUrl should be present (⚠️ not enforced schema-wise)
-
----
-
-#### 4. **Friend Collection**
-```javascript
-{
-  userA: ObjectId (ref: User, required),
-  userB: ObjectId (ref: User, required),
-  createdAt: Date (auto),
-  updatedAt: Date (auto)
-}
-```
-**Indexes**:
-- `{ userA: 1, userB: 1 }` (unique, prevents duplicates)
-
-**Pre-Save Hook**: Ensures `userA < userB` (lexicographically) to prevent duplicate relationships in opposite order
-
-**Relationship**: Bidirectional - can query either userA or userB
-
----
-
-#### 5. **FriendRequest Collection**
-```javascript
-{
-  from: ObjectId (ref: User, required),
-  to: ObjectId (ref: User, required),
-  message: String (max 300 chars, optional),
-  createdAt: Date (auto),
-  updatedAt: Date (auto)
-}
-```
-**Indexes**:
-- `{ from: 1, to: 1 }` (unique, prevents duplicate requests)
-- `{ from: 1 }` - For queries by sender
-- `{ to: 1 }` - For queries by recipient
-
-**Constraint**: Only one pending request allowed per pair at a time.
-
----
-
-#### 6. **Session Collection**
-```javascript
-{
-  userId: ObjectId (ref: User, required, indexed),
-  refreshToken: String (unique, required),
-  expiresAt: Date (required),
-  createdAt: Date (auto),
-  updatedAt: Date (auto)
-}
-```
-**Indexes**:
-- `userId` (single)
-- `refreshToken` (unique)
-- `{ expiresAt: 1 }` (TTL index, auto-deletes after expiration)
-
-**TTL Behavior**: MongoDB automatically deletes expired sessions via TTL index.
-
----
-
-## 🎯 CORE FEATURES
-
-### 1. **User Authentication**
-- ✅ Sign up with username, email, password, first/last name
-- ✅ Sign in with username/password
-- ✅ JWT-based access tokens (30 min lifetime)
-- ✅ Refresh token rotation (14 day lifetime)
-- ✅ Password hashing with bcrypt (salt: 10)
-- ✅ HttpOnly secure cookies for refresh tokens
-- ✅ Protected routes with middleware
-- ✅ Automatic token refresh on 403 response
-
-### 2. **User Profiles**
-- ✅ Display name (auto-formatted from first + last name)
-- ✅ Avatar URL (CDN-based)
-- ✅ Avatar ID (for Cloudinary deletion)
-- ✅ Bio (max 500 chars)
-- ✅ Phone number (optional)
-- ✅ Get current user profile via `/me` endpoint
-
-### 3. **Friend Management**
-- ✅ Send friend requests with optional message
-- ✅ Accept/decline friend requests
-- ✅ View pending sent and received requests
-- ✅ Get list of all friends
-- ✅ Friendship validation (bidirectional)
-- ✅ Prevents duplicate requests/friendships
-- ⚠️ No friend removal/unfriend feature currently
-
-### 4. **Direct Messaging**
-- ✅ Send text messages in direct conversations
-- ✅ Auto-create direct conversation on first message
-- ✅ Find existing direct conversation if available
-- ✅ Can include optional image URL
-- ✅ Requires friendship validation
-- ✅ Track unread counts per user
-
-### 5. **Group Messaging**
-- ✅ Create group conversations
-- ✅ Add multiple friends to groups
-- ✅ Send messages in groups
-- ✅ Track group creator
-- ✅ Track member join dates
-- ✅ Group name support
-- ⚠️ No add/remove members after creation
-- ⚠️ No group deletion feature
-
-### 6. **Conversation Management**
-- ✅ View all conversations for current user
-- ✅ Sort by lastMessageAt and updatedAt
-- ✅ Display last message preview
-- ✅ Track unread count per participant
-- ✅ View participant list with join dates
-- ✅ Get all messages with pagination
-
-### 7. **Message Pagination**
-- ✅ Cursor-based pagination using createdAt timestamp
-- ✅ Reverse chronological loading (newest first)
-- ⚠️ Bug: Uses `createAt` instead of `createdAt` in cursor filter
-
----
-
-## 🔄 DATA FLOW
-
-### Flow: Send Direct Message
-
-```
-Frontend
-   │
-   ├─ User types message & clicks send
-   ├─ formSubmit → sendMessage()
-   │
-   └──► axios.post("/api/messages/direct", {
-          recipientId: "...",
-          content: "...",
-          conversationId: "..." (optional)
-        })
-        │
-        (JWT in Authorization header)
-        │
-Backend
-   │
-   ├─ Express receives POST request
-   │
-   ├─ Route: /api/messages/direct
-   │  │
-   │  ├─ Middleware: authMiddleware
-   │  │  └─ Verify JWT → Attach user to req
-   │  │
-   │  ├─ Middleware: checkFriendship
-   │  │  └─ Query Friend collection
-   │  │  └─ Validate recipientId is a friend
-   │  │
-   │  └─ Controller: sendDirectMessage()
-   │     │
-   │     ├─ If conversationId provided:
-   │     │  └─ Conversation.findById(conversationId)
-   │     │
-   │     ├─ If no conversation exists:
-   │     │  └─ Create new direct conversation
-   │     │     └─ Participants: [senderId, recipientId]
-   │     │
-   │     ├─ Create Message document
-   │     │  └─ Message.create({
-   │     │       conversationId,
-   │     │       senderId,
-   │     │       content
-   │     │     })
-   │     │
-   │     ├─ Update Conversation
-   │     │  ├─ Set seenBy: []
-   │     │  ├─ Set lastMessageAt
-   │     │  ├─ Set lastMessage (reference)
-   │     │  └─ Update unreadCounts:
-   │     │     └─ senderId: 0 (sender has "seen" their own message)
-   │     │     └─ recipientId: prevCount + 1
-   │     │
-   │     ├─ conversation.save()
-   │     │
-   │     └─ res.status(201).json({ message })
-        │
-Frontend
-   │
-   ├─ Receive message object
-   ├─ Update UI (add message to chat)
-   └─ Clear input field
-```
-
-### Flow: Pagination - Get Messages
-
-```
-Frontend
-   │
-   ├─ Component mounted or scroll to top detected
-   ├─ hasNextCursor && !loading → Fetch more
-   │
-   └──► axios.get("/api/conversations/{conversationId}/messages", {
-          params: { limit: 50, cursor: "2026-04-07T10:30:00Z" }
-        })
-        │
-Backend
-   │
-   ├─ Route: /api/conversations/{conversationId}/messages
-   │  │
-   │  └─ Controller: getMessages()
-   │     │
-   │     ├─ Parse query params: limit, cursor
-   │     │
-   │     ├─ Build query:
-   │     │  ├─ conversationId: {conversationId}
-   │     │  └─ If cursor: createdAt < cursor ⚠️ BUG: createAt typo
-   │     │
-   │     ├─ Message.find(query)
-   │     │  ├─ .sort({ createdAt: -1 })     (newest first)
-   │     │  └─ .limit(limit + 1)            (fetch extra to detect more)
-   │     │
-   │     ├─ Response logic:
-   │     │  ├─ If messages.length > limit:
-   │     │  │  └─ nextCursor = messages[last]._id.toISOString()
-   │     │  │  └─ messages.pop()  (remove extra)
-   │     │  │
-   │     │  ├─ messages.reverse()  (oldest to newest for display)
-   │     │  │
-   │     │  └─ Return { messages, nextCursor }
-        │
-Frontend
-   │
-   ├─ Receive messages array (oldest first)
-   ├─ Receive nextCursor for future pagination
-   └─ Append/prepend messages to message list
-```
-
-### Flow: Accept Friend Request
-
-```
-Frontend (Friends UI)
-   │
-   ├─ User clicks "Accept" on a friend request
-   │
-   └──► axios.post("/api/friends/requests/{requestId}/accept")
-        │
-Backend
-   │
-   ├─ Route: /api/friends/requests/{requestId}/accept
-   │  │
-   │  ├─ Middleware: authMiddleware (verify JWT)
-   │  │
-   │  └─ Controller: acceptFriendRequest()
-   │     │
-   │     ├─ FriendRequest.findById(requestId)
-   │     │
-   │     ├─ Verify current user is the 'to' user
-   │     │  └─ Reject if not (403 Forbidden)
-   │     │
-   │     ├─ Create Friend document
-   │     │  └─ Friend.create({
-   │     │       userA: request.from,
-   │     │       userB: request.to
-   │     │     })
-   │     │     (Pre-save hook ensures userA < userB)
-   │     │
-   │     ├─ FriendRequest.findByIdAndDelete(requestId)
-   │     │
-   │     ├─ User.findById(request.from).select(...)
-   │     │  └─ Get sender's info for response
-   │     │
-   │     └─ res.status(200).json({ newFriend })
-        │
-Frontend
-   │
-   ├─ Receive newFriend object
-   ├─ Add to friends list
-   ├─ Remove from pending received requests
-   └─ Show toast: "Friend request accepted"
-```
-
----
-
-## 📝 CODING CONVENTIONS
-
-### Backend (Node.js/Express)
-
-| Convention | Example | Notes |
-|---|---|---|
-| **File Structure** | `controllers/`, `models/`, `routes/`, `middlewares/` | Separation of concerns |
-| **Naming** | `userController.js`, `authRoute.js` | Feature-based file names |
-| **Export** | `export const functionName = async (req, res) => {}` | Named exports |
-| **Error Handling** | Try/catch blocks, explicit status codes | Consistent error responses |
-| **Status Codes** | 201 (create), 200 (ok), 400 (bad), 401 (auth), 403 (forbidden), 404 (not found), 500 (server error) | RESTful conventions |
-| **Import Syntax** | `import X from "./path.js"` | ES6 modules (type: "module" in package.json) |
-| **Async/Await** | Controllers use async/await for DB operations | No callback hell |
-| **Validation** | Middleware-based (authMiddleware, friendMiddleware) | Pre-controller validation |
-| **Response Format** | `{ message: "...", data: {...} }` or direct data | Consistent JSON structure |
-| **Comments** | Vietnamese inline comments | Language: Vietnamese (in code) |
-
-### Frontend (React/TypeScript)
-
-| Convention | Example | Notes |
-|---|---|---|
-| **File Structure** | `components/`, `pages/`, `stores/`, `services/`, `types/` | Feature-based organization |
-| **Naming** | `SignInPage.tsx`, `useAuthStore.ts`, `authService.ts` | Clear intent in name |
-| **Components** | Function components with hooks | No class components |
-| **Styling** | TailwindCSS className strings | Utility-first CSS |
-| **State Management** | Zustand (useAuthStore) | Single source of truth for auth |
-| **HTTP Client** | Axios with interceptors | JWT auto-injection, auto-refresh |
-| **Forms** | React Hook Form + Zod validation | Type-safe, minimal re-renders |
-| **Routing** | React Router v7 with protected routes | ProtectedRoute wrapper |
-| **TypeScript** | Explicit interfaces in `types/` folder | Type safety throughout |
-| **Error Handling** | Try/catch + toast notifications (sonner) | User-friendly error display |
-
-### Shared Conventions
-
-| Convention | Details |
-|---|---|
-| **Environment Variables** | `.env` file (not in repo), loaded by `dotenv` (backend) / `import.meta.env` (frontend) |
-| **API Base Path** | `/api/` prefix for all routes |
-| **Authentication Header** | `Authorization: Bearer {accessToken}` |
-| **Cookies** | `refreshToken` (httpOnly, secure, sameSite: 'none') |
-| **Timestamps** | ISO 8601 format from Mongoose |
-| **ObjectIds** | MongoDB ObjectId (MongoDB native) |
-| **Language** | Vietnamese error messages in backend; English in UI components |
-| **Git** | Monorepo with backend/ and frontend/ as separate projects |
-
----
-
-## ⚠️ RISKS & ISSUES
-
-### Critical
-
-1. **⚠️ Message Pagination Bug**
-   - **File**: [backend/src/controllers/conversationController.js](backend/src/controllers/conversationController.js#L99)
-   - **Issue**: Uses `createAt` instead of `createdAt` in cursor query
-   - **Code**: `query.createAt = { $lt: new Date(cursor) };`
-   - **Impact**: Pagination doesn't work; always fetches most recent messages
-   - **Fix**: Change to `query.createdAt = ...`
-
-2. **⚠️ Cross-Origin Issues**
-   - **Issue**: CORS configured with `sameSite: 'none'` on cookies
-   - **Details**: Backend CORS allows frontend origin only; frontend must be on different domain
-   - **Risk**: If both deployed on same domain, cookies won't send
-   - **Impact**: Refresh token functionality will break
-
-### High Priority
-
-3. **⚠️ No Input Validation on Message Content**
-   - **File**: messageController.js, conversationController.js
-   - **Issue**: Only checks if content exists, no length limits or sanitization
-   - **Risk**: Large messages, XSS vulnerabilities (if content rendered without escaping)
-   - **Recommendation**: Add schema validation, max length checks, content sanitization
-
-4. **⚠️ Missing Image Upload/Validation**
-   - **Fields**: Message.imgUrl, User.avatarUrl
-   - **Issue**: URLs accepted as strings, no validation or upload handler
-   - **Current**: Frontend forms don't have image upload UI
-   - **Impact**: Feature incomplete; imgUrl field unused in practice
-
-5. **⚠️ No Rate Limiting**
-   - **Issue**: No rate limiting on auth or message endpoints
-   - **Risk**: Brute force attacks, spam messages
-   - **Recommendation**: Add rate limiting middleware (e.g., express-rate-limit)
-
-6. **⚠️ Unread Counts Not Marked as Read**
-   - **Issue**: unreadCounts incremented on new message, never decremented
-   - **Impact**: Users can't mark conversations as read
-   - **Missing Feature**: No endpoint to clear unread state
-
-### Medium Priority
-
-7. **⚠️ No Group Member Management**
-   - **Missing**: Add/remove members from existing groups
-   - **Missing**: Leave group functionality
-   - **Current**: Can only be added at creation time
-
-8. **⚠️ Friend Unfriend Feature Missing**
-   - **Missing**: No endpoint to remove friendships
-   - **Impact**: Friend list grows only
-
-9. **⚠️ Type Mismatch in Frontend**
-   - **File**: frontend/src/types/user.ts
-   - **Issue**: Interface has `display` field, but backend returns `displayName`
-   - **Impact**: Type checking will fail; potential runtime errors
-
-10. **⚠️ No User Search/Discovery**
-    - **Missing**: No endpoint to search for users
-    - **Current**: Must know usernames to add friends
-    - **Impact**: Can't discover new users to chat with
-
-11. **⚠️ No Conversation Deletion**
-    - **Missing**: Can't delete/archive conversations
-    - **Impact**: Conversation list grows indefinitely
-
-12. **⚠️ Empty Layout Folder**
-    - **File**: frontend/src/components/layout/
-    - **Issue**: Folder exists but is empty; possibly planned but unimplemented
-    - **Status**: ⚠️ Unknown intent
-
-13. **⚠️ Mock API File Unused**
-    - **File**: frontend/src/lib/mockApi.ts
-    - **Issue**: File exists but not imported/used
-    - **Status**: Dead code or incomplete feature?
-
-### Low Priority / Code Quality
-
-14. **⚠️ TypeScript @ts-nocheck Comments**
-    - **Usage**: authController.js, authMiddleware.js
-    - **Issue**: Disables type checking for entire file
-    - **Impact**: Consistency issues; not all files use this
-
-15. **⚠️ No Logging Strategy**
-    - **Current**: Console.error for debugging only
-    - **Missing**: No structured logging, no log levels
-    - **Recommendation**: Add logger library (winston, pino)
-
-16. **⚠️ No Database Backup/Recovery Plan**
-    - **Current**: MongoDB connection string from env variable
-    - **Missing**: Backup strategy, disaster recovery plan
-    - **Recommendation**: Document backup and recovery procedures
-
----
-
-## 🔍 UNDEFINED / NEEDS CLARIFICATION
-
-| Item | Status | Notes |
-|---|---|---|
-| Image upload system | ❓ Not implemented | Fields exist (imgUrl, avatarUrl) but no upload handler |
-| Group member management | ❓ Not implemented | Can add at creation only |
-| Message reactions/emoji | ❓ Not implemented | Not in schema |
-| Typing indicators | ❓ Not implemented | Real-time feature missing |
-| WebSocket/Real-time sync | ❓ Not implemented | Only RESTful API, no live updates |
-| User online status | ❓ Not implemented | No timestamp or status field |
-| Message editing/deletion | ❓ Not implemented | Not in schema or endpoints |
-| Conversation threading | ❓ Not implemented | Flat message structure only |
-| User blocking | ❓ Not implemented | No block list or related fields |
-| Conversation pinning | ❓ Not implemented | No pin status in schema |
-| Message search | ❓ Not implemented | No search endpoint |
-| Email verification | ❓ Not implemented | Sign up accepts any email |
-| Password reset | ❓ Not implemented | No recovery mechanism |
-| Dark mode | ❓ Not implemented | UI exists but no theme toggle |
-| Mock API purpose | ❓ Unknown | File exists but unused |
-| Layout folder intent | ❓ Unknown | Folder empty; unclear purpose |
-
----
-
-## 📊 SUMMARY
-
-**NexusChat** is a **feature-complete messaging MVP** with:
-
-✅ **Complete**:
-- User authentication & profiles
-- Friend request system
-- Direct messaging
-- Group messaging
-- Conversation management
-- Message pagination
-
-❌ **Missing**:
-- Real-time updates (WebSocket)
-- Image uploads
-- Group members management
-- Message editing
-- Unread status management
-- User search
-
-The codebase is **well-structured** with clear separation of concerns, but has **several bugs and missing features** that should be addressed before production use.
-
----
-
-**Last Updated**: April 7, 2026  
-**Next Review**: When major features are added or significant refactoring occurs
+## 11. Agent Development Rules (Critical)
+
+### 11.1 Core rules
+- Do not change the meaning of existing API contracts unless the change is explicitly requested.
+- Preserve existing authentication flow.
+- Ensure all socket handshakes decrypt token to set `socket.data.userId` properly. Do not bypass the personal `user:${userId}` room logic.
+- Avoid replacing or refactoring LiveKit room setups. Prefer extension.
+
+### 11.2 Call Flows Signaling Contract
+The signaling events should respect the following rules:
+- `call:invite` -> sends invitation to user rooms.
+- `call:accept` -> signals to caller the call is accepted.
+- `call:decline` -> signals rejection.
+- `call:end` -> cleans up rooms.
+
+### 11.3 Warning list
+- Do not remove fallback JWT decode on socket connection in `server.js`.
+- Do not bypass autoplay restrictions without warning. Ensure first-click user interactions are preserved.

@@ -21,6 +21,8 @@ export interface AuthState {
   signOut: () => Promise<void>;
   fetchMe: () => Promise<void>;
   refresh: () => Promise<void>;
+  blockUser: (userId: string) => Promise<void>;
+  unblockUser: (userId: string) => Promise<void>;
 }
 
 export interface ThemeState {
@@ -40,6 +42,7 @@ export interface ChatState {
     }
   >;
   activeConversationId: string | null;
+  unlockedConversations: string[];
   convoLoading: boolean;
   messageLoading: boolean;
   loading: boolean;
@@ -51,13 +54,24 @@ export interface ChatState {
   sendDirectMessage: (
     recipientId: string,
     content: string,
-    imgUrl?: string
+    imgUrl?: string | null,
+    audioUrl?: string,
+    expiresIn?: number,
+    isViewOnce?: boolean
   ) => Promise<void>;
   sendGroupMessage: (
     conversationId: string,
     content: string,
-    imgUrl?: string
+    imgUrl?: string | null,
+    audioUrl?: string,
+    expiresIn?: number,
+    isViewOnce?: boolean,
+    poll?: any
   ) => Promise<void>;
+  deleteConversation: (id: string) => Promise<void>;
+  clearChatHistory: (id: string) => Promise<void>;
+  leaveGroup: (id: string) => Promise<void>;
+  removeConversation: (id: string) => void;
   // add message
   addMessage: (message: Message) => Promise<void>;
   // update convo
@@ -69,6 +83,26 @@ export interface ChatState {
     name: string,
     memberIds: string[]
   ) => Promise<void>;
+  updateParticipantData: (user: Partial<User> & { _id: string }) => void;
+  uploadAudio: (file: Blob) => Promise<string>;
+  uploadImage: (file: File) => Promise<string>;
+  reactToMessage: (messageId: string, emoji: string) => Promise<void>;
+  pinMessage: (messageId: string) => Promise<void>;
+  markMediaAsViewed: (messageId: string) => Promise<void>;
+  recallMessage: (messageId: string) => Promise<void>;
+  updateWallpaper: (conversationId: string, data: string | File) => Promise<void>;
+  updateNickname: (conversationId: string, targetUserId: string, nickname: string) => Promise<void>;
+  updateConversationFields: (conversationId: string, fields: Partial<Conversation>) => void;
+  updateMessageReactions: (conversationId: string, messageId: string, reactions: any[]) => void;
+  updateMessagePinStatus: (conversationId: string, messageId: string, isPinned: boolean) => void;
+  updateMessageFields: (conversationId: string, messageId: string, fields: Partial<Message>) => void;
+  unlockConversation: (conversationId: string) => void;
+  addGroupMembers: (conversationId: string, memberIds: string[]) => Promise<void>;
+  removeGroupMember: (conversationId: string, memberId: string) => Promise<void>;
+  updateGroupRole: (conversationId: string, memberId: string, role: "leader" | "member") => Promise<void>;
+  updateGroupInfo: (conversationId: string, name?: string, description?: string) => Promise<void>;
+  updateGroupAvatar: (conversationId: string, file: File) => Promise<void>;
+  voteOnPoll: (messageId: string, optionIndex: number) => Promise<void>;
 }
 
 export interface SocketState {
@@ -89,8 +123,16 @@ export interface FriendState {
   acceptRequest: (requestId: string) => Promise<void>;
   declineRequest: (requestId: string) => Promise<void>;
   getFriends: () => Promise<void>;
+  updateFriendData: (user: Partial<User> & { _id: string }) => void;
 }
 
 export interface UserState {
   updateAvatarUrl: (formData: FormData) => Promise<void>;
+  updateProfile: (data: { 
+    displayName?: string; 
+    phone?: string; 
+    bio?: string; 
+    presenceStatus?: 'online' | 'offline' | 'busy';
+    lockedConversations?: { conversationId: string; pin: string }[];
+  }) => Promise<void>;
 }

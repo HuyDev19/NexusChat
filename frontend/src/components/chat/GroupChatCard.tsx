@@ -21,6 +21,10 @@ const GroupChatCard = ({ convo }: { convo: Conversation }) => {
     }
   };
 
+  const participants = convo.participants || [];
+  const currentUser = participants.find(p => p._id === user._id);
+  const isLeader = currentUser?.role === "leader";
+
   return (
     <ChatCard
       convoId={convo._id}
@@ -33,18 +37,22 @@ const GroupChatCard = ({ convo }: { convo: Conversation }) => {
       isActive={activeConversationId === convo._id}
       onSelect={handleSelectConversation}
       unreadCount={unreadCount}
+      isGroup={true}
+      isLeader={isLeader}
       leftSection={
         <>
           {unreadCount > 0 && <UnreadCountBadge unreadCount={unreadCount} />}
           <GroupChatAvatar
-            participants={convo.participants}
+            participants={participants}
             type="chat"
+            groupAvatar={convo.group?.avatar}
+            groupName={convo.group?.name}
           />
         </>
       }
       subtitle={
         <p className="text-sm truncate text-muted-foreground">
-          {convo.participants.length} thành viên
+          {participants.length} thành viên
         </p>
       }
     />

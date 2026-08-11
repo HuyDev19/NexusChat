@@ -28,7 +28,7 @@ export const useFriendStore = create<FriendState>((set, get) => ({
       return resultMessage;
     } catch (error) {
       console.error("Lỗi xảy ra khi addFriend", error);
-      return "Lỗi xảy ra khi gửi kết bạn. Hãy thử lại";
+      throw error;
     } finally {
       set({ loading: false });
     }
@@ -87,5 +87,12 @@ export const useFriendStore = create<FriendState>((set, get) => ({
     } finally {
       set({ loading: false });
     }
+  },
+  updateFriendData: (updatedUser) => {
+    set((state) => ({
+      friends: state.friends.map((f) =>
+        f._id === updatedUser._id ? { ...f, ...updatedUser } : f
+      ),
+    }));
   },
 }));

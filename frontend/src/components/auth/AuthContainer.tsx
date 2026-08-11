@@ -41,7 +41,7 @@ const signUpSchema = z.object({
 });
 type SignUpFormValues = z.infer<typeof signUpSchema>;
 
-export function AuthContainer() {
+export function AuthContainer({ className, ...props }: React.ComponentProps<"div"> = {}) {
   const location = useLocation();
   const navigate = useNavigate();
   const { signIn, signUp } = useAuthStore();
@@ -96,7 +96,7 @@ export function AuthContainer() {
   };
 
   return (
-    <div className="w-full">
+    <div className={cn("w-full", className)} {...props}>
       <Card className="overflow-hidden p-0 border border-purple-500/30 bg-card/95 backdrop-blur-2xl shadow-2xl shadow-purple-500/15 rounded-3xl relative">
         <CardContent className="grid p-0 md:grid-cols-2 min-h-[510px] h-[510px] relative">
           

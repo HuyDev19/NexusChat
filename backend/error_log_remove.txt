@@ -1,0 +1,3 @@
+ReferenceError: formattedParticipants is not defined
+    at removeGroupMember (file:///C:/Chat_Realtime/NexusChat/backend/src/controllers/conversationController.js:458:87)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
