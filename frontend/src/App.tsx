@@ -1,4 +1,5 @@
-import { BrowserRouter, Route, Routes } from "react-router";
+import { BrowserRouter, Route, Routes, Navigate } from "react-router";
+import LandingPage from "./pages/LandingPage";
 import SignInPage from "./pages/SignInPage";
 import ChatAppPage from "./pages/ChatAppPage";
 import { Toaster } from "sonner";
@@ -33,6 +34,10 @@ function App() {
         <Routes>
           {/* public routes */}
           <Route
+            path="/"
+            element={<LandingPage />}
+          />
+          <Route
             path="/signin"
             element={<SignInPage />}
           />
@@ -41,13 +46,19 @@ function App() {
             element={<SignUpPage />}
           />
 
-          {/* protectect routes */}
+          {/* protected routes */}
           <Route element={<ProtectedRoute />}>
             <Route
-              path="/"
+              path="/chat"
               element={<ChatAppPage />}
             />
           </Route>
+
+          {/* fallback route */}
+          <Route
+            path="*"
+            element={<Navigate to="/" replace />}
+          />
         </Routes>
       </BrowserRouter>
     </>
