@@ -19,7 +19,7 @@ interface ProfileStore {
   loading: boolean;
   
   openProfile: (userId: string) => Promise<void>;
-  openChatDetails: () => void;
+  openChatDetails: (userId?: string) => Promise<void>;
   closeProfile: () => void;
 }
 

@@ -103,6 +103,30 @@ export const createConversation = async (req, res) => {
 export const getConversations = async (req, res) => {
   try {
     const userId = req.user._id;
+
+    // Đảm bảo kênh Cộng đồng NexusChat luôn sẵn sàng cho người dùng
+    let communityConvo = await Conversation.findOne({ type: "community" });
+    if (!communityConvo) {
+      communityConvo = new Conversation({
+        type: "community",
+        participants: [{ userId, role: "leader" }],
+        group: {
+          name: "Cộng đồng NexusChat 🌐",
+          description: "Kênh trò chuyện cộng đồng dành cho tất cả thành viên",
+        },
+        lastMessageAt: new Date(),
+      });
+      await communityConvo.save();
+    } else {
+      const isMember = communityConvo.participants.some(
+        (p) => p.userId && p.userId.toString() === userId.toString()
+      );
+      if (!isMember) {
+        communityConvo.participants.push({ userId, role: "member" });
+        await communityConvo.save();
+      }
+    }
+
     const conversations = await Conversation.find({
       "participants.userId": userId,
     })
@@ -138,7 +162,10 @@ export const getConversations = async (req, res) => {
         participants,
       };
     }).filter(convo => {
-      // Ignore conversations if cleared and no new messages
+      // Direct conversations are always kept so friends are never lost on reload
+      if (convo.type === "direct") return true;
+
+      // Ignore group conversations if cleared and no new messages
       if (convo.clearedAt && convo.clearedAt instanceof Map) {
         const clearedTime = convo.clearedAt.get(userId.toString());
         if (clearedTime && convo.lastMessageAt) {
@@ -147,7 +174,6 @@ export const getConversations = async (req, res) => {
           }
         }
       } else if (convo.clearedAt) {
-        // Fallback if it's a plain object after toObject()
         const clearedTime = convo.clearedAt[userId.toString()];
         if (clearedTime && convo.lastMessageAt) {
           if (new Date(convo.lastMessageAt) <= new Date(clearedTime)) {
@@ -539,8 +565,8 @@ export const updateGroupInfo = async (req, res) => {
     const userId = req.user._id;
 
     const conversation = await Conversation.findById(id);
-    if (!conversation || conversation.type !== "group") {
-      return res.status(404).json({ message: "Không tìm thấy nhóm" });
+    if (!conversation || (conversation.type !== "group" && conversation.type !== "community")) {
+      return res.status(404).json({ message: "Không tìm thấy nhóm hoặc cộng đồng" });
     }
 
     const currentUser = conversation.participants.find(p => p.userId.toString() === userId.toString());

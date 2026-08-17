@@ -15,8 +15,14 @@ export interface AuthState {
     password: string,
     email: string,
     firstName: string,
-    lastName: string
+    lastName: string,
+    otp: string
   ) => Promise<void>;
+  sendOtp: (email: string, type: "register" | "reset_password" | "change_password" | "delete_account") => Promise<void>;
+  verifyOtp: (email: string, otp: string, type: "register" | "reset_password" | "change_password" | "delete_account") => Promise<void>;
+  resetPassword: (email: string, otp: string, newPassword: string) => Promise<void>;
+  changePassword: (otp: string, newPassword: string) => Promise<void>;
+  deleteAccount: (otp: string) => Promise<void>;
   signIn: (username: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
   fetchMe: () => Promise<void>;
@@ -47,6 +53,17 @@ export interface ChatState {
   convoLoading: boolean;
   messageLoading: boolean;
   loading: boolean;
+  searchQuery: string;
+  archivedConversations: string[];
+  pinnedConversations: string[];
+  mutedConversations: Record<string, number>; // convoId -> expiresAt timestamp (-1 = permanent)
+  setSearchQuery: (query: string) => void;
+  archiveConversation: (id: string) => void;
+  unarchiveConversation: (id: string) => void;
+  pinConversation: (id: string) => void;
+  unpinConversation: (id: string) => void;
+  muteConversation: (id: string, durationMs?: number) => void;
+  unmuteConversation: (id: string) => void;
   reset: () => void;
 
   setActiveConversation: (id: string | null) => void;

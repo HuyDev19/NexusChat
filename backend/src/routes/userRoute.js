@@ -1,5 +1,21 @@
 import express from "express";
-import { authMe, searchUserByUsername, updateMe, uploadAvatar, uploadCover, updateNote, getUserProfile, lockConversation, verifyLock, resetLock, blockUser, unblockUser } from "../controllers/userController.js";
+import {
+  authMe,
+  searchUserByUsername,
+  updateMe,
+  uploadAvatar,
+  uploadCover,
+  updateNote,
+  getUserProfile,
+  lockConversation,
+  verifyLock,
+  resetLock,
+  blockUser,
+  unblockUser,
+  changePasswordWithOtp,
+  deleteAccountWithOtp,
+  getBlockedUsers,
+} from "../controllers/userController.js";
 import { protectedRoute } from "../middlewares/authMiddleware.js";
 import upload from "../middlewares/multerMiddleware.js";
 
@@ -9,6 +25,10 @@ router.get("/search", searchUserByUsername);
 
 router.get("/me", authMe);
 router.put("/me", updateMe);
+router.delete("/me", protectedRoute, deleteAccountWithOtp);
+router.post("/change-password", protectedRoute, changePasswordWithOtp);
+router.get("/me/blocked", protectedRoute, getBlockedUsers);
+
 router.post("/uploadAvatar", upload.single("file"), uploadAvatar);
 router.post("/uploadCover", upload.single("file"), uploadCover);
 router.put("/note", protectedRoute, updateNote);

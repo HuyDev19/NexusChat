@@ -25,17 +25,17 @@ export const useAuthStore = create<AuthState>()(
         localStorage.clear();
         sessionStorage.clear();
       },
-      signUp: async (username, password, email, firstName, lastName) => {
+      signUp: async (username, password, email, firstName, lastName, otp) => {
         try {
           set({ loading: true });
 
-          //  gọi api
           await authService.signUp(
             username,
             password,
             email,
             firstName,
             lastName,
+            otp
           );
 
           toast.success(
@@ -44,8 +44,60 @@ export const useAuthStore = create<AuthState>()(
         } catch (error: any) {
           console.error(error);
           toast.error(error.response?.data?.message || "Đăng ký không thành công");
+          throw error;
         } finally {
           set({ loading: false });
+        }
+      },
+      sendOtp: async (email, type) => {
+        try {
+          const res = await authService.sendOtp(email, type);
+          toast.success(res.message || "Đã gửi mã OTP đến email của bạn!");
+        } catch (error: any) {
+          console.error(error);
+          toast.error(error.response?.data?.message || "Lỗi khi gửi mã OTP");
+          throw error;
+        }
+      },
+      verifyOtp: async (email, otp, type) => {
+        try {
+          const res = await authService.verifyOtp(email, otp, type);
+          toast.success(res.message || "Xác thực mã OTP thành công!");
+        } catch (error: any) {
+          console.error(error);
+          toast.error(error.response?.data?.message || "Mã OTP không hợp lệ");
+          throw error;
+        }
+      },
+      resetPassword: async (email, otp, newPassword) => {
+        try {
+          const res = await authService.resetPassword(email, otp, newPassword);
+          toast.success(res.message || "Đặt lại mật khẩu thành công!");
+        } catch (error: any) {
+          console.error(error);
+          toast.error(error.response?.data?.message || "Không thể đặt lại mật khẩu");
+          throw error;
+        }
+      },
+      changePassword: async (otp, newPassword) => {
+        try {
+          const res = await userService.changePasswordWithOtp(otp, newPassword);
+          toast.success(res.message || "Đổi mật khẩu thành công!");
+        } catch (error: any) {
+          console.error(error);
+          toast.error(error.response?.data?.message || "Đổi mật khẩu thất bại");
+          throw error;
+        }
+      },
+      deleteAccount: async (otp) => {
+        try {
+          await userService.deleteAccountWithOtp(otp);
+          toast.success("Đã xoá tài khoản thành công!");
+          get().clearState();
+        } catch (error: any) {
+          console.error(error);
+          toast.error(error.response?.data?.message || "Xoá tài khoản thất bại");
+          throw error;
         }
       },
       signIn: async (username, password) => {

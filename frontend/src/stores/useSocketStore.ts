@@ -82,6 +82,23 @@ export const useSocketStore = create<SocketState>((set, get) => ({
       }
 
       useChatStore.getState().updateConversation(updatedConversation);
+
+      // Phát thông báo đẩy trình duyệt khi tab bị ẩn
+      if (
+        typeof window !== "undefined" &&
+        "Notification" in window &&
+        Notification.permission === "granted" &&
+        localStorage.getItem("desktop_notifications") !== "disabled" &&
+        document.hidden
+      ) {
+        const bodyText =
+          message.content ||
+          (message.imgUrl ? "[Hình ảnh]" : message.audioUrl ? "[Tin nhắn thoại]" : "Bạn có tin nhắn mới");
+        new Notification("NexusChat", {
+          body: bodyText,
+          icon: "/favicon.ico",
+        });
+      }
     });
 
     // read message

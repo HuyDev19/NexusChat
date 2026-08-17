@@ -15,7 +15,8 @@ import { Input } from "../ui/input";
 import { Button } from "../ui/button";
 import { userService } from "@/services/userService";
 import { toast } from "sonner";
-import { Settings, Ban, Flame } from "lucide-react";
+import { Settings, Ban, Flame, Pencil, Edit3, Globe } from "lucide-react";
+import { Label } from "../ui/label";
 import { cn } from "@/lib/utils";
 
 const ChatWindowHeader = ({ chat }: { chat?: Conversation }) => {
@@ -53,7 +54,27 @@ const ChatWindowHeader = ({ chat }: { chat?: Conversation }) => {
   const [showLockDialog, setShowLockDialog] = useState(false);
   const [newPin, setNewPin] = useState("");
   const { fetchMe } = useAuthStore();
-  const { unlockConversation } = useChatStore();
+  const { unlockConversation, updateGroupInfo } = useChatStore();
+
+  const [showRenameModal, setShowRenameModal] = useState(false);
+  const [renameVal, setRenameVal] = useState(chat?.group?.name || "");
+
+  const handleRenameSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!renameVal.trim()) {
+      toast.warning("Vui lòng nhập tên mới!");
+      return;
+    }
+    if (chat?._id) {
+      try {
+        await updateGroupInfo(chat._id, renameVal.trim());
+        toast.success("Đổi tên thành công!");
+        setShowRenameModal(false);
+      } catch (error) {
+        toast.error("Không thể đổi tên");
+      }
+    }
+  };
 
   const getDisplayName = (userObj: any) => {
     if (!userObj) return "Unknown";
@@ -111,10 +132,10 @@ const ChatWindowHeader = ({ chat }: { chat?: Conversation }) => {
                 >
                   <UserAvatar
                     type={"sidebar"}
-                    name={chat?.nicknames?.[otherUser?._id] || otherUser.displayName || ""}
-                    avatarUrl={otherUser.avatarUrl ?? undefined}
-                    note={otherUser.note?.content}
-                    userId={otherUser._id}
+                    name={chat?.nicknames?.[otherUser?._id ?? ""] || otherUser?.displayName || ""}
+                    avatarUrl={otherUser?.avatarUrl ?? undefined}
+                    note={typeof otherUser?.note === "string" ? otherUser.note : otherUser?.note?.content}
+                    userId={otherUser?._id}
                   />
                   <StatusBadge
                     status={
@@ -125,6 +146,10 @@ const ChatWindowHeader = ({ chat }: { chat?: Conversation }) => {
                           : "online"
                     }
                   />
+                </div>
+              ) : chat.type === "community" ? (
+                <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-purple-600 flex items-center justify-center text-white shadow-md shadow-blue-500/20 shrink-0">
+                  <Globe className="w-5 h-5" />
                 </div>
               ) : (
                 <div 
@@ -151,10 +176,27 @@ const ChatWindowHeader = ({ chat }: { chat?: Conversation }) => {
             </div>
 
             {/* name & streak */}
-            <div className="flex items-center gap-2">
-              <h2 className="font-semibold text-foreground truncate max-w-[200px]">
-                {chat.type === "direct" ? getDisplayName(otherUser) : chat.group?.name}
+            <div className="flex items-center gap-1.5">
+              <h2 className="font-semibold text-foreground truncate max-w-[220px]">
+                {chat.type === "direct"
+                  ? getDisplayName(otherUser)
+                  : chat.group?.name || (chat.type === "community" ? "Cộng đồng NexusChat 🌐" : "Nhóm")}
               </h2>
+
+              {(chat.type === "group" || chat.type === "community") && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setRenameVal(chat.group?.name || "");
+                    setShowRenameModal(true);
+                  }}
+                  title="Đổi tên nhóm / cộng đồng"
+                  className="p-1 rounded-lg text-muted-foreground hover:text-purple-400 hover:bg-purple-500/10 transition-colors"
+                >
+                  <Pencil className="w-3.5 h-3.5" />
+                </button>
+              )}
+
               {chat.type === "direct" && chat.streak && chat.streak.count >= 1 && (
                 <div className="flex items-center gap-0.5" title={`${chat.streak.count} ngày liên tiếp`}>
                   <Flame 
@@ -220,6 +262,50 @@ const ChatWindowHeader = ({ chat }: { chat?: Conversation }) => {
             <Button type="submit" className="w-full" disabled={newPin.length !== 4}>
               Xác nhận khóa <LockIcon className="ml-2 size-4" />
             </Button>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog đổi tên Nhóm / Cộng đồng */}
+      <Dialog open={showRenameModal} onOpenChange={setShowRenameModal}>
+        <DialogContent className="sm:max-w-md p-6 rounded-3xl">
+          <DialogHeader className="border-b border-border/40 pb-3">
+            <DialogTitle className="flex items-center gap-2 text-base font-bold">
+              <Edit3 className="w-5 h-5 text-purple-400" />
+              <span>Đổi tên {chat?.type === "community" ? "Cộng đồng" : "Nhóm chat"}</span>
+            </DialogTitle>
+          </DialogHeader>
+
+          <form onSubmit={handleRenameSubmit} className="space-y-4 pt-2">
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                Tên mới cho {chat?.type === "community" ? "cộng đồng" : "nhóm chat"}
+              </Label>
+              <Input
+                value={renameVal}
+                onChange={(e) => setRenameVal(e.target.value)}
+                placeholder="Nhập tên mới..."
+                className="h-10 rounded-xl bg-muted/40 text-xs focus:border-purple-500"
+                required
+              />
+            </div>
+
+            <div className="flex gap-2 justify-end pt-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setShowRenameModal(false)}
+                className="h-9 rounded-xl text-xs"
+              >
+                Hủy
+              </Button>
+              <Button
+                type="submit"
+                className="h-9 rounded-xl text-xs bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-medium shadow-md shadow-purple-500/20"
+              >
+                Lưu tên mới
+              </Button>
+            </div>
           </form>
         </DialogContent>
       </Dialog>

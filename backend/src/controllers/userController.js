@@ -2,6 +2,8 @@ import User from "../models/User.js";
 import cloudinary from "../libs/cloudinary.js";
 import fs from "fs";
 import bcrypt from "bcrypt";
+import Otp from "../models/Otp.js";
+import Session from "../models/Session.js";
 
 const escapeRegExp = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
@@ -333,6 +335,90 @@ export const unblockUser = async (req, res) => {
     return res.status(200).json({ message: "Đã bỏ chặn người dùng", blockedUsers: user.blockedUsers });
   } catch (error) {
     console.error("Lỗi khi bỏ chặn người dùng:", error);
+    return res.status(500).json({ message: "Lỗi hệ thống" });
+  }
+};
+
+export const changePasswordWithOtp = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const email = req.user.email;
+    const { otp, newPassword } = req.body;
+
+    if (!otp || !newPassword) {
+      return res.status(400).json({ message: "Thiếu mã OTP hoặc mật khẩu mới" });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({ message: "Mật khẩu mới phải có ít nhất 6 ký tự" });
+    }
+
+    const emailTrimmed = email.trim().toLowerCase();
+    const otpRecord = await Otp.findOne({ email: emailTrimmed, otp, type: "change_password" });
+    if (!otpRecord) {
+      return res.status(400).json({ message: "Mã OTP không chính xác hoặc đã hết hạn" });
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: "Không tìm thấy người dùng" });
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    user.hashedPassword = hashedPassword;
+    await user.save();
+
+    await Otp.deleteMany({ email: emailTrimmed, type: "change_password" });
+
+    return res.status(200).json({ message: "Đổi mật khẩu thành công!" });
+  } catch (error) {
+    console.error("Lỗi khi đổi mật khẩu:", error);
+    return res.status(500).json({ message: "Lỗi hệ thống khi đổi mật khẩu" });
+  }
+};
+
+export const deleteAccountWithOtp = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const email = req.user.email;
+    const { otp } = req.body;
+
+    if (!otp) {
+      return res.status(400).json({ message: "Vui lòng nhập mã OTP xác thực" });
+    }
+
+    const emailTrimmed = email.trim().toLowerCase();
+    const otpRecord = await Otp.findOne({ email: emailTrimmed, otp, type: "delete_account" });
+    if (!otpRecord) {
+      return res.status(400).json({ message: "Mã OTP không chính xác hoặc đã hết hạn" });
+    }
+
+    // Xoá hoàn toàn User khỏi MongoDB -> Giải phóng email và username
+    await User.deleteOne({ _id: userId });
+    // Xoá tất cả phiên làm việc
+    await Session.deleteMany({ userId });
+    // Xoá OTP
+    await Otp.deleteMany({ email: emailTrimmed, type: "delete_account" });
+
+    return res.status(200).json({ message: "Đã xoá tài khoản thành công" });
+  } catch (error) {
+    console.error("Lỗi khi xoá tài khoản:", error);
+    return res.status(500).json({ message: "Lỗi hệ thống khi xoá tài khoản" });
+  }
+};
+
+export const getBlockedUsers = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const user = await User.findById(userId).populate("blockedUsers", "_id displayName avatarUrl username");
+
+    if (!user) {
+      return res.status(404).json({ message: "Không tìm thấy người dùng" });
+    }
+
+    return res.status(200).json({ blockedUsers: user.blockedUsers || [] });
+  } catch (error) {
+    console.error("Lỗi khi lấy danh sách chặn:", error);
     return res.status(500).json({ message: "Lỗi hệ thống" });
   }
 };

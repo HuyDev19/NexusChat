@@ -17,7 +17,41 @@ export const useChatStore = create<ChatState>()(
       convoLoading: false, // convo loading
       messageLoading: false,
       loading: false,
+      searchQuery: "",
+      archivedConversations: [],
+      pinnedConversations: [],
+      mutedConversations: {},
 
+      setSearchQuery: (searchQuery) => set({ searchQuery }),
+      archiveConversation: (id) =>
+        set((state) => ({
+          archivedConversations: Array.from(new Set([...state.archivedConversations, id])),
+        })),
+      unarchiveConversation: (id) =>
+        set((state) => ({
+          archivedConversations: state.archivedConversations.filter((cId) => cId !== id),
+        })),
+      pinConversation: (id) =>
+        set((state) => ({
+          pinnedConversations: Array.from(new Set([...(state.pinnedConversations || []), id])),
+        })),
+      unpinConversation: (id) =>
+        set((state) => ({
+          pinnedConversations: (state.pinnedConversations || []).filter((cId) => cId !== id),
+        })),
+      muteConversation: (id, durationMs) =>
+        set((state) => {
+          const expiresAt = durationMs ? Date.now() + durationMs : -1;
+          return {
+            mutedConversations: { ...state.mutedConversations, [id]: expiresAt },
+          };
+        }),
+      unmuteConversation: (id) =>
+        set((state) => {
+          const updated = { ...state.mutedConversations };
+          delete updated[id];
+          return { mutedConversations: updated };
+        }),
       setActiveConversation: (id) => set({ activeConversationId: id }),
       reset: () => {
         set({
@@ -28,6 +62,7 @@ export const useChatStore = create<ChatState>()(
           typingUsers: {},
           convoLoading: false,
           messageLoading: false,
+          searchQuery: "",
         });
       },
       fetchConversations: async () => {
@@ -346,29 +381,99 @@ export const useChatStore = create<ChatState>()(
       updateParticipantData: (updatedUser) => {
         set((state) => ({
           conversations: state.conversations.map((c) => {
-            const hasParticipant = c.participants.some(p => p._id === updatedUser._id);
-            if (!hasParticipant) return c;
-            
+            const isUserMatch = (idOrObj: any) => {
+              if (!idOrObj) return false;
+              if (typeof idOrObj === "string") return idOrObj === updatedUser._id;
+              return (
+                idOrObj._id === updatedUser._id ||
+                idOrObj.userId === updatedUser._id ||
+                idOrObj.userId?._id === updatedUser._id
+              );
+            };
+
+            const hasParticipant = c.participants?.some(isUserMatch);
+            const hasSeenUser = c.seenBy?.some(isUserMatch);
+            const isLastMessageSender = c.lastMessage && (isUserMatch(c.lastMessage.sender) || isUserMatch((c.lastMessage as any).senderId));
+
+            if (!hasParticipant && !hasSeenUser && !isLastMessageSender) {
+              return c;
+            }
+
+            const updatedParticipants = c.participants?.map((p) => {
+              if (!isUserMatch(p)) return p;
+              const pUserIdObj = (p as any).userId;
+              return {
+                ...p,
+                ...updatedUser,
+                displayName: updatedUser.displayName ?? p.displayName ?? pUserIdObj?.displayName,
+                avatarUrl: updatedUser.avatarUrl !== undefined ? updatedUser.avatarUrl : (p.avatarUrl ?? pUserIdObj?.avatarUrl),
+                ...(pUserIdObj && typeof pUserIdObj === "object"
+                  ? {
+                      userId: {
+                        ...pUserIdObj,
+                        ...updatedUser,
+                        displayName: updatedUser.displayName ?? pUserIdObj.displayName,
+                        avatarUrl: updatedUser.avatarUrl !== undefined ? updatedUser.avatarUrl : pUserIdObj.avatarUrl,
+                      },
+                    }
+                  : {}),
+              };
+            });
+
+            const updatedSeenBy = c.seenBy?.map((u) => {
+              if (!isUserMatch(u)) return u;
+              return {
+                ...u,
+                displayName: updatedUser.displayName ?? u.displayName,
+                avatarUrl: updatedUser.avatarUrl !== undefined ? updatedUser.avatarUrl : u.avatarUrl,
+              };
+            });
+
+            const updatedLastMessage = c.lastMessage
+              ? {
+                  ...c.lastMessage,
+                  sender: isUserMatch(c.lastMessage.sender)
+                    ? {
+                        ...(typeof c.lastMessage.sender === "object"
+                          ? c.lastMessage.sender
+                          : { _id: updatedUser._id }),
+                        displayName:
+                          updatedUser.displayName ??
+                          (typeof c.lastMessage.sender === "object"
+                            ? c.lastMessage.sender.displayName
+                            : ""),
+                        avatarUrl:
+                          updatedUser.avatarUrl !== undefined
+                            ? updatedUser.avatarUrl
+                            : typeof c.lastMessage.sender === "object"
+                            ? c.lastMessage.sender.avatarUrl
+                            : null,
+                      }
+                    : c.lastMessage.sender,
+                  senderId: isUserMatch((c.lastMessage as any).senderId)
+                    ? typeof (c.lastMessage as any).senderId === "object"
+                      ? {
+                          ...(c.lastMessage as any).senderId,
+                          displayName:
+                            updatedUser.displayName ??
+                            (c.lastMessage as any).senderId.displayName,
+                          avatarUrl:
+                            updatedUser.avatarUrl !== undefined
+                              ? updatedUser.avatarUrl
+                              : (c.lastMessage as any).senderId.avatarUrl,
+                        }
+                      : (c.lastMessage as any).senderId
+                    : (c.lastMessage as any).senderId,
+                }
+              : c.lastMessage;
+
             return {
               ...c,
-              participants: c.participants.map(p => 
-                p._id === updatedUser._id ? { ...p, displayName: updatedUser.displayName || p.displayName, avatarUrl: updatedUser.avatarUrl ?? p.avatarUrl } : p
-              ),
-              lastMessage: c.lastMessage ? {
-                ...c.lastMessage,
-                sender: c.lastMessage.sender && c.lastMessage.sender._id === updatedUser._id ? {
-                  ...c.lastMessage.sender,
-                  displayName: updatedUser.displayName || c.lastMessage.sender.displayName,
-                  avatarUrl: updatedUser.avatarUrl ?? c.lastMessage.sender.avatarUrl,
-                } : c.lastMessage.sender,
-                senderId: c.lastMessage.senderId && c.lastMessage.senderId._id === updatedUser._id ? {
-                  ...c.lastMessage.senderId,
-                  displayName: updatedUser.displayName || c.lastMessage.senderId.displayName,
-                  avatarUrl: updatedUser.avatarUrl ?? c.lastMessage.senderId.avatarUrl,
-                } : c.lastMessage.senderId
-              } : c.lastMessage
+              participants: updatedParticipants ?? c.participants,
+              seenBy: updatedSeenBy ?? c.seenBy,
+              lastMessage: updatedLastMessage,
             };
-          })
+          }),
         }));
       },
       uploadAudio: async (file) => {
@@ -455,6 +560,21 @@ export const useChatStore = create<ChatState>()(
       updateNickname: async (conversationId, targetUserId, nickname) => {
         try {
           await chatService.updateNickname(conversationId, targetUserId, nickname);
+          set((state) => {
+            const index = state.conversations.findIndex((c) => c._id === conversationId);
+            if (index !== -1) {
+              const newConvos = [...state.conversations];
+              const updatedNicknames = { ...(newConvos[index].nicknames || {}) };
+              if (nickname?.trim()) {
+                updatedNicknames[targetUserId] = nickname.trim();
+              } else {
+                delete updatedNicknames[targetUserId];
+              }
+              newConvos[index] = { ...newConvos[index], nicknames: updatedNicknames };
+              return { conversations: newConvos };
+            }
+            return state;
+          });
           toast.success("Cập nhật biệt danh thành công!");
         } catch (error) {
           console.error("Lỗi khi cập nhật biệt danh:", error);
@@ -611,22 +731,16 @@ export const useChatStore = create<ChatState>()(
           toast.error(error.response?.data?.message || "Lỗi bình chọn");
         }
       },
-      updateParticipantData: (updatedUser) => {
-        set((state) => ({
-          conversations: state.conversations.map((c) => ({
-            ...c,
-            participants: c.participants?.map((p) => 
-              p._id === updatedUser._id || (p as any).userId?._id === updatedUser._id 
-                ? { ...p, ...updatedUser } 
-                : p
-            ),
-          })),
-        }));
-      },
+
     }),
     {
       name: "chat-storage",
-      partialize: (state) => ({ conversations: state.conversations }),
+      partialize: (state) => ({
+        conversations: state.conversations,
+        archivedConversations: state.archivedConversations,
+        pinnedConversations: state.pinnedConversations,
+        mutedConversations: state.mutedConversations,
+      }),
     }
   )
 );

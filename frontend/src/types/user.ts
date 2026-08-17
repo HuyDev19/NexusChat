@@ -24,6 +24,10 @@ export interface Friend {
   username: string;
   displayName: string;
   avatarUrl?: string;
+  note?: {
+    content: string;
+    expiresAt: string | null;
+  };
   presenceStatus?: 'online' | 'offline' | 'busy';
 }
 

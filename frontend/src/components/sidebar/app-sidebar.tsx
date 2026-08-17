@@ -4,9 +4,7 @@ import {
   SidebarContent,
   SidebarFooter,
   SidebarGroup,
-  SidebarGroupAction,
   SidebarGroupContent,
-  SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
@@ -15,10 +13,8 @@ import {
 import { Moon, Sun } from "lucide-react";
 import { Switch } from "../ui/switch";
 import CreateNewChat from "../chat/CreateNewChat";
-import NewGroupChatModal from "../chat/NewGroupChatModal";
-import GroupChatList from "../chat/GroupChatList";
-import AddFriendModal from "../chat/AddFriendModal";
-import DirectMessageList from "../chat/DirectMessageList";
+import StoryBar from "../chat/StoryBar";
+import ConversationList from "../chat/ConversationList";
 import { useThemeStore } from "@/stores/useThemeStore";
 import { useAuthStore } from "@/stores/useAuthStore";
 import ConversationSkeleton from "../skeleton/ConversationSkeleton";
@@ -61,36 +57,24 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
       {/* Content */}
       <SidebarContent className="beautiful-scrollbar">
-        {/* New Chat */}
-        <SidebarGroup>
+        {/* 1. Search & Quick Actions */}
+        <SidebarGroup className="pb-0.5">
           <SidebarGroupContent>
             <CreateNewChat />
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {/* Group Chat */}
-        <SidebarGroup>
-          <div className="flex items-center justify-between">
-            <SidebarGroupLabel className="uppercase">
-              nhóm chat
-            </SidebarGroupLabel>
-            <NewGroupChatModal />
-          </div>
-
+        {/* 2. Story / Status Notes Bar */}
+        <SidebarGroup className="py-0">
           <SidebarGroupContent>
-            {convoLoading ? <ConversationSkeleton /> : <GroupChatList />}
+            <StoryBar />
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {/* Dirrect Message */}
-        <SidebarGroup>
-          <SidebarGroupLabel className="uppercase">bạn bè</SidebarGroupLabel>
-          <SidebarGroupAction title="Kết Bạn" className="cursor-pointer">
-            <AddFriendModal />
-          </SidebarGroupAction>
-
-          <SidebarGroupContent>
-            {convoLoading ? <ConversationSkeleton /> : <DirectMessageList />}
+        {/* 3. 3 Tabs (All, Bạn bè, Nhóm) & Unified Conversation List */}
+        <SidebarGroup className="pt-0 flex-1 flex flex-col">
+          <SidebarGroupContent className="flex-1 flex flex-col">
+            {convoLoading ? <ConversationSkeleton /> : <ConversationList />}
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>

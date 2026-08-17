@@ -39,7 +39,6 @@ const PersonalInfoForm = ({ userInfo }: Props) => {
     displayName: "",
     phone: "",
     bio: "",
-    noteContent: "",
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -50,7 +49,6 @@ const PersonalInfoForm = ({ userInfo }: Props) => {
         displayName: userInfo.displayName || "",
         phone: userInfo.phone || "",
         bio: userInfo.bio || "",
-        noteContent: userInfo.note?.content || "",
       });
     }
   }, [userInfo]);
@@ -71,10 +69,6 @@ const PersonalInfoForm = ({ userInfo }: Props) => {
       phone: formData.phone,
       bio: formData.bio,
     });
-    // Update note separately
-    if (formData.noteContent !== (userInfo.note?.content || "")) {
-      await useUserStore.getState().updateNote(formData.noteContent, 24);
-    }
     setIsSubmitting(false);
   };
 
@@ -119,21 +113,6 @@ const PersonalInfoForm = ({ userInfo }: Props) => {
           />
           <p className="text-xs text-muted-foreground text-right">
             {formData.bio.length}/150
-          </p>
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="noteContent">Ghi chú trạng thái (Cloud Note)</Label>
-          <Input
-            id="noteContent"
-            value={formData.noteContent}
-            onChange={handleChange}
-            placeholder="Đang nghĩ gì..."
-            className="glass-light border-border/30"
-            maxLength={60}
-          />
-          <p className="text-xs text-muted-foreground text-right">
-            Sẽ biến mất sau 24 giờ
           </p>
         </div>
 

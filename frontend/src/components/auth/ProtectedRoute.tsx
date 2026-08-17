@@ -23,9 +23,9 @@ const ProtectedRoute = () => {
     init();
   }, []);
 
-  if (starting || loading) {
+  if (starting || (!accessToken && loading)) {
     return (
-      <div className="flex h-screen items-center justify-center">
+      <div className="flex h-screen items-center justify-center font-medium text-muted-foreground">
         Đang tải trang...
       </div>
     );

@@ -21,6 +21,11 @@ const DirectMessageCard = ({ convo }: { convo: Conversation }) => {
   const otherUser = participants.find((p) => p._id !== user._id);
   if (!otherUser) return null;
 
+  const displayName =
+    convo.nicknames && otherUser._id in convo.nicknames && convo.nicknames[otherUser._id]
+      ? convo.nicknames[otherUser._id]
+      : otherUser.displayName ?? "";
+
   const unreadCount = convo.unreadCounts[user._id];
   const lastMessage = convo.lastMessage?.content ?? "";
 
@@ -34,7 +39,13 @@ const DirectMessageCard = ({ convo }: { convo: Conversation }) => {
   return (
     <ChatCard
       convoId={convo._id}
-      name={otherUser.displayName ?? ""}
+      name={displayName}
+      targetUser={{
+        _id: otherUser._id,
+        displayName: displayName,
+        username: otherUser.username || "",
+        avatarUrl: otherUser.avatarUrl || undefined,
+      }}
       timestamp={
         convo.lastMessage?.createdAt
           ? new Date(convo.lastMessage.createdAt)
@@ -47,7 +58,7 @@ const DirectMessageCard = ({ convo }: { convo: Conversation }) => {
         <>
           <UserAvatar
             type="sidebar"
-            name={otherUser.displayName ?? ""}
+            name={displayName}
             avatarUrl={otherUser.avatarUrl ?? undefined}
             note={otherUser.note?.content}
             userId={otherUser._id}

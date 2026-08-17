@@ -55,4 +55,16 @@ export const userService = {
     const res = await api.post(`/users/${userId}/unblock`);
     return res.data;
   },
+  getBlockedUsers: async () => {
+    const res = await api.get("/users/me/blocked");
+    return res.data.blockedUsers;
+  },
+  changePasswordWithOtp: async (otp: string, newPassword: string) => {
+    const res = await api.post("/users/change-password", { otp, newPassword });
+    return res.data;
+  },
+  deleteAccountWithOtp: async (otp: string) => {
+    const res = await api.delete("/users/me", { data: { otp } });
+    return res.data;
+  },
 };
