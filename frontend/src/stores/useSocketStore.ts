@@ -74,6 +74,7 @@ export const useSocketStore = create<SocketState>((set, get) => ({
         lastMessageAt: conversation.lastMessageAt,
         lastMessage,
         unreadCounts,
+        streak: conversation.streak,
       };
 
       if (useChatStore.getState().activeConversationId === message.conversationId) {
@@ -133,6 +134,15 @@ export const useSocketStore = create<SocketState>((set, get) => ({
 
     socket.on("conversation:delete", ({ conversationId }) => {
       useChatStore.getState().removeConversation(conversationId);
+    });
+
+    // typing events
+    socket.on("typing-start", ({ conversationId, userId }) => {
+      useChatStore.getState().setTypingStatus(conversationId, userId, true);
+    });
+
+    socket.on("typing-end", ({ conversationId, userId }) => {
+      useChatStore.getState().setTypingStatus(conversationId, userId, false);
     });
 
     // ─── LẮNG NGHE CÁC SỰ KIỆN VIDEO CALL ───────────────────
@@ -200,8 +210,22 @@ export const useSocketStore = create<SocketState>((set, get) => ({
       socket.off("call:declined");
       socket.off("call:ended");
       socket.off("user:updated");
+      socket.off("typing-start");
+      socket.off("typing-end");
       socket.disconnect();
       set({ socket: null });
+    }
+  },
+  emitTypingStart: (conversationId: string, participantIds: string[]) => {
+    const socket = get().socket;
+    if (socket) {
+      socket.emit("typing-start", { conversationId, participantIds });
+    }
+  },
+  emitTypingEnd: (conversationId: string, participantIds: string[]) => {
+    const socket = get().socket;
+    if (socket) {
+      socket.emit("typing-end", { conversationId, participantIds });
     }
   },
 }));

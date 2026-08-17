@@ -30,7 +30,7 @@ export const searchUserByUsername = async (req, res) => {
 
     const user = await User.findOne({
       username: { $regex: `^${escapeRegExp(username)}`, $options: "i" },
-    }).select("_id username displayName avatarUrl bio phone");
+    }).select("_id username displayName avatarUrl coverUrl note bio phone");
 
     if (!user) {
       return res.status(404).json({ message: "Không tìm thấy người dùng" });
@@ -51,7 +51,7 @@ export const getUserProfile = async (req, res) => {
       return res.status(400).json({ message: "Thiếu ID người dùng" });
     }
 
-    const user = await User.findById(id).select("_id displayName avatarUrl bio presenceStatus createdAt");
+    const user = await User.findById(id).select("_id displayName avatarUrl coverUrl note bio presenceStatus createdAt");
 
     if (!user) {
       return res.status(404).json({ message: "Không tìm thấy người dùng" });
@@ -129,6 +129,79 @@ export const uploadAvatar = async (req, res) => {
   } catch (error) {
     console.error("Lỗi khi upload avatar:", error);
     return res.status(500).json({ message: "Lỗi hệ thống khi tải ảnh lên" });
+  }
+};
+
+export const uploadCover = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const file = req.file;
+
+    if (!file) {
+      return res.status(400).json({ message: "Không có file được tải lên" });
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: "Không tìm thấy người dùng" });
+    }
+
+    // Upload to cloudinary
+    const b64 = Buffer.from(file.buffer).toString("base64");
+    const dataURI = "data:" + file.mimetype + ";base64," + b64;
+    
+    const result = await cloudinary.uploader.upload(dataURI, {
+      folder: "nexuschat_covers",
+      transformation: [{ width: 1200, height: 400, crop: "fill" }],
+    });
+
+    // Delete old cover from Cloudinary if exists
+    if (user.coverId) {
+      await cloudinary.uploader.destroy(user.coverId);
+    }
+
+    user.coverUrl = result.secure_url;
+    user.coverId = result.public_id;
+    await user.save();
+
+    req.app.get("io").emit("user:updated", user);
+
+    return res.status(200).json({
+      coverUrl: user.coverUrl,
+      coverId: user.coverId,
+    });
+  } catch (error) {
+    console.error("Lỗi khi upload ảnh bìa:", error);
+    return res.status(500).json({ message: "Lỗi hệ thống khi tải ảnh lên" });
+  }
+};
+
+export const updateNote = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const { content, expiresInHours = 24 } = req.body;
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: "Không tìm thấy người dùng" });
+    }
+
+    if (!content) {
+      user.note = { content: "", expiresAt: null };
+    } else {
+      const expiresAt = new Date();
+      expiresAt.setHours(expiresAt.getHours() + expiresInHours);
+      user.note = { content, expiresAt };
+    }
+    
+    await user.save();
+
+    req.app.get("io").emit("user:updated", user);
+
+    return res.status(200).json({ note: user.note });
+  } catch (error) {
+    console.error("Lỗi khi cập nhật ghi chú:", error);
+    return res.status(500).json({ message: "Lỗi hệ thống" });
   }
 };
 

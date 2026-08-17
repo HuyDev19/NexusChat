@@ -43,6 +43,7 @@ export interface ChatState {
   >;
   activeConversationId: string | null;
   unlockedConversations: string[];
+  typingUsers: Record<string, string[]>; // { conversationId: [userIds] }
   convoLoading: boolean;
   messageLoading: boolean;
   loading: boolean;
@@ -72,6 +73,7 @@ export interface ChatState {
   clearChatHistory: (id: string) => Promise<void>;
   leaveGroup: (id: string) => Promise<void>;
   removeConversation: (id: string) => void;
+  setTypingStatus: (conversationId: string, userId: string, isTyping: boolean) => void;
   // add message
   addMessage: (message: Message) => Promise<void>;
   // update convo
@@ -110,6 +112,8 @@ export interface SocketState {
   onlineUsers: string[];
   connectSocket: () => void;
   disconnectSocket: () => void;
+  emitTypingStart: (conversationId: string, participantIds: string[]) => void;
+  emitTypingEnd: (conversationId: string, participantIds: string[]) => void;
 }
 
 export interface FriendState {
@@ -128,6 +132,8 @@ export interface FriendState {
 
 export interface UserState {
   updateAvatarUrl: (formData: FormData) => Promise<void>;
+  updateCoverUrl: (formData: FormData) => Promise<void>;
+  updateNote: (content: string, expiresInHours?: number) => Promise<void>;
   updateProfile: (data: { 
     displayName?: string; 
     phone?: string; 

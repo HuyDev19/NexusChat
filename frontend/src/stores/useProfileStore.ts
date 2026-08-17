@@ -13,29 +13,47 @@ interface UserProfile {
 
 interface ProfileStore {
   isOpen: boolean;
+  mode: "user" | "chat";
   selectedUserId: string | null;
   profileData: UserProfile | null;
   loading: boolean;
   
   openProfile: (userId: string) => Promise<void>;
+  openChatDetails: () => void;
   closeProfile: () => void;
 }
 
 export const useProfileStore = create<ProfileStore>((set, get) => ({
   isOpen: false,
+  mode: "user",
   selectedUserId: null,
   profileData: null,
   loading: false,
 
   openProfile: async (userId: string) => {
     // Nếu click lại người đó khi đang đóng, hoặc click người khác
-    set({ isOpen: true, selectedUserId: userId, loading: true });
+    set({ isOpen: true, mode: "user", selectedUserId: userId, loading: true });
     try {
       const user = await userService.fetchUserProfile(userId);
       set({ profileData: user, loading: false });
     } catch (error) {
       console.error("Lỗi lấy thông tin profile:", error);
       set({ loading: false, profileData: null });
+    }
+  },
+
+  openChatDetails: async (userId?: string) => {
+    set({ isOpen: true, mode: "chat", selectedUserId: userId || null, loading: !!userId });
+    if (userId) {
+      try {
+        const user = await userService.fetchUserProfile(userId);
+        set({ profileData: user, loading: false });
+      } catch (error) {
+        console.error("Lỗi lấy thông tin profile:", error);
+        set({ loading: false, profileData: null });
+      }
+    } else {
+      set({ profileData: null });
     }
   },
 

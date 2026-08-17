@@ -3,8 +3,8 @@ import type { Conversation, Message, Participant } from "@/types/chat";
 import UserAvatar from "./UserAvatar";
 import { Card } from "../ui/card";
 import { Badge } from "../ui/badge";
-import { Play, Pause, Pin, Smile, FastForward, PinOff, Timer, EyeOff, Eye, Undo2 } from "lucide-react";
-import { useState, useRef, useEffect } from "react";
+import { Play, Pause, Pin, Smile, FastForward, PinOff, Timer, EyeOff, Eye, Undo2, MoreHorizontal } from "lucide-react";
+import { useState, useRef, useEffect, Fragment } from "react";
 import { useChatStore } from "@/stores/useChatStore";
 import { useAuthStore } from "@/stores/useAuthStore";
 import {
@@ -17,6 +17,27 @@ import { Button } from "../ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 
 const EMOJI_LIST = ["👍", "❤️", "😂", "😮", "🔥"];
+
+const LinkifiedText = ({ content }: { content: string }) => {
+  if (!content) return null;
+  const urlRegex = /(https?:\/\/[^\s]+)/g;
+  const parts = content.split(urlRegex);
+
+  return (
+    <p className="text-sm leading-relaxed break-words whitespace-pre-wrap">
+      {parts.map((part, i) => {
+        if (part.match(urlRegex)) {
+          return (
+            <a key={i} href={part} target="_blank" rel="noreferrer" className="text-blue-500 hover:underline">
+              {part}
+            </a>
+          );
+        }
+        return <Fragment key={i}>{part}</Fragment>;
+      })}
+    </p>
+  );
+};
 
 const VoiceMessagePlayer = ({ src, isOwn }: { src: string; isOwn?: boolean }) => {
   const [isPlaying, setIsPlaying] = useState(false);
@@ -106,7 +127,7 @@ interface MessageItemProps {
   index: number;
   messages: Message[];
   selectedConvo: Conversation;
-  lastMessageStatus: "delivered" | "seen";
+  lastMessageStatus: "đã gửi" | "đã nhận" | "đã xem";
 }
 
 const MessageItem = ({
@@ -296,7 +317,7 @@ const MessageItem = ({
                   </div>
                 </div>
               ) : (
-                <p className="text-sm leading-relaxed break-words whitespace-pre-wrap">{message.content}</p>
+                <LinkifiedText content={message.content} />
               )}
 
               {message.expiresIn && !message.isRecalled && (
@@ -345,41 +366,39 @@ const MessageItem = ({
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" size="icon" className="size-7 rounded-full bg-background shadow-sm border text-muted-foreground hover:text-foreground">
-                      <Smile className="size-3.5" />
+                      <MoreHorizontal className="size-3.5" />
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align={message.isOwn ? "end" : "start"} className="flex flex-col gap-1 p-1 min-w-0">
-                    <div className="flex gap-1">
+                    <div className="flex gap-1 mb-1">
                       {EMOJI_LIST.map((emoji) => (
                         <DropdownMenuItem
                           key={emoji}
                           onClick={() => reactToMessage(message._id, emoji)}
-                          className="cursor-pointer text-xl p-2 hover:bg-accent focus:bg-accent rounded-md flex-1 text-center"
+                          className="cursor-pointer text-xl p-2 hover:bg-accent focus:bg-accent rounded-md flex-1 text-center justify-center"
                         >
                           {emoji}
                         </DropdownMenuItem>
                       ))}
                     </div>
+                    <DropdownMenuItem
+                      onClick={() => pinMessage(message._id)}
+                      className="cursor-pointer font-medium flex items-center gap-2"
+                    >
+                      {message.isPinned ? <PinOff className="size-4" /> : <Pin className="size-4" />}
+                      {message.isPinned ? "Bỏ ghim tin nhắn" : "Ghim tin nhắn"}
+                    </DropdownMenuItem>
                     {message.isOwn && (
                       <DropdownMenuItem
                         onClick={() => recallMessage(message._id)}
-                        className="cursor-pointer text-red-500 hover:text-red-600 focus:text-red-600 focus:bg-red-50 justify-center font-medium mt-1"
+                        className="cursor-pointer text-red-500 hover:text-red-600 focus:text-red-600 focus:bg-red-50 font-medium flex items-center gap-2"
                       >
+                        <Undo2 className="size-4" />
                         Thu hồi tin nhắn
                       </DropdownMenuItem>
                     )}
                   </DropdownMenuContent>
                 </DropdownMenu>
-
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => pinMessage(message._id)}
-                  className="size-7 rounded-full bg-background shadow-sm border text-muted-foreground hover:text-foreground"
-                  title={message.isPinned ? "Bỏ ghim" : "Ghim tin nhắn"}
-                >
-                  {message.isPinned ? <PinOff className="size-3.5" /> : <Pin className="size-3.5" />}
-                </Button>
               </div>
             )}
           </div>
@@ -410,10 +429,12 @@ const MessageItem = ({
             <Badge
               variant="outline"
               className={cn(
-                "text-xs px-1.5 py-0.5 h-4 border-0",
-                lastMessageStatus === "seen"
-                  ? "bg-primary/20 text-primary"
-                  : "bg-muted text-muted-foreground"
+                "text-[10px] px-1.5 py-0 h-4 border font-medium lowercase",
+                lastMessageStatus === "đã xem"
+                  ? "bg-primary/10 text-primary border-primary/20"
+                  : lastMessageStatus === "đã nhận"
+                  ? "bg-muted text-muted-foreground border-transparent"
+                  : "bg-transparent text-muted-foreground/70 border-muted-foreground/30"
               )}
             >
               {lastMessageStatus}

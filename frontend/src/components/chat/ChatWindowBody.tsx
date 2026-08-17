@@ -7,6 +7,8 @@ import { Pin } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { THEMES } from "./WallpaperModal";
+import { useSocketStore } from "@/stores/useSocketStore";
+import { useAuthStore } from "@/stores/useAuthStore";
 
 const ChatWindowBody = () => {
     const {
@@ -14,10 +16,13 @@ const ChatWindowBody = () => {
         conversations,
         messages: allMessages,
         fetchMessages,
+        typingUsers,
     } = useChatStore();
-    const [lastMessageStatus, setLastMessageStatus] = useState<"delivered" | "seen">(
-        "delivered"
+    const [lastMessageStatus, setLastMessageStatus] = useState<"đã gửi" | "đã nhận" | "đã xem">(
+        "đã gửi"
     );
+    const { onlineUsers } = useSocketStore();
+    const { user } = useAuthStore();
 
     const messages = allMessages[activeConversationId!]?.items ?? [];
     const reversedMessages = [...messages].reverse();
@@ -27,6 +32,8 @@ const ChatWindowBody = () => {
 
     const pinnedMessages = messages.filter(m => m.isPinned);
     const latestPinnedMessage = pinnedMessages[pinnedMessages.length - 1];
+
+    const activeTypingUsers = (activeConversationId ? typingUsers[activeConversationId] : []) || [];
 
     // ref
     const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -40,9 +47,18 @@ const ChatWindowBody = () => {
         }
 
         const seenBy = selectedConvo?.seenBy ?? [];
-
-        setLastMessageStatus(seenBy.length > 0 ? "seen" : "delivered");
-    }, [selectedConvo]);
+        
+        if (seenBy.length > 0) {
+            setLastMessageStatus("đã xem");
+        } else {
+            const otherParticipants = selectedConvo?.participants?.filter(p => p._id !== user?._id && (p as any).userId?._id !== user?._id) || [];
+            const isAnyOnline = otherParticipants.some(p => {
+                const pId = (p as any).userId?._id || p._id;
+                return onlineUsers.includes(pId) || p.presenceStatus === "online" || (p as any).userId?.presenceStatus === "online";
+            });
+            setLastMessageStatus(isAnyOnline ? "đã nhận" : "đã gửi");
+        }
+    }, [selectedConvo, onlineUsers, user]);
 
     // kéo xuống dưới khi load convo
     useLayoutEffect(() => {
@@ -179,6 +195,21 @@ const ChatWindowBody = () => {
                 className="flex-1 w-full flex flex-col-reverse overflow-y-auto overflow-x-hidden beautiful-scrollbar z-10"
             >
                 <div ref={messagesEndRef}></div>
+                
+                {activeTypingUsers.map((typingUserId) => {
+                    const typingUser = selectedConvo?.participants.find(p => p._id === typingUserId);
+                    if (!typingUser) return null;
+                    return (
+                        <div key={typingUserId} className="flex items-end mb-2 mt-1 opacity-70 transition-opacity justify-start w-full">
+                            <div className="bg-muted p-3 rounded-2xl rounded-bl-sm w-fit flex gap-1.5 items-center h-[38px] ml-10">
+                                <span className="size-1.5 bg-foreground/50 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                                <span className="size-1.5 bg-foreground/50 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                                <span className="size-1.5 bg-foreground/50 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                            </div>
+                        </div>
+                    );
+                })}
+
                 <InfiniteScroll
                     dataLength={messages.length}
                     next={fetchMoreMessages}

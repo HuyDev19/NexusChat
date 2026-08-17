@@ -2,6 +2,11 @@ export interface Participant {
   _id: string;
   displayName: string;
   avatarUrl?: string | null;
+  coverUrl?: string | null;
+  note?: {
+    content: string;
+    expiresAt: string | null;
+  };
   presenceStatus?: 'online' | 'offline' | 'busy';
   joinedAt: string;
   role?: 'leader' | 'member';
@@ -41,6 +46,10 @@ export interface Conversation {
   lastMessage: LastMessage | null;
   unreadCounts: Record<string, number>; // key = userId, value = unread count
   wallpaper?: string;
+  streak?: {
+    count: number;
+    lastMessageDate: string;
+  };
   nicknames?: Record<string, string>;
   createdAt: string;
   updatedAt: string;

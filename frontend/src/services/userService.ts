@@ -12,6 +12,21 @@ export const userService = {
 
     return res.data;
   },
+  uploadCover: async (formData: FormData) => {
+    const res = await api.post("/users/uploadCover", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+
+    if (res.status === 400) {
+      throw new Error(res.data.message);
+    }
+
+    return res.data;
+  },
+  updateNote: async (content: string, expiresInHours?: number) => {
+    const res = await api.put("/users/note", { content, expiresInHours });
+    return res.data;
+  },
   updateProfile: async (data: { displayName?: string; phone?: string; bio?: string }) => {
     const res = await api.put("/users/me", data);
     return res.data;

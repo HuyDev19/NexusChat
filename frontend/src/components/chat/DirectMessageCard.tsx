@@ -7,6 +7,7 @@ import UserAvatar from "./UserAvatar";
 import StatusBadge from "./StatusBadge";
 import UnreadCountBadge from "./UnreadCountBadge";
 import { useSocketStore } from "@/stores/useSocketStore";
+import { Flame } from "lucide-react";
 
 const DirectMessageCard = ({ convo }: { convo: Conversation }) => {
   const { user } = useAuthStore();
@@ -48,6 +49,8 @@ const DirectMessageCard = ({ convo }: { convo: Conversation }) => {
             type="sidebar"
             name={otherUser.displayName ?? ""}
             avatarUrl={otherUser.avatarUrl ?? undefined}
+            note={otherUser.note?.content}
+            userId={otherUser._id}
           />
           <StatusBadge
             status={
@@ -70,6 +73,19 @@ const DirectMessageCard = ({ convo }: { convo: Conversation }) => {
         >
           {lastMessage}
         </p>
+      }
+      rightSection={
+        convo.streak && convo.streak.count >= 1 ? (
+          <div className="flex items-center gap-0.5">
+            <Flame 
+              className={cn(
+                "size-4 transition-colors", 
+                convo.streak.count >= 2 ? "text-red-500 fill-red-500" : "text-muted-foreground fill-muted-foreground"
+              )} 
+            />
+            <span className="text-xs font-bold text-muted-foreground">{convo.streak.count}</span>
+          </div>
+        ) : null
       }
     />
   );

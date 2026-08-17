@@ -31,6 +31,7 @@ interface ChatCardProps {
   unreadCount?: number;
   leftSection: React.ReactNode;
   subtitle: React.ReactNode;
+  rightSection?: React.ReactNode;
 }
 
 const ChatCard = ({
@@ -42,6 +43,7 @@ const ChatCard = ({
   unreadCount,
   leftSection,
   subtitle,
+  rightSection,
   isGroup,
   isLeader,
 }: ChatCardProps) => {
@@ -82,9 +84,12 @@ const ChatCard = ({
                 {name}
               </h3>
 
-              <span className="text-xs text-muted-foreground">
-                {timestamp ? formatOnlineTime(timestamp) : ""}
-              </span>
+              <div className="flex flex-col items-end gap-1">
+                <span className="text-xs text-muted-foreground">
+                  {timestamp ? formatOnlineTime(timestamp) : ""}
+                </span>
+                {rightSection}
+              </div>
             </div>
 
             <div className="flex items-center justify-between">

@@ -4,6 +4,12 @@ export interface User {
   email: string;
   displayName: string;
   avatarUrl?: string;
+  coverUrl?: string;
+  coverId?: string;
+  note?: {
+    content: string;
+    expiresAt: string | null;
+  };
   bio?: string;
   phone?: string;
   presenceStatus?: 'online' | 'offline' | 'busy';

@@ -15,16 +15,8 @@ import { Input } from "../ui/input";
 import { Button } from "../ui/button";
 import { userService } from "@/services/userService";
 import { toast } from "sonner";
-import { Settings, Image as ImageIcon, CaseSensitive, Ban } from "lucide-react";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import WallpaperModal from "./WallpaperModal";
-import NicknameModal from "./NicknameModal";
-import GroupSettingsModal from "./GroupSettingsModal";
+import { Settings, Ban, Flame } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 const ChatWindowHeader = ({ chat }: { chat?: Conversation }) => {
   const { conversations, activeConversationId } = useChatStore();
@@ -59,23 +51,9 @@ const ChatWindowHeader = ({ chat }: { chat?: Conversation }) => {
   };
 
   const [showLockDialog, setShowLockDialog] = useState(false);
-  const [showWallpaperModal, setShowWallpaperModal] = useState(false);
-  const [showNicknameModal, setShowNicknameModal] = useState(false);
-  const [showGroupSettings, setShowGroupSettings] = useState(false);
   const [newPin, setNewPin] = useState("");
-  const { fetchMe, blockUser, unblockUser } = useAuthStore();
+  const { fetchMe } = useAuthStore();
   const { unlockConversation } = useChatStore();
-
-  const isBlocked = user?.blockedUsers?.includes(otherUser?._id as string);
-
-  const handleBlockUser = async () => {
-    if (!otherUser) return;
-    if (isBlocked) {
-      await unblockUser(otherUser._id);
-    } else {
-      await blockUser(otherUser._id);
-    }
-  };
 
   const getDisplayName = (userObj: any) => {
     if (!userObj) return "Unknown";
@@ -122,14 +100,21 @@ const ChatWindowHeader = ({ chat }: { chat?: Conversation }) => {
                   className="cursor-pointer hover:opacity-80 transition-opacity"
                   onClick={() => {
                     import("@/stores/useProfileStore").then((mod) => {
-                      mod.useProfileStore.getState().openProfile(otherUser?._id ?? "");
+                      const state = mod.useProfileStore.getState();
+                      if (state.isOpen && state.mode === "chat") {
+                        state.closeProfile();
+                      } else {
+                        state.openChatDetails(chat?.type === "direct" ? otherUser?._id : undefined);
+                      }
                     });
                   }}
                 >
                   <UserAvatar
                     type={"sidebar"}
-                    name={getDisplayName(otherUser)}
-                    avatarUrl={otherUser?.avatarUrl || undefined}
+                    name={chat?.nicknames?.[otherUser?._id] || otherUser.displayName || ""}
+                    avatarUrl={otherUser.avatarUrl ?? undefined}
+                    note={otherUser.note?.content}
+                    userId={otherUser._id}
                   />
                   <StatusBadge
                     status={
@@ -142,21 +127,48 @@ const ChatWindowHeader = ({ chat }: { chat?: Conversation }) => {
                   />
                 </div>
               ) : (
-                <GroupChatAvatar
-                  participants={chat.participants || []}
-                  type="sidebar"
-                  groupAvatar={chat.group?.avatar}
-                  groupName={chat.group?.name}
-                />
+                <div 
+                  className="cursor-pointer hover:opacity-80 transition-opacity"
+                  onClick={() => {
+                    import("@/stores/useProfileStore").then((mod) => {
+                      const state = mod.useProfileStore.getState();
+                      if (state.isOpen && state.mode === "chat") {
+                        state.closeProfile();
+                      } else {
+                        state.openChatDetails(chat?.type === "direct" ? otherUser?._id : undefined);
+                      }
+                    });
+                  }}
+                >
+                  <GroupChatAvatar
+                    participants={chat.participants || []}
+                    type="sidebar"
+                    groupAvatar={chat.group?.avatar}
+                    groupName={chat.group?.name}
+                  />
+                </div>
               )}
             </div>
 
-            {/* name */}
-            <h2 className="font-semibold text-foreground truncate">
-              {chat.type === "direct" ? getDisplayName(otherUser) : chat.group?.name}
-            </h2>
+            {/* name & streak */}
+            <div className="flex items-center gap-2">
+              <h2 className="font-semibold text-foreground truncate max-w-[200px]">
+                {chat.type === "direct" ? getDisplayName(otherUser) : chat.group?.name}
+              </h2>
+              {chat.type === "direct" && chat.streak && chat.streak.count >= 1 && (
+                <div className="flex items-center gap-0.5" title={`${chat.streak.count} ngày liên tiếp`}>
+                  <Flame 
+                    className={cn(
+                      "size-5 transition-colors", 
+                      chat.streak.count >= 2 ? "text-red-500 fill-red-500" : "text-muted-foreground fill-muted-foreground"
+                    )} 
+                  />
+                  <span className="text-sm font-bold text-muted-foreground">{chat.streak.count}</span>
+                </div>
+              )}
+            </div>
+            </div>
           </div>
-        </div>
 
         {/* Call Actions */}
         {!activeCall && (
@@ -184,51 +196,9 @@ const ChatWindowHeader = ({ chat }: { chat?: Conversation }) => {
             >
               <Video size={20} />
             </button>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button
-                  className="p-2 rounded-full hover:bg-accent text-muted-foreground hover:text-foreground transition-colors duration-200"
-                  title="Tùy chỉnh"
-                >
-                  <Settings size={20} />
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => setShowWallpaperModal(true)} className="cursor-pointer gap-2">
-                  <ImageIcon className="size-4" />
-                  Đổi hình nền
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setShowNicknameModal(true)} className="cursor-pointer gap-2">
-                  <CaseSensitive className="size-4" />
-                  Đổi biệt danh
-                </DropdownMenuItem>
-                {chat.type === "direct" && (
-                  <DropdownMenuItem onClick={handleBlockUser} className={isBlocked ? "cursor-pointer gap-2 text-green-500 hover:text-green-600 focus:text-green-600 focus:bg-green-50" : "cursor-pointer gap-2 text-red-500 hover:text-red-600 focus:text-red-600 focus:bg-red-50"}>
-                    <Ban className="size-4" />
-                    {isBlocked ? "Bỏ chặn người dùng" : "Chặn người dùng"}
-                  </DropdownMenuItem>
-                )}
-                {chat.type === "group" && (
-                  <DropdownMenuItem onClick={() => setShowGroupSettings(true)} className="cursor-pointer gap-2">
-                    <Settings className="size-4" />
-                    Cài đặt nhóm
-                  </DropdownMenuItem>
-                )}
-              </DropdownMenuContent>
-            </DropdownMenu>
           </div>
         )}
       </div>
-
-      {chat && (
-        <>
-          <WallpaperModal open={showWallpaperModal} onOpenChange={setShowWallpaperModal} conversationId={chat._id} />
-          <NicknameModal open={showNicknameModal} onOpenChange={setShowNicknameModal} conversation={chat} />
-          {chat.type === "group" && (
-            <GroupSettingsModal open={showGroupSettings} onOpenChange={setShowGroupSettings} conversation={chat} />
-          )}
-        </>
-      )}
 
       <Dialog open={showLockDialog} onOpenChange={setShowLockDialog}>
         <DialogContent>

@@ -13,6 +13,7 @@ export const useChatStore = create<ChatState>()(
       messages: {},
       activeConversationId: null,
       unlockedConversations: [],
+      typingUsers: {},
       convoLoading: false, // convo loading
       messageLoading: false,
       loading: false,
@@ -24,6 +25,7 @@ export const useChatStore = create<ChatState>()(
           messages: {},
           activeConversationId: null,
           unlockedConversations: [],
+          typingUsers: {},
           convoLoading: false,
           messageLoading: false,
         });
@@ -352,13 +354,18 @@ export const useChatStore = create<ChatState>()(
               participants: c.participants.map(p => 
                 p._id === updatedUser._id ? { ...p, displayName: updatedUser.displayName || p.displayName, avatarUrl: updatedUser.avatarUrl ?? p.avatarUrl } : p
               ),
-              lastMessage: c.lastMessage && c.lastMessage.sender._id === updatedUser._id ? {
+              lastMessage: c.lastMessage ? {
                 ...c.lastMessage,
-                sender: {
+                sender: c.lastMessage.sender && c.lastMessage.sender._id === updatedUser._id ? {
                   ...c.lastMessage.sender,
                   displayName: updatedUser.displayName || c.lastMessage.sender.displayName,
                   avatarUrl: updatedUser.avatarUrl ?? c.lastMessage.sender.avatarUrl,
-                }
+                } : c.lastMessage.sender,
+                senderId: c.lastMessage.senderId && c.lastMessage.senderId._id === updatedUser._id ? {
+                  ...c.lastMessage.senderId,
+                  displayName: updatedUser.displayName || c.lastMessage.senderId.displayName,
+                  avatarUrl: updatedUser.avatarUrl ?? c.lastMessage.senderId.avatarUrl,
+                } : c.lastMessage.senderId
               } : c.lastMessage
             };
           })
@@ -425,6 +432,25 @@ export const useChatStore = create<ChatState>()(
           console.error("Lỗi khi cập nhật hình nền:", error);
           toast.error("Không thể cập nhật hình nền.");
         }
+      },
+      setTypingStatus: (conversationId, userId, isTyping) => {
+        set((state) => {
+          const currentTyping = state.typingUsers[conversationId] || [];
+          let newTyping = [...currentTyping];
+
+          if (isTyping && !newTyping.includes(userId)) {
+            newTyping.push(userId);
+          } else if (!isTyping) {
+            newTyping = newTyping.filter((id) => id !== userId);
+          }
+
+          return {
+            typingUsers: {
+              ...state.typingUsers,
+              [conversationId]: newTyping,
+            },
+          };
+        });
       },
       updateNickname: async (conversationId, targetUserId, nickname) => {
         try {
@@ -585,7 +611,18 @@ export const useChatStore = create<ChatState>()(
           toast.error(error.response?.data?.message || "Lỗi bình chọn");
         }
       },
-
+      updateParticipantData: (updatedUser) => {
+        set((state) => ({
+          conversations: state.conversations.map((c) => ({
+            ...c,
+            participants: c.participants?.map((p) => 
+              p._id === updatedUser._id || (p as any).userId?._id === updatedUser._id 
+                ? { ...p, ...updatedUser } 
+                : p
+            ),
+          })),
+        }));
+      },
     }),
     {
       name: "chat-storage",

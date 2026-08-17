@@ -7,6 +7,7 @@ import { Input } from "../ui/input";
 import EmojiPicker from "./EmojiPicker";
 import CreatePollModal from "./CreatePollModal";
 import { useChatStore } from "@/stores/useChatStore";
+import { useSocketStore } from "@/stores/useSocketStore";
 import { toast } from "sonner";
 import {
   DropdownMenu,
@@ -19,7 +20,7 @@ import { Timer, EyeOff, Ban } from "lucide-react";
 const MessageInput = ({ selectedConvo }: { selectedConvo: Conversation }) => {
   const { user } = useAuthStore();
   const { sendDirectMessage, sendGroupMessage, uploadAudio, uploadImage } = useChatStore();
-  
+
   let isBlocked = false;
   if (selectedConvo.type === "direct") {
     const participants = selectedConvo.participants || [];
@@ -29,7 +30,7 @@ const MessageInput = ({ selectedConvo }: { selectedConvo: Conversation }) => {
     }
   }
   const [value, setValue] = useState("");
-  
+
   const [isRecording, setIsRecording] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
   const [isSendingMedia, setIsSendingMedia] = useState(false);
@@ -41,6 +42,9 @@ const MessageInput = ({ selectedConvo }: { selectedConvo: Conversation }) => {
   const [expiresIn, setExpiresIn] = useState<number | undefined>(undefined);
   const [isViewOnce, setIsViewOnce] = useState(false);
   const [showPollModal, setShowPollModal] = useState(false);
+  
+  const { emitTypingStart, emitTypingEnd } = useSocketStore();
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     return () => {
@@ -59,16 +63,18 @@ const MessageInput = ({ selectedConvo }: { selectedConvo: Conversation }) => {
     if (!value.trim() && !audioBlob && !imageFile) return;
     const currValue = value;
     setValue("");
+    const participantIds = selectedConvo.participants.map(p => p._id);
+    emitTypingEnd(selectedConvo._id, participantIds);
 
     try {
       setIsSendingMedia(true);
       let audioUrl = undefined;
       let imgUrl = undefined;
-      
+
       if (audioBlob) {
         audioUrl = await uploadAudio(audioBlob);
       }
-      
+
       if (imageFile) {
         imgUrl = await uploadImage(imageFile);
       }
@@ -132,7 +138,7 @@ const MessageInput = ({ selectedConvo }: { selectedConvo: Conversation }) => {
       mediaRecorder.start();
       setIsRecording(true);
       setRecordingTime(0);
-      
+
       timerRef.current = setInterval(() => {
         setRecordingTime(prev => prev + 1);
       }, 1000);
@@ -236,7 +242,15 @@ const MessageInput = ({ selectedConvo }: { selectedConvo: Conversation }) => {
             <Input
               onKeyPress={handleKeyPress}
               value={value}
-              onChange={(e) => setValue(e.target.value)}
+              onChange={(e) => {
+                setValue(e.target.value);
+                const participantIds = selectedConvo.participants.map(p => p._id);
+                emitTypingStart(selectedConvo._id, participantIds);
+                if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+                typingTimeoutRef.current = setTimeout(() => {
+                  emitTypingEnd(selectedConvo._id, participantIds);
+                }, 2000);
+              }}
               placeholder="Soạn tin nhắn..."
               className="pr-20 h-9 bg-white border-border/50 focus:border-primary/50 transition-smooth resize-none"
               disabled={isSendingMedia}
@@ -298,10 +312,10 @@ const MessageInput = ({ selectedConvo }: { selectedConvo: Conversation }) => {
         </Button>
       )}
 
-      <CreatePollModal 
-        open={showPollModal} 
-        onOpenChange={setShowPollModal} 
-        onCreatePoll={handleCreatePoll} 
+      <CreatePollModal
+        open={showPollModal}
+        onOpenChange={setShowPollModal}
+        onCreatePoll={handleCreatePoll}
       />
     </div>
   );

@@ -31,6 +31,16 @@ const userSchema = new mongoose.Schema(
     avatarId: {
       type: String, // Cloudinary public_id để xoá hình
     },
+    coverUrl: {
+      type: String, // link CDN ảnh bìa
+    },
+    coverId: {
+      type: String, // ID để xoá ảnh bìa
+    },
+    note: {
+      content: { type: String, maxlength: 60, default: "" },
+      expiresAt: { type: Date, default: null }
+    },
     bio: {
       type: String,
       maxlength: 500, // tuỳ

@@ -39,6 +39,7 @@ const PersonalInfoForm = ({ userInfo }: Props) => {
     displayName: "",
     phone: "",
     bio: "",
+    noteContent: "",
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -49,6 +50,7 @@ const PersonalInfoForm = ({ userInfo }: Props) => {
         displayName: userInfo.displayName || "",
         phone: userInfo.phone || "",
         bio: userInfo.bio || "",
+        noteContent: userInfo.note?.content || "",
       });
     }
   }, [userInfo]);
@@ -64,7 +66,15 @@ const PersonalInfoForm = ({ userInfo }: Props) => {
 
   const handleSubmit = async () => {
     setIsSubmitting(true);
-    await updateProfile(formData);
+    await updateProfile({
+      displayName: formData.displayName,
+      phone: formData.phone,
+      bio: formData.bio,
+    });
+    // Update note separately
+    if (formData.noteContent !== (userInfo.note?.content || "")) {
+      await useUserStore.getState().updateNote(formData.noteContent, 24);
+    }
     setIsSubmitting(false);
   };
 
@@ -98,20 +108,39 @@ const PersonalInfoForm = ({ userInfo }: Props) => {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="bio">Giới thiệu</Label>
+          <Label htmlFor="bio">Tiểu sử</Label>
           <Textarea
             id="bio"
-            rows={3}
             value={formData.bio}
             onChange={handleChange}
-            className="glass-light border-border/30 resize-none"
+            className="resize-none glass-light border-border/30"
+            rows={3}
+            maxLength={150}
           />
+          <p className="text-xs text-muted-foreground text-right">
+            {formData.bio.length}/150
+          </p>
         </div>
 
-        <Button 
-          onClick={handleSubmit} 
+        <div className="space-y-2">
+          <Label htmlFor="noteContent">Ghi chú trạng thái (Cloud Note)</Label>
+          <Input
+            id="noteContent"
+            value={formData.noteContent}
+            onChange={handleChange}
+            placeholder="Đang nghĩ gì..."
+            className="glass-light border-border/30"
+            maxLength={60}
+          />
+          <p className="text-xs text-muted-foreground text-right">
+            Sẽ biến mất sau 24 giờ
+          </p>
+        </div>
+
+        <Button
+          onClick={handleSubmit}
           disabled={isSubmitting}
-          className="w-full md:w-auto bg-gradient-primary hover:opacity-90 transition-opacity"
+          className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
         >
           {isSubmitting ? "Đang lưu..." : "Lưu thay đổi"}
         </Button>

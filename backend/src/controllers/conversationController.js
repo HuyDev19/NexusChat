@@ -59,18 +59,20 @@ export const createConversation = async (req, res) => {
     }
 
     await conversation.populate([
-      { path: "participants.userId", select: "displayName avatarUrl presenceStatus" },
+      { path: "participants.userId", select: "displayName avatarUrl coverUrl note presenceStatus" },
       {
         path: "seenBy",
-        select: "displayName avatarUrl",
+        select: "displayName avatarUrl coverUrl note",
       },
-      { path: "lastMessage.senderId", select: "displayName avatarUrl presenceStatus" },
+      { path: "lastMessage.senderId", select: "displayName avatarUrl coverUrl note" },
     ]);
 
     const formattedParticipants = (conversation.participants || []).map((p) => ({
       _id: p.userId?._id,
       displayName: p.userId?.displayName,
       avatarUrl: p.userId?.avatarUrl ?? null,
+      coverUrl: p.userId?.coverUrl ?? null,
+      note: p.userId?.note,
       presenceStatus: p.userId?.presenceStatus ?? 'online',
       joinedAt: p.joinedAt,
       role: p.role,
@@ -107,15 +109,15 @@ export const getConversations = async (req, res) => {
       .sort({ lastMessageAt: -1, updatedAt: -1 })
       .populate({
         path: "participants.userId",
-        select: "displayName avatarUrl presenceStatus",
+        select: "displayName avatarUrl coverUrl note presenceStatus",
       })
       .populate({
         path: "lastMessage.senderId",
-        select: "displayName avatarUrl presenceStatus",
+        select: "displayName avatarUrl coverUrl note",
       })
       .populate({
         path: "seenBy",
-        select: "displayName avatarUrl",
+        select: "displayName avatarUrl coverUrl note",
       });
 
     const formatted = conversations.map((convo) => {
@@ -123,6 +125,8 @@ export const getConversations = async (req, res) => {
         _id: p.userId?._id,
         displayName: p.userId?.displayName,
         avatarUrl: p.userId?.avatarUrl ?? null,
+        coverUrl: p.userId?.coverUrl ?? null,
+        note: p.userId?.note,
         presenceStatus: p.userId?.presenceStatus ?? 'online',
         joinedAt: p.joinedAt,
         role: p.role,
@@ -230,13 +234,17 @@ export const markConversationAsSeen = async (req, res) => {
       return res.status(403).json({ message: "Bạn không ở trong cuộc trò chuyện này" });
     }
 
-    await Conversation.updateOne(
-      { _id: conversationId },
+    const updatedConversation = await Conversation.findByIdAndUpdate(
+      conversationId,
       {
         $addToSet: { seenBy: userId },
         $set: { [`unreadCounts.${userId}`]: 0 }
-      }
-    );
+      },
+      { new: true }
+    ).populate({
+        path: "lastMessage.senderId",
+        select: "displayName avatarUrl coverUrl note",
+      });
 
     // Start disappearing messages timer
     const expiringMessages = await Message.find({
@@ -261,6 +269,17 @@ export const markConversationAsSeen = async (req, res) => {
           });
         });
       }
+    }
+    
+    if (io && updatedConversation) {
+      updatedConversation.participants.forEach((p) => {
+        if (p.userId.toString() !== userId.toString()) {
+          io.to(`user:${p.userId}`).emit("read-message", {
+            conversation: updatedConversation,
+            lastMessage: updatedConversation.lastMessage,
+          });
+        }
+      });
     }
 
     return res.status(200).json({ message: "Đã đánh dấu là đã xem" });
@@ -384,11 +403,13 @@ export const addGroupMembers = async (req, res) => {
 
     await conversation.save();
 
-    await conversation.populate("participants.userId", "displayName avatarUrl presenceStatus");
+    await conversation.populate("participants.userId", "displayName avatarUrl coverUrl note presenceStatus");
     const formattedParticipants = conversation.participants.map(p => ({
       _id: p.userId?._id,
       displayName: p.userId?.displayName,
       avatarUrl: p.userId?.avatarUrl ?? null,
+      coverUrl: p.userId?.coverUrl ?? null,
+      note: p.userId?.note,
       presenceStatus: p.userId?.presenceStatus ?? 'online',
       joinedAt: p.joinedAt,
       role: p.role,
@@ -436,11 +457,13 @@ export const removeGroupMember = async (req, res) => {
     conversation.participants = conversation.participants.filter(p => p.userId.toString() !== memberId.toString());
     await conversation.save();
 
-    await conversation.populate("participants.userId", "displayName avatarUrl presenceStatus");
+    await conversation.populate("participants.userId", "displayName avatarUrl coverUrl note presenceStatus");
     const formattedParticipants = conversation.participants.map(p => ({
       _id: p.userId?._id,
       displayName: p.userId?.displayName,
       avatarUrl: p.userId?.avatarUrl ?? null,
+      coverUrl: p.userId?.coverUrl ?? null,
+      note: p.userId?.note,
       presenceStatus: p.userId?.presenceStatus ?? 'online',
       joinedAt: p.joinedAt,
       role: p.role,
@@ -481,11 +504,13 @@ export const updateGroupRole = async (req, res) => {
 
     await conversation.save();
 
-    await conversation.populate("participants.userId", "displayName avatarUrl presenceStatus");
+    await conversation.populate("participants.userId", "displayName avatarUrl coverUrl note presenceStatus");
     const formattedParticipants = conversation.participants.map(p => ({
       _id: p.userId?._id,
       displayName: p.userId?.displayName,
       avatarUrl: p.userId?.avatarUrl ?? null,
+      coverUrl: p.userId?.coverUrl ?? null,
+      note: p.userId?.note,
       presenceStatus: p.userId?.presenceStatus ?? 'online',
       joinedAt: p.joinedAt,
       role: p.role,
@@ -712,11 +737,13 @@ export const leaveGroup = async (req, res) => {
     if (io) {
       io.to(`user:${userId}`).emit("conversation:delete", { conversationId: id }); // Hide for leaving user
       if (conversation.participants.length > 0) {
-        await conversation.populate("participants.userId", "displayName avatarUrl presenceStatus");
+        await conversation.populate("participants.userId", "displayName avatarUrl coverUrl note presenceStatus");
         const formattedParticipants = conversation.participants.map(p => ({
           _id: p.userId?._id,
           displayName: p.userId?.displayName,
           avatarUrl: p.userId?.avatarUrl ?? null,
+          coverUrl: p.userId?.coverUrl ?? null,
+          note: p.userId?.note,
           presenceStatus: p.userId?.presenceStatus ?? 'online',
           joinedAt: p.joinedAt,
           role: p.role,

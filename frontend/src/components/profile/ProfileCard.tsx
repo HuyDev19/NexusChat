@@ -5,6 +5,7 @@ import { Badge } from "../ui/badge";
 import { cn } from "@/lib/utils";
 import { useSocketStore } from "@/stores/useSocketStore";
 import AvatarUploader from "./AvatarUploader";
+import CoverUploader from "./CoverUploader";
 
 interface ProfileCardProps {
     user: User | null;
@@ -18,14 +19,24 @@ const ProfileCard = ({ user }: ProfileCardProps) => {
     }
 
     return (
-        <Card className="overflow-hidden p-0 h-52 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500">
-            <CardContent className="mt-20 pb-8 flex flex-col sm:flex-row items-center sm:items-end gap-6">
+        <Card 
+            className="overflow-hidden p-0 h-52 relative bg-cover bg-center"
+            style={{ 
+                backgroundImage: user.coverUrl 
+                    ? `url(${user.coverUrl})` 
+                    : "linear-gradient(to right, #6366f1, #a855f7, #ec4899)" 
+            }}
+        >
+            <CoverUploader />
+            <div className="absolute inset-0 bg-black/30 pointer-events-none" />
+            <CardContent className="relative z-10 mt-20 pb-8 flex flex-col sm:flex-row items-center sm:items-end gap-6">
                 <div className="relative">
                     <UserAvatar
                         type="profile"
                         name={user.displayName}
                         avatarUrl={user.avatarUrl ?? undefined}
                         className="ring-4 ring-white shadow-lg"
+                        note={user.note?.content}
                     />
 
                     <AvatarUploader />

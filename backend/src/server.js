@@ -83,6 +83,26 @@ io.on("connection", (socket) => {
     }
   });
 
+  socket.on("typing-start", ({ conversationId, participantIds }) => {
+    if (conversationId && userId && Array.isArray(participantIds)) {
+      participantIds.forEach(pId => {
+        if (pId !== userId) {
+          socket.to(`user:${pId}`).emit("typing-start", { conversationId, userId });
+        }
+      });
+    }
+  });
+
+  socket.on("typing-end", ({ conversationId, participantIds }) => {
+    if (conversationId && userId && Array.isArray(participantIds)) {
+      participantIds.forEach(pId => {
+        if (pId !== userId) {
+          socket.to(`user:${pId}`).emit("typing-end", { conversationId, userId });
+        }
+      });
+    }
+  });
+
   // Đăng ký handlers cho cuộc gọi
   registerCallSocketHandlers(io, socket);
 
