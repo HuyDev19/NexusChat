@@ -86,7 +86,7 @@ const ConversationList = () => {
   const totalUnreadGroup = getUnreadCount("group");
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full min-h-0 overflow-hidden">
       {/* 3 Nút chuyển đổi Tab: All, Bạn bè, Nhóm */}
       <div className="px-2 py-1.5 mb-1">
         <div className="grid grid-cols-3 gap-1 p-1 bg-muted/40 backdrop-blur-sm rounded-xl border border-border/40">
@@ -162,7 +162,7 @@ const ConversationList = () => {
       </div>
 
       {/* Danh sách các đoạn chat */}
-      <div className="flex-1 overflow-y-auto p-2 space-y-2">
+      <div className="flex-1 overflow-y-auto beautiful-scrollbar p-2 space-y-2">
         {filteredConversations.length === 0 ? (
           <div className="p-6 text-center text-xs text-muted-foreground">
             {searchQuery?.trim()

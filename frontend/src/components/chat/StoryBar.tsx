@@ -99,7 +99,7 @@ const StoryBar = () => {
     <>
       <div className="w-full px-2 py-1.5 overflow-hidden">
         <div
-          className="flex items-start gap-3.5 overflow-x-auto no-scrollbar py-2 px-1 scroll-smooth"
+          className="flex items-start gap-3.5 overflow-x-auto beautiful-scrollbar pb-1.5 pt-1 px-1 scroll-smooth"
           onWheel={(e) => {
             if (e.deltaY !== 0) {
               e.currentTarget.scrollLeft += e.deltaY;

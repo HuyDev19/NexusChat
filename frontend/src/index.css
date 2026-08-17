@@ -294,9 +294,24 @@
     box-shadow: var(--shadow-bubble);
   }
 
-  /* Scrollbar */
+  /* ========================================================= */
+  /* Scrollbars: Floating, Integrated for Light & Dark        */
+  /* ========================================================= */
+
+  /* Utility classes */
   .beautiful-scrollbar {
-    @apply scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-transparent dark:scrollbar-thumb-slate-600;
+    scrollbar-width: thin;
+  }
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+  }
+
+  .no-scrollbar {
+    -ms-overflow-style: none !important;
+    scrollbar-width: none !important;
   }
 
   /* Animations */
@@ -422,4 +437,69 @@
   body {
     @apply bg-background text-foreground;
   }
+}
+
+/* ========================================================= */
+/* Custom Scrollbars: Top-Level Rules for Light & Dark Mode */
+/* ========================================================= */
+
+/* Chrome, Edge, Safari, Opera (Webkit) */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* Nền sáng (Light Mode): Tím mềm pastel dịu mắt */
+::-webkit-scrollbar-thumb {
+  background-color: rgba(147, 51, 234, 0.32);
+  background-clip: padding-box;
+  border: 1px solid transparent;
+  border-radius: 9999px;
+  transition: background-color 0.2s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(147, 51, 234, 0.68);
+}
+
+::-webkit-scrollbar-thumb:active {
+  background-color: rgba(126, 34, 206, 0.9);
+}
+
+/* Nền tối (Dark Mode): Tím phát sáng neon hiện đại */
+html.dark ::-webkit-scrollbar-thumb,
+.dark ::-webkit-scrollbar-thumb,
+.dark *::-webkit-scrollbar-thumb {
+  background-color: rgba(168, 85, 247, 0.38);
+  background-clip: padding-box;
+  border: 1px solid transparent;
+  border-radius: 9999px;
+}
+
+html.dark ::-webkit-scrollbar-thumb:hover,
+.dark ::-webkit-scrollbar-thumb:hover,
+.dark *::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(192, 132, 252, 0.8);
+  box-shadow: 0 0 8px rgba(168, 85, 247, 0.4);
+}
+
+html.dark ::-webkit-scrollbar-thumb:active,
+.dark ::-webkit-scrollbar-thumb:active,
+.dark *::-webkit-scrollbar-thumb:active {
+  background-color: rgba(216, 180, 254, 0.95);
+}
+
+/* Firefox Standard */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(147, 51, 234, 0.32) transparent;
+}
+
+html.dark *,
+.dark * {
+  scrollbar-color: rgba(168, 85, 247, 0.42) transparent;
 }

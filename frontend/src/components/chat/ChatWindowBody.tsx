@@ -139,7 +139,7 @@ const ChatWindowBody = () => {
 
     return (
         <div 
-            className={cn("p-4 bg-primary-foreground h-full flex flex-col overflow-hidden relative", wallpaperClass)}
+            className={cn("bg-primary-foreground h-full flex flex-col overflow-hidden relative", wallpaperClass)}
             style={wallpaperStyle}
         >
             {/* Background Overlay if image */}
@@ -148,51 +148,53 @@ const ChatWindowBody = () => {
             )}
             
             {pinnedMessages.length > 0 && (
-                <Popover>
-                    <PopoverTrigger asChild>
-                        <div className="z-20 bg-background/95 shadow-sm border-b px-4 py-2 flex items-center gap-3 cursor-pointer hover:bg-muted/50 transition-colors mb-2 rounded-md">
-                            <div className="shrink-0 p-1.5 bg-primary/10 text-primary rounded-full">
-                                <Pin className="size-4" />
-                            </div>
-                            <div className="flex-1 min-w-0 text-left">
-                                <div className="text-xs font-semibold text-primary">
-                                    {pinnedMessages.length > 1 ? `${pinnedMessages.length} tin nhắn đã ghim` : 'Tin nhắn đã ghim'}
+                <div className="px-4 pt-3 pb-1 z-20">
+                    <Popover>
+                        <PopoverTrigger asChild>
+                            <div className="bg-background/95 shadow-sm border px-4 py-2 flex items-center gap-3 cursor-pointer hover:bg-muted/50 transition-colors rounded-xl">
+                                <div className="shrink-0 p-1.5 bg-primary/10 text-primary rounded-full">
+                                    <Pin className="size-4" />
                                 </div>
-                                <div className="text-sm text-muted-foreground truncate">
-                                    {latestPinnedMessage?.audioUrl ? "🎵 Tin nhắn thoại" : latestPinnedMessage?.content}
-                                </div>
-                            </div>
-                        </div>
-                    </PopoverTrigger>
-                    <PopoverContent align="start" className="w-[calc(100vw-2rem)] sm:w-[400px] max-h-[60vh] overflow-y-auto p-2 z-50 ml-4 mt-1">
-                        <div className="space-y-2">
-                            {pinnedMessages.map((msg) => {
-                                const sender = selectedConvo?.participants.find(p => p._id === msg.senderId);
-                                return (
-                                    <div 
-                                        key={msg._id} 
-                                        onClick={() => scrollToMessage(msg._id)}
-                                        className="p-3 bg-muted/50 rounded-md hover:bg-muted cursor-pointer transition-colors"
-                                    >
-                                        <div className="text-xs font-semibold mb-1 text-primary">
-                                            {sender?.displayName || "Người dùng"}
-                                        </div>
-                                        <div className="text-sm break-words whitespace-pre-wrap">
-                                            {msg.audioUrl ? "🎵 Tin nhắn thoại" : msg.content}
-                                        </div>
+                                <div className="flex-1 min-w-0 text-left">
+                                    <div className="text-xs font-semibold text-primary">
+                                        {pinnedMessages.length > 1 ? `${pinnedMessages.length} tin nhắn đã ghim` : 'Tin nhắn đã ghim'}
                                     </div>
-                                );
-                            })}
-                        </div>
-                    </PopoverContent>
-                </Popover>
+                                    <div className="text-sm text-muted-foreground truncate">
+                                        {latestPinnedMessage?.audioUrl ? "🎵 Tin nhắn thoại" : latestPinnedMessage?.content}
+                                    </div>
+                                </div>
+                            </div>
+                        </PopoverTrigger>
+                        <PopoverContent align="start" className="w-[calc(100vw-2rem)] sm:w-[400px] max-h-[60vh] overflow-y-auto beautiful-scrollbar p-2 z-50 ml-4 mt-1">
+                            <div className="space-y-2">
+                                {pinnedMessages.map((msg) => {
+                                    const sender = selectedConvo?.participants.find(p => p._id === msg.senderId);
+                                    return (
+                                        <div 
+                                            key={msg._id} 
+                                            onClick={() => scrollToMessage(msg._id)}
+                                            className="p-3 bg-muted/50 rounded-md hover:bg-muted cursor-pointer transition-colors"
+                                        >
+                                            <div className="text-xs font-semibold mb-1 text-primary">
+                                                {sender?.displayName || "Người dùng"}
+                                            </div>
+                                            <div className="text-sm break-words whitespace-pre-wrap">
+                                                {msg.audioUrl ? "🎵 Tin nhắn thoại" : msg.content}
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </PopoverContent>
+                    </Popover>
+                </div>
             )}
             
             <div
                 id="scrollableDiv"
                 ref={containerRef}
                 onScroll={handleScrollSave}
-                className="flex-1 w-full flex flex-col-reverse overflow-y-auto overflow-x-hidden beautiful-scrollbar z-10"
+                className="flex-1 w-full flex flex-col-reverse overflow-y-auto overflow-x-hidden beautiful-scrollbar px-4 sm:px-6 py-3 z-10"
             >
                 <div ref={messagesEndRef}></div>
                 

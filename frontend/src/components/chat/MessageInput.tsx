@@ -36,6 +36,7 @@ const MessageInput = ({ selectedConvo }: { selectedConvo: Conversation }) => {
   const [isSendingMedia, setIsSendingMedia] = useState(false);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const chunksRef = useRef<BlobPart[]>([]);
   const timerRef = useRef<any>(null);
 
@@ -44,7 +45,11 @@ const MessageInput = ({ selectedConvo }: { selectedConvo: Conversation }) => {
   const [showPollModal, setShowPollModal] = useState(false);
   
   const { emitTypingStart, emitTypingEnd } = useSocketStore();
-  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    inputRef.current?.focus();
+  }, [selectedConvo._id]);
 
   useEffect(() => {
     return () => {
@@ -57,17 +62,25 @@ const MessageInput = ({ selectedConvo }: { selectedConvo: Conversation }) => {
 
   if (!user) return null;
 
-
-
   const sendMessage = async (audioBlob?: Blob, imageFile?: File) => {
     if (!value.trim() && !audioBlob && !imageFile) return;
-    const currValue = value;
-    setValue("");
+    const currValue = value.trim();
+    const isMedia = Boolean(audioBlob || imageFile);
+
+    // Xóa text ngay và giữ con trỏ chuột nháy liên tục trong ô input
+    if (!isMedia) {
+      setValue("");
+    }
+    inputRef.current?.focus();
+
     const participantIds = selectedConvo.participants.map(p => p._id);
     emitTypingEnd(selectedConvo._id, participantIds);
 
     try {
-      setIsSendingMedia(true);
+      if (isMedia) {
+        setIsSendingMedia(true);
+      }
+
       let audioUrl = undefined;
       let imgUrl = undefined;
 
@@ -82,16 +95,19 @@ const MessageInput = ({ selectedConvo }: { selectedConvo: Conversation }) => {
       if (selectedConvo.type === "direct") {
         const participants = selectedConvo.participants || [];
         const otherUser = participants.filter((p) => p._id !== user._id)[0];
-        await sendDirectMessage(otherUser._id, (!audioBlob && !imageFile) ? currValue : "", imgUrl, audioUrl, expiresIn, isViewOnce);
+        await sendDirectMessage(otherUser._id, isMedia ? "" : currValue, imgUrl, audioUrl, expiresIn, isViewOnce);
       } else {
-        await sendGroupMessage(selectedConvo._id, (!audioBlob && !imageFile) ? currValue : "", imgUrl, audioUrl, expiresIn, isViewOnce);
+        await sendGroupMessage(selectedConvo._id, isMedia ? "" : currValue, imgUrl, audioUrl, expiresIn, isViewOnce);
       }
     } catch (error: any) {
       console.error(error);
       toast.error(error.response?.data?.message || "Lỗi xảy ra khi gửi tin nhắn. Bạn hãy thử lại!");
     } finally {
-      setIsSendingMedia(false);
+      if (isMedia) {
+        setIsSendingMedia(false);
+      }
       setIsViewOnce(false);
+      inputRef.current?.focus();
     }
   };
 
@@ -105,6 +121,7 @@ const MessageInput = ({ selectedConvo }: { selectedConvo: Conversation }) => {
       toast.error(error.response?.data?.message || "Lỗi tạo bình chọn");
     } finally {
       setIsSendingMedia(false);
+      inputRef.current?.focus();
     }
   };
 
@@ -157,7 +174,7 @@ const MessageInput = ({ selectedConvo }: { selectedConvo: Conversation }) => {
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") {
+    if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       sendMessage();
     }
@@ -240,6 +257,7 @@ const MessageInput = ({ selectedConvo }: { selectedConvo: Conversation }) => {
         ) : (
           <>
             <Input
+              ref={inputRef}
               onKeyPress={handleKeyPress}
               value={value}
               onChange={(e) => {
@@ -252,8 +270,7 @@ const MessageInput = ({ selectedConvo }: { selectedConvo: Conversation }) => {
                 }, 2000);
               }}
               placeholder="Soạn tin nhắn..."
-              className="pr-20 h-9 bg-white border-border/50 focus:border-primary/50 transition-smooth resize-none"
-              disabled={isSendingMedia}
+              className="pr-20 h-9 bg-white dark:bg-background border-border/50 focus:border-primary/50 transition-smooth resize-none"
             />
             <div className="absolute right-2 top-1/2 transform -translate-y-1/2 flex items-center gap-1">
               <DropdownMenu>
@@ -268,10 +285,10 @@ const MessageInput = ({ selectedConvo }: { selectedConvo: Conversation }) => {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => setExpiresIn(undefined)}>Tắt</DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setExpiresIn(300)}>5 phút</DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setExpiresIn(3600)}>1 giờ</DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setExpiresIn(86400)}>24 giờ</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => { setExpiresIn(undefined); inputRef.current?.focus(); }}>Tắt</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => { setExpiresIn(300); inputRef.current?.focus(); }}>5 phút</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => { setExpiresIn(3600); inputRef.current?.focus(); }}>1 giờ</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => { setExpiresIn(86400); inputRef.current?.focus(); }}>24 giờ</DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
 
@@ -283,7 +300,10 @@ const MessageInput = ({ selectedConvo }: { selectedConvo: Conversation }) => {
               >
                 <div>
                   <EmojiPicker
-                    onChange={(emoji: string) => setValue(`${value}${emoji}`)}
+                    onChange={(emoji: string) => {
+                      setValue((prev) => `${prev}${emoji}`);
+                      setTimeout(() => inputRef.current?.focus(), 10);
+                    }}
                   />
                 </div>
               </Button>
@@ -304,6 +324,8 @@ const MessageInput = ({ selectedConvo }: { selectedConvo: Conversation }) => {
         </Button>
       ) : (
         <Button
+          type="button"
+          onMouseDown={(e) => e.preventDefault()}
           onClick={() => sendMessage()}
           className="bg-gradient-chat hover:shadow-glow transition-smooth hover:scale-105 shrink-0"
           disabled={isRecording || isSendingMedia || !value.trim()}

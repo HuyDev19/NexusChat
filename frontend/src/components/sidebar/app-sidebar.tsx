@@ -10,18 +10,14 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
-import { Moon, Sun } from "lucide-react";
-import { Switch } from "../ui/switch";
 import CreateNewChat from "../chat/CreateNewChat";
 import StoryBar from "../chat/StoryBar";
 import ConversationList from "../chat/ConversationList";
-import { useThemeStore } from "@/stores/useThemeStore";
 import { useAuthStore } from "@/stores/useAuthStore";
 import ConversationSkeleton from "../skeleton/ConversationSkeleton";
 import { useChatStore } from "@/stores/useChatStore";
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
-  const { isDark, toggleTheme } = useThemeStore();
   const { user } = useAuthStore();
   const { convoLoading } = useChatStore();
 
@@ -37,17 +33,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               className="bg-gradient-primary"
             >
               <a href="#">
-                <div className="flex w-full items-center px-2 justify-between">
+                <div className="flex w-full items-center px-2">
                   <h1 className="text-xl font-bold text-white">NexusChat</h1>
-                  <div className="flex items-center gap-2">
-                    <Sun className="size-4 text-white/80" />
-                    <Switch
-                      checked={isDark}
-                      onCheckedChange={toggleTheme}
-                      className="data-[state=checked]:bg-background/80"
-                    />
-                    <Moon className="size-4 text-white/80" />
-                  </div>
                 </div>
               </a>
             </SidebarMenuButton>
@@ -56,24 +43,24 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarHeader>
 
       {/* Content */}
-      <SidebarContent className="beautiful-scrollbar">
-        {/* 1. Search & Quick Actions */}
-        <SidebarGroup className="pb-0.5">
+      <SidebarContent className="overflow-hidden flex flex-col min-h-0 p-0 gap-0">
+        {/* 1. Search & Quick Actions (Fixed Top) */}
+        <SidebarGroup className="p-2 pb-1 shrink-0">
           <SidebarGroupContent>
             <CreateNewChat />
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {/* 2. Story / Status Notes Bar */}
-        <SidebarGroup className="py-0">
+        {/* 2. Story / Status Notes Bar (Fixed Top, Horizontal Only) */}
+        <SidebarGroup className="px-2 py-0 shrink-0">
           <SidebarGroupContent>
             <StoryBar />
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {/* 3. 3 Tabs (All, Bạn bè, Nhóm) & Unified Conversation List */}
-        <SidebarGroup className="pt-0 flex-1 flex flex-col">
-          <SidebarGroupContent className="flex-1 flex flex-col">
+        {/* 3. 3 Tabs (All, Bạn bè, Nhóm) & Unified Conversation List (Independent Scroll) */}
+        <SidebarGroup className="p-0 flex-1 min-h-0 flex flex-col overflow-hidden">
+          <SidebarGroupContent className="flex-1 min-h-0 flex flex-col overflow-hidden">
             {convoLoading ? <ConversationSkeleton /> : <ConversationList />}
           </SidebarGroupContent>
         </SidebarGroup>

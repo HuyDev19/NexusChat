@@ -104,31 +104,9 @@ export const getConversations = async (req, res) => {
   try {
     const userId = req.user._id;
 
-    // Đảm bảo kênh Cộng đồng NexusChat luôn sẵn sàng cho người dùng
-    let communityConvo = await Conversation.findOne({ type: "community" });
-    if (!communityConvo) {
-      communityConvo = new Conversation({
-        type: "community",
-        participants: [{ userId, role: "leader" }],
-        group: {
-          name: "Cộng đồng NexusChat 🌐",
-          description: "Kênh trò chuyện cộng đồng dành cho tất cả thành viên",
-        },
-        lastMessageAt: new Date(),
-      });
-      await communityConvo.save();
-    } else {
-      const isMember = communityConvo.participants.some(
-        (p) => p.userId && p.userId.toString() === userId.toString()
-      );
-      if (!isMember) {
-        communityConvo.participants.push({ userId, role: "member" });
-        await communityConvo.save();
-      }
-    }
-
     const conversations = await Conversation.find({
       "participants.userId": userId,
+      type: { $ne: "community" },
     })
       .sort({ lastMessageAt: -1, updatedAt: -1 })
       .populate({
@@ -225,7 +203,9 @@ export const getMessages = async (req, res) => {
 
     if (messages.length > Number(limit)) {
       const nextMessage = messages[messages.length - 1];
-      nextCursor = nextMessage.createdAt.toISOtring();
+      nextCursor = nextMessage.createdAt instanceof Date 
+        ? nextMessage.createdAt.toISOString() 
+        : new Date(nextMessage.createdAt).toISOString();
       messages.pop();
     }
 

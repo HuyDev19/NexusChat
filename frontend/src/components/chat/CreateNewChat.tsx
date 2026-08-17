@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { useFriendStore } from "@/stores/useFriendStore";
 import { useChatStore } from "@/stores/useChatStore";
-import { Search, X, Users, UserPlus, Archive, Edit3 } from "lucide-react";
+import { Search, X, Users, UserPlus, UsersRound, Archive, Edit3 } from "lucide-react";
 import FriendListModal from "../createNewChat/FriendListModal";
 import NewGroupChatModal from "./NewGroupChatModal";
+import AddFriendModal from "./AddFriendModal";
 import ArchivedChatsModal from "./ArchivedChatsModal";
 import { Input } from "../ui/input";
 import { Button } from "../ui/button";
@@ -20,6 +21,7 @@ const CreateNewChat = () => {
   const { getFriends } = useFriendStore();
   const { searchQuery, setSearchQuery, archivedConversations } = useChatStore();
 
+  const [showAddFriendModal, setShowAddFriendModal] = useState(false);
   const [showFriendModal, setShowFriendModal] = useState(false);
   const [showGroupModal, setShowGroupModal] = useState(false);
   const [showArchivedModal, setShowArchivedModal] = useState(false);
@@ -77,7 +79,25 @@ const CreateNewChat = () => {
           </DropdownMenuTrigger>
 
           <DropdownMenuContent align="end" className="w-60 rounded-2xl p-1.5 shadow-2xl">
-            {/* 1. Danh sách bạn bè / Nhắn tin mới */}
+            {/* 1. Kết bạn mới */}
+            <DropdownMenuItem
+              onClick={() => setShowAddFriendModal(true)}
+              className="cursor-pointer rounded-xl font-medium text-xs py-2"
+            >
+              <UserPlus className="w-4 h-4 mr-2.5 text-sky-400" />
+              <span>Kết bạn mới</span>
+            </DropdownMenuItem>
+
+            {/* 2. Tạo nhóm chat mới */}
+            <DropdownMenuItem
+              onClick={handleOpenGroupModal}
+              className="cursor-pointer rounded-xl font-medium text-xs py-2"
+            >
+              <UsersRound className="w-4 h-4 mr-2.5 text-emerald-400" />
+              <span>Tạo nhóm chat mới</span>
+            </DropdownMenuItem>
+
+            {/* 3. Danh sách bạn bè / Nhắn tin mới */}
             <DropdownMenuItem
               onClick={handleOpenFriendModal}
               className="cursor-pointer rounded-xl font-medium text-xs py-2"
@@ -86,18 +106,9 @@ const CreateNewChat = () => {
               <span>Danh sách bạn bè (Tên gốc)</span>
             </DropdownMenuItem>
 
-            {/* 2. Tạo nhóm chat mới */}
-            <DropdownMenuItem
-              onClick={handleOpenGroupModal}
-              className="cursor-pointer rounded-xl font-medium text-xs py-2"
-            >
-              <UserPlus className="w-4 h-4 mr-2.5 text-emerald-400" />
-              <span>Tạo nhóm chat mới</span>
-            </DropdownMenuItem>
-
             <DropdownMenuSeparator className="my-1" />
 
-            {/* 3. Tin nhắn đã lưu trữ */}
+            {/* 4. Tin nhắn đã lưu trữ */}
             <DropdownMenuItem
               onClick={() => setShowArchivedModal(true)}
               className="cursor-pointer rounded-xl font-medium text-xs py-2 flex items-center justify-between"
@@ -115,6 +126,9 @@ const CreateNewChat = () => {
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
+
+      {/* Modal Kết bạn mới */}
+      <AddFriendModal open={showAddFriendModal} onOpenChange={setShowAddFriendModal} />
 
       {/* Modal Danh sách bạn bè */}
       <Dialog open={showFriendModal} onOpenChange={setShowFriendModal}>

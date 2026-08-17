@@ -19,7 +19,16 @@ export interface IFormValues {
   message: string;
 }
 
-const AddFriendModal = () => {
+interface AddFriendModalProps {
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+}
+
+const AddFriendModal = ({ open, onOpenChange }: AddFriendModalProps) => {
+  const [internalOpen, setInternalOpen] = useState(false);
+  const isControlled = open !== undefined;
+  const showModal = isControlled ? open : internalOpen;
+
   const [isFound, setIsFound] = useState<boolean | null>(null);
   const [searchUser, setSearchUser] = useState<User>();
   const [searchedUsername, setSearchedUsername] = useState("");
@@ -36,6 +45,23 @@ const AddFriendModal = () => {
   });
 
   const usernameValue = watch("username");
+
+  const handleCancel = () => {
+    reset();
+    setSearchedUsername("");
+    setIsFound(null);
+  };
+
+  const handleOpenChange = (val: boolean) => {
+    if (isControlled) {
+      onOpenChange?.(val);
+    } else {
+      setInternalOpen(val);
+    }
+    if (!val) {
+      handleCancel();
+    }
+  };
 
   const handleSearch = handleSubmit(async (data) => {
     const username = data.username.trim();
@@ -66,6 +92,7 @@ const AddFriendModal = () => {
       toast.success(message);
 
       handleCancel();
+      handleOpenChange(false);
     } catch (error) {
       console.error("Lỗi xảy ra khi gửi request từ form", error);
       const errorMessage =
@@ -82,51 +109,46 @@ const AddFriendModal = () => {
     }
   });
 
-  const handleCancel = () => {
-    reset();
-    setSearchedUsername("");
-    setIsFound(null);
-  };
-
   return (
-    <Dialog>
-      <DialogTrigger asChild>
-        <div className="flex justify-center items-center size-5 rounded-full hover:bg-sidebar-accent cursor-pointer z-10">
-          <UserPlus className="size-4" />
-          <span className="sr-only">Kết bạn</span>
-        </div>
-      </DialogTrigger>
+    <Dialog open={showModal} onOpenChange={handleOpenChange}>
+      {!isControlled && (
+        <DialogTrigger asChild>
+          <div className="flex justify-center items-center size-5 rounded-full hover:bg-sidebar-accent cursor-pointer z-10">
+            <UserPlus className="size-4" />
+            <span className="sr-only">Kết bạn</span>
+          </div>
+        </DialogTrigger>
+      )}
 
-      <DialogContent className="sm:max-w-[425px] border-none">
+      <DialogContent className="sm:max-w-[425px] glass border-border/40">
         <DialogHeader>
-          <DialogTitle>Kết Bạn</DialogTitle>
+          <DialogTitle className="flex items-center gap-2 text-xl font-bold">
+            <UserPlus className="size-5 text-primary" />
+            Kết Bạn
+          </DialogTitle>
         </DialogHeader>
 
         {!isFound && (
-          <>
-            <SearchForm
-              register={register}
-              errors={errors}
-              usernameValue={usernameValue}
-              loading={loading}
-              isFound={isFound}
-              searchedUsername={searchedUsername}
-              onSubmit={handleSearch}
-              onCancel={handleCancel}
-            />
-          </>
+          <SearchForm
+            register={register}
+            errors={errors}
+            usernameValue={usernameValue}
+            loading={loading}
+            isFound={isFound}
+            searchedUsername={searchedUsername}
+            onSubmit={handleSearch}
+            onCancel={handleCancel}
+          />
         )}
 
         {isFound && (
-          <>
-            <SendFriendRequestForm
-              register={register}
-              loading={loading}
-              searchedUsername={searchedUsername}
-              onSubmit={handleSend}
-              onBack={() => setIsFound(null)}
-            />
-          </>
+          <SendFriendRequestForm
+            register={register}
+            loading={loading}
+            searchedUsername={searchedUsername}
+            onSubmit={handleSend}
+            onBack={() => setIsFound(null)}
+          />
         )}
       </DialogContent>
     </Dialog>
