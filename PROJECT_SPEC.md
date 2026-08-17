@@ -388,5 +388,3 @@ The signaling events should respect the following rules:
 - Do not remove fallback JWT decode on socket connection in `server.js`.
 - Do not bypass autoplay restrictions without warning. Ensure first-click user interactions are preserved.
 
-
-### test
