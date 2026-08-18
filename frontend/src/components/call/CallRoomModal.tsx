@@ -1,14 +1,34 @@
 import React, { useState } from "react";
 import { useCallStore } from "@/stores/useCallStore";
 import { useChatStore } from "@/stores/useChatStore";
-import { LiveKitRoom } from "@livekit/components-react";
+import { LiveKitRoom, RoomAudioRenderer, useParticipants } from "@livekit/components-react";
 import { Maximize2, Minimize2, PhoneOff } from "lucide-react";
 import "@livekit/components-styles";
+import { startRingtone, stopRingtone } from "../../utils/ringtone";
+import { useEffect } from "react";
 
 import CustomVideoGrid from "./CustomVideoGrid";
 import CustomControlBar from "./CustomControlBar";
 import ChatWindowBody from "../chat/ChatWindowBody";
 import MessageInput from "../chat/MessageInput";
+
+// Component con để phát nhạc chuông khi đang chờ người khác nghe máy
+const OutgoingCallRinger = () => {
+  const participants = useParticipants();
+  
+  useEffect(() => {
+    // Nếu chỉ có 1 người (chính mình) trong phòng -> đang chờ máy
+    if (participants.length === 1) {
+      startRingtone();
+    } else {
+      stopRingtone();
+    }
+    
+    return () => stopRingtone();
+  }, [participants.length]);
+
+  return null;
+};
 
 const CallRoomModal = () => {
   const { activeCall, endCall } = useCallStore();
@@ -120,6 +140,9 @@ const CallRoomModal = () => {
                 )}
               </div>
             )}
+            {/* Tự động phát âm thanh của mọi người trong phòng */}
+            <RoomAudioRenderer />
+            <OutgoingCallRinger />
           </LiveKitRoom>
         </div>
       </div>

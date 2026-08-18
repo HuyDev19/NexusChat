@@ -1,6 +1,6 @@
 import React from "react";
 import { Track } from "livekit-client";
-import { useIsSpeaking, useIsMuted, VideoTrack, AudioTrack } from "@livekit/components-react";
+import { useIsSpeaking, useIsMuted, VideoTrack } from "@livekit/components-react";
 import { MicOff } from "lucide-react";
 
 interface CustomParticipantTileProps {
@@ -64,9 +64,6 @@ const CustomParticipantTile: React.FC<CustomParticipantTileProps> = ({ trackRef 
           )}
         </div>
       )}
-
-      {/* Audio Track: Mọi user đều cần component này ẩn để phát tiếng */}
-      <AudioTrack trackRef={trackRef} />
 
       {/* Thông tin tên và trạng thái Mic */}
       <div className="absolute bottom-3 left-3 bg-black/60 text-white px-2 py-1 rounded-md text-xs font-medium flex items-center gap-1.5 backdrop-blur-sm z-10">

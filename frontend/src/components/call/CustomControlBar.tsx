@@ -1,6 +1,8 @@
 import React from "react";
 import { useLocalParticipant } from "@livekit/components-react";
-import { Mic, MicOff, Video, VideoOff, MonitorUp, MonitorOff, MessageSquare, PhoneOff } from "lucide-react";
+import { Mic, MicOff, Video, VideoOff, MonitorUp, MonitorOff, MessageSquare, PhoneOff, Settings } from "lucide-react";
+import DeviceSettingsModal from "./DeviceSettingsModal";
+import { useState } from "react";
 
 interface CustomControlBarProps {
   onEndCall: () => void;
@@ -10,6 +12,7 @@ interface CustomControlBarProps {
 
 const CustomControlBar: React.FC<CustomControlBarProps> = ({ onEndCall, onToggleChat, isChatOpen }) => {
   const { localParticipant, isMicrophoneEnabled, isCameraEnabled, isScreenShareEnabled } = useLocalParticipant();
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   const toggleMic = () => {
     localParticipant.setMicrophoneEnabled(!isMicrophoneEnabled);
@@ -72,6 +75,15 @@ const CustomControlBar: React.FC<CustomControlBarProps> = ({ onEndCall, onToggle
         <MessageSquare size={20} />
       </button>
 
+      {/* Nút Cài đặt thiết bị */}
+      <button
+        onClick={() => setIsSettingsOpen(true)}
+        className="w-12 h-12 flex items-center justify-center rounded-full bg-[#313338] hover:bg-[#3f4147] text-white transition-all"
+        title="Cài đặt thiết bị"
+      >
+        <Settings size={20} />
+      </button>
+
       {/* Nút Kết thúc cuộc gọi */}
       <button
         onClick={onEndCall}
@@ -80,6 +92,8 @@ const CustomControlBar: React.FC<CustomControlBarProps> = ({ onEndCall, onToggle
       >
         <PhoneOff size={22} />
       </button>
+
+      <DeviceSettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
     </div>
   );
 };

@@ -1,14 +1,11 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect } from "react";
 import { useCallStore } from "@/stores/useCallStore";
 import { Phone, PhoneOff, Video } from "lucide-react";
 import UserAvatar from "../chat/UserAvatar";
-
-// Sử dụng nhạc chuông tiêu chuẩn từ URL CDN công khai để test tiện lợi
-const RINGTONE_URL = "https://assets.mixkit.co/active_storage/sfx/1359/1359-84.wav";
+import { startRingtone, stopRingtone } from "../../utils/ringtone";
 
 const IncomingCallModal = () => {
   const { incomingCall, acceptCall, declineCall } = useCallStore();
-  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
     if (incomingCall) {
@@ -17,22 +14,13 @@ const IncomingCallModal = () => {
         Notification.requestPermission();
       }
 
-      // 2. Khởi tạo và phát nhạc chuông
-      const audio = new Audio(RINGTONE_URL);
-      audio.loop = true;
-      audioRef.current = audio;
-
-      audio.play().catch((err) => {
-        console.warn("Trình duyệt chặn tự động phát âm thanh chuông cho đến khi có tương tác đầu tiên của người dùng:", err);
-      });
+      // 2. Khởi tạo và phát nhạc chuông tổng hợp
+      startRingtone();
     }
 
     return () => {
       // Dọn dẹp âm thanh khi cúp máy hoặc nhấc máy (Modal unmount)
-      if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current = null;
-      }
+      stopRingtone();
     };
   }, [incomingCall]);
 
