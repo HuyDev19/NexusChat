@@ -70,12 +70,18 @@ export const useChatStore = create<ChatState>()(
           set({ convoLoading: true });
           const { conversations } = await chatService.fetchConversations();
 
+          const socket = useSocketStore.getState().socket;
+          if (socket) {
+            conversations.forEach((c: any) => socket.emit("join-conversation", c._id));
+          }
+
           set({ conversations, convoLoading: false });
         } catch (error) {
           console.error("Lỗi xảy ra khi fetchConversations:", error);
           set({ convoLoading: false });
         }
       },
+
       fetchMessages: async (conversationId) => {
         const { activeConversationId, messages } = get();
         const { user } = useAuthStore.getState();

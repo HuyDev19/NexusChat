@@ -23,7 +23,7 @@ const ChatWindowHeader = ({ chat }: { chat?: Conversation }) => {
   const { conversations, activeConversationId } = useChatStore();
   const { user } = useAuthStore();
   const { onlineUsers } = useSocketStore();
-  const { startCall, activeCall } = useCallStore();
+  const { startCall, activeCall, activeGroupCalls, joinExistingCall } = useCallStore();
 
   let otherUser: any = null;
 
@@ -210,31 +210,43 @@ const ChatWindowHeader = ({ chat }: { chat?: Conversation }) => {
 
         {/* Call Actions */}
         {!activeCall && (
-          <div className="flex items-center gap-1 sm:gap-2 pr-2 shrink-0">
-            {!isLocked && (
+          chat?.type !== 'direct' && chat?._id && activeGroupCalls[chat._id] ? (
+            <div className="pr-2 shrink-0">
               <button
-                onClick={() => setShowLockDialog(true)}
-                className="p-2 rounded-full hover:bg-accent text-muted-foreground hover:text-foreground transition-colors duration-200"
-                title="Khóa cuộc trò chuyện"
+                onClick={() => joinExistingCall(chat._id, activeGroupCalls[chat._id].roomName, activeGroupCalls[chat._id].isVideo)}
+                className="px-3 py-1.5 rounded-full bg-green-500 hover:bg-green-600 text-white font-medium text-sm flex items-center gap-1.5 transition-colors shadow-md animate-pulse"
               >
-                <LockIcon size={20} />
+                {activeGroupCalls[chat._id].isVideo ? <Video size={16} /> : <Phone size={16} />}
+                Tham gia
               </button>
-            )}
-            <button
-              onClick={() => handleStartCall(false)}
-              className="p-2 rounded-full hover:bg-accent text-muted-foreground hover:text-foreground transition-colors duration-200"
-              title="Bắt đầu cuộc gọi thoại"
-            >
-              <Phone size={20} />
-            </button>
-            <button
-              onClick={() => handleStartCall(true)}
-              className="p-2 rounded-full hover:bg-accent text-muted-foreground hover:text-foreground transition-colors duration-200"
-              title="Bắt đầu cuộc gọi video"
-            >
-              <Video size={20} />
-            </button>
-          </div>
+            </div>
+          ) : (
+            <div className="flex items-center gap-1 sm:gap-2 pr-2 shrink-0">
+              {!isLocked && (
+                <button
+                  onClick={() => setShowLockDialog(true)}
+                  className="p-2 rounded-full hover:bg-accent text-muted-foreground hover:text-foreground transition-colors duration-200"
+                  title="Khóa cuộc trò chuyện"
+                >
+                  <LockIcon size={20} />
+                </button>
+              )}
+              <button
+                onClick={() => handleStartCall(false)}
+                className="p-2 rounded-full hover:bg-accent text-muted-foreground hover:text-foreground transition-colors duration-200"
+                title="Bắt đầu cuộc gọi thoại"
+              >
+                <Phone size={20} />
+              </button>
+              <button
+                onClick={() => handleStartCall(true)}
+                className="p-2 rounded-full hover:bg-accent text-muted-foreground hover:text-foreground transition-colors duration-200"
+                title="Bắt đầu cuộc gọi video"
+              >
+                <Video size={20} />
+              </button>
+            </div>
+          )
         )}
       </div>
 

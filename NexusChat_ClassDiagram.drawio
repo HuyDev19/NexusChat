@@ -4,17 +4,24 @@
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
+        
+        <!-- Auth Swimlane -->
         <mxCell id="10" parent="1" style="swimlane;html=1;startSize=30;rounded=0;horizontal=1;fillColor=#f5f7ff;strokeColor=#5c6bc0;fontStyle=1;" value="Auth" vertex="1">
-          <mxGeometry height="330" width="420" x="20" y="20" as="geometry" />
+          <mxGeometry height="390" width="640" x="20" y="20" as="geometry" />
         </mxCell>
-        <mxCell id="11" parent="10" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#5c6bc0;align=left;verticalAlign=top;spacing=8;" value="User&#xa;----------------&#xa;+ _id: ObjectId&#xa;+ username: string&#xa;+ hashedPassword: string&#xa;+ email: string&#xa;+ displayName: string&#xa;+ avatarUrl: string&#xa;+ avatarId: string&#xa;+ bio: string&#xa;+ phone: string&#xa;+ createdAt: Date&#xa;+ updatedAt: Date" vertex="1">
-          <mxGeometry height="250" width="170" x="20" y="70" as="geometry" />
+        <mxCell id="11" parent="10" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#5c6bc0;align=left;verticalAlign=top;spacing=8;" value="User&#xa;----------------&#xa;+ _id: ObjectId&#xa;+ username: string&#xa;+ hashedPassword: string&#xa;+ email: string&#xa;+ displayName: string&#xa;+ avatarUrl: string&#xa;+ avatarId: string&#xa;+ coverUrl: string&#xa;+ coverId: string&#xa;+ note: Note&#xa;+ bio: string&#xa;+ phone: string&#xa;+ presenceStatus: string&#xa;+ lockedConversations: LockedConversation[]&#xa;+ blockedUsers: ObjectId[]&#xa;+ createdAt: Date&#xa;+ updatedAt: Date" vertex="1">
+          <mxGeometry height="340" width="220" x="20" y="40" as="geometry" />
         </mxCell>
         <mxCell id="12" parent="10" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#5c6bc0;align=left;verticalAlign=top;spacing=8;" value="Session&#xa;----------------&#xa;+ _id: ObjectId&#xa;+ userId: ObjectId&#xa;+ refreshToken: string&#xa;+ expiresAt: Date&#xa;+ createdAt: Date&#xa;+ updatedAt: Date" vertex="1">
-          <mxGeometry height="220" width="170" x="230" y="40" as="geometry" />
+          <mxGeometry height="220" width="170" x="260" y="40" as="geometry" />
         </mxCell>
+        <mxCell id="13" parent="10" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#5c6bc0;align=left;verticalAlign=top;spacing=8;" value="Otp&#xa;----------------&#xa;+ _id: ObjectId&#xa;+ email: string&#xa;+ otp: string&#xa;+ type: string&#xa;+ createdAt: Date" vertex="1">
+          <mxGeometry height="160" width="170" x="450" y="40" as="geometry" />
+        </mxCell>
+
+        <!-- Social Swimlane -->
         <mxCell id="20" parent="1" style="swimlane;html=1;startSize=30;rounded=0;horizontal=1;fillColor=#f7fff5;strokeColor=#43a047;fontStyle=1;" value="Social" vertex="1">
-          <mxGeometry height="350" width="420" x="20" y="410" as="geometry" />
+          <mxGeometry height="350" width="420" x="20" y="430" as="geometry" />
         </mxCell>
         <mxCell id="21" parent="20" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#43a047;align=left;verticalAlign=top;spacing=8;" value="Friend&#xa;----------------&#xa;+ _id: ObjectId&#xa;+ userA: ObjectId&#xa;+ userB: ObjectId&#xa;+ createdAt: Date&#xa;+ updatedAt: Date" vertex="1">
           <mxGeometry height="180" width="170" x="20" y="50" as="geometry" />
@@ -22,32 +29,38 @@
         <mxCell id="22" parent="20" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#43a047;align=left;verticalAlign=top;spacing=8;" value="FriendRequest&#xa;----------------&#xa;+ _id: ObjectId&#xa;+ from: ObjectId&#xa;+ to: ObjectId&#xa;+ message: string&#xa;+ createdAt: Date&#xa;+ updatedAt: Date" vertex="1">
           <mxGeometry height="200" width="170" x="220" y="50" as="geometry" />
         </mxCell>
+
+        <!-- Chat Swimlane -->
         <mxCell id="30" parent="1" style="swimlane;html=1;startSize=30;rounded=0;horizontal=1;fillColor=#fffaf2;strokeColor=#fb8c00;fontStyle=1;" value="Chat" vertex="1">
-          <mxGeometry height="710" width="640" x="530" y="20" as="geometry" />
+          <mxGeometry height="820" width="700" x="680" y="20" as="geometry" />
         </mxCell>
-        <mxCell id="31" parent="30" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#fb8c00;align=left;verticalAlign=top;spacing=8;" value="Conversation&#xa;----------------&#xa;+ _id: ObjectId&#xa;+ type: string&#xa;+ participants: Participant[]&#xa;+ group: Group&#xa;+ lastMessageAt: Date&#xa;+ seenBy: User[]&#xa;+ lastMessage: LastMessage&#xa;+ unreadCounts: Map&lt;string,int&gt;&#xa;+ createdAt: Date&#xa;+ updatedAt: Date" vertex="1">
-          <mxGeometry height="300" width="250" x="110" y="50" as="geometry" />
+        <mxCell id="31" parent="30" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#fb8c00;align=left;verticalAlign=top;spacing=8;" value="Conversation&#xa;----------------&#xa;+ _id: ObjectId&#xa;+ type: string&#xa;+ participants: Participant[]&#xa;+ group: Group&#xa;+ lastMessageAt: Date&#xa;+ seenBy: ObjectId[]&#xa;+ lastMessage: LastMessage&#xa;+ unreadCounts: Map&lt;string,int&gt;&#xa;+ streak: Streak&#xa;+ wallpaper: string&#xa;+ nicknames: Map&lt;string,string&gt;&#xa;+ clearedAt: Map&lt;string,Date&gt;&#xa;+ createdAt: Date&#xa;+ updatedAt: Date" vertex="1">
+          <mxGeometry height="340" width="280" x="70" y="50" as="geometry" />
         </mxCell>
-        <mxCell id="32" parent="30" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#fb8c00;align=left;verticalAlign=top;spacing=8;" value="Participant&#xa;----------------&#xa;+ userId: ObjectId&#xa;+ joinedAt: Date" vertex="1">
-          <mxGeometry height="120" width="150" x="440" y="50" as="geometry" />
+        <mxCell id="32" parent="30" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#fb8c00;align=left;verticalAlign=top;spacing=8;" value="Participant&#xa;----------------&#xa;+ userId: ObjectId&#xa;+ joinedAt: Date&#xa;+ role: string" vertex="1">
+          <mxGeometry height="130" width="150" x="450" y="50" as="geometry" />
         </mxCell>
-        <mxCell id="33" parent="30" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#fb8c00;align=left;verticalAlign=top;spacing=8;" value="Group&#xa;----------------&#xa;+ name: string&#xa;+ createdBy: ObjectId" vertex="1">
-          <mxGeometry height="120" width="150" x="440" y="250" as="geometry" />
+        <mxCell id="33" parent="30" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#fb8c00;align=left;verticalAlign=top;spacing=8;" value="Group&#xa;----------------&#xa;+ name: string&#xa;+ createdBy: ObjectId&#xa;+ avatar: string&#xa;+ avatarId: string&#xa;+ description: string" vertex="1">
+          <mxGeometry height="160" width="170" x="450" y="230" as="geometry" />
         </mxCell>
         <mxCell id="34" parent="30" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#fb8c00;align=left;verticalAlign=top;spacing=8;" value="LastMessage&#xa;----------------&#xa;+ _id: ObjectId&#xa;+ content: string&#xa;+ senderId: ObjectId&#xa;+ createdAt: Date" vertex="1">
-          <mxGeometry height="160" width="170" x="420" y="450" as="geometry" />
+          <mxGeometry height="160" width="170" x="450" y="420" as="geometry" />
         </mxCell>
-        <mxCell id="35" parent="30" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#fb8c00;align=left;verticalAlign=top;spacing=8;" value="Message&#xa;----------------&#xa;+ _id: ObjectId&#xa;+ conversationId: ObjectId&#xa;+ senderId: ObjectId&#xa;+ content: string&#xa;+ imgUrl: string&#xa;+ createdAt: Date&#xa;+ updatedAt: Date" vertex="1">
-          <mxGeometry height="230" width="250" x="70" y="450" as="geometry" />
+        <mxCell id="35" parent="30" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#fb8c00;align=left;verticalAlign=top;spacing=8;" value="Message&#xa;----------------&#xa;+ _id: ObjectId&#xa;+ conversationId: ObjectId&#xa;+ senderId: ObjectId&#xa;+ content: string&#xa;+ imgUrl: string&#xa;+ audioUrl: string&#xa;+ reactions: Reaction[]&#xa;+ isPinned: boolean&#xa;+ expiresIn: int&#xa;+ expiresAt: Date&#xa;+ isViewOnce: boolean&#xa;+ viewedBy: ObjectId[]&#xa;+ isRecalled: boolean&#xa;+ poll: Poll&#xa;+ createdAt: Date&#xa;+ updatedAt: Date" vertex="1">
+          <mxGeometry height="350" width="280" x="70" y="420" as="geometry" />
         </mxCell>
+
+        <!-- Realtime Swimlane -->
         <mxCell id="36" parent="1" style="swimlane;html=1;startSize=30;rounded=0;horizontal=1;fillColor=#f3fbff;strokeColor=#039be5;fontStyle=1;" value="Realtime" vertex="1">
           <mxGeometry height="240" width="360" x="20" y="830" as="geometry" />
         </mxCell>
         <mxCell id="37" parent="36" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#039be5;align=left;verticalAlign=top;spacing=8;" value="SocketConnection&#xa;----------------&#xa;+ token: string&#xa;+ onlineUsers: string[]&#xa;+ connect()&#xa;+ disconnect()&#xa;+ joinConversation()&#xa;+ receiveMessage()&#xa;+ receiveReadEvent()" vertex="1">
           <mxGeometry height="150" width="250" x="20" y="50" as="geometry" />
         </mxCell>
+
+        <!-- Advanced Features Swimlane -->
         <mxCell id="40" parent="1" style="swimlane;html=1;startSize=30;rounded=0;horizontal=1;fillColor=#fff3f3;strokeColor=#e53935;fontStyle=1;" value="Phần nâng cao" vertex="1">
-          <mxGeometry height="600" width="840" x="600" y="830" as="geometry" />
+          <mxGeometry height="600" width="840" x="700" y="860" as="geometry" />
         </mxCell>
         <mxCell id="41" parent="40" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#e53935;align=left;verticalAlign=top;spacing=8;" value="1. MessageEnhancementService&#xa;----------------&#xa;+ sendAttachment()&#xa;+ editMessage()&#xa;+ deleteMessage()&#xa;+ replyToMessage()&#xa;+ forwardMessage()&#xa;+ pinMessage()&#xa;+ searchMessages()&#xa;+ handleTypingIndicator()" vertex="1">
           <mxGeometry height="170" width="260" x="100" y="100" as="geometry" />
@@ -64,6 +77,8 @@
         <mxCell id="45" parent="40" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#e53935;align=left;verticalAlign=top;spacing=8;" value="5. AdminModerationService&#xa;----------------&#xa;+ reviewReports()&#xa;+ removeAbusiveContent()&#xa;+ manageUsers()&#xa;+ auditActions()&#xa;+ generateStats()" vertex="1">
           <mxGeometry height="120" width="195" x="350" y="470" as="geometry" />
         </mxCell>
+
+        <!-- Edges -->
         <mxCell id="100" edge="1" parent="1" source="11" style="endArrow=block;html=1;rounded=0;strokeWidth=1.5;strokeColor=#666666;" target="12" value="owns">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
@@ -118,6 +133,22 @@
         <mxCell id="117" edge="1" parent="1" source="37" style="endArrow=block;html=1;rounded=0;strokeWidth=1.5;strokeColor=#666666;" target="11" value="presence">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
+        
+        <!-- Additional relationships as requested -->
+        <mxCell id="136" edge="1" parent="1" source="11" style="endArrow=block;html=1;rounded=0;strokeWidth=1.5;strokeColor=#666666;" target="31" value="locks">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="137" edge="1" parent="1" source="11" style="endArrow=block;html=1;rounded=0;strokeWidth=1.5;strokeColor=#666666;" target="11" value="blocks">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="138" edge="1" parent="1" source="35" style="endArrow=block;html=1;rounded=0;strokeWidth=1.5;strokeColor=#666666;" target="11" value="viewed/reacted by">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="139" edge="1" parent="1" source="13" style="dashed=1;endArrow=block;html=1;rounded=0;strokeWidth=1.5;strokeColor=#666666;" target="11" value="authenticates">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Existing dashed service edges -->
         <mxCell id="120" edge="1" parent="1" source="41" style="dashed=1;html=1;endArrow=open;strokeWidth=1.5;strokeColor=#e53935;entryX=0.25;entryY=1;entryDx=0;entryDy=0;" target="35" value="uses">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>

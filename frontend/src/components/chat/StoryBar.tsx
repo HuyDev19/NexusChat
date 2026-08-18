@@ -23,7 +23,7 @@ const StoryBar = () => {
   const { user } = useAuthStore();
   const { friends, getFriends } = useFriendStore();
   const { onlineUsers } = useSocketStore();
-  const { conversations, setActiveConversation } = useChatStore();
+  const { conversations, setActiveConversation, createConversation } = useChatStore();
   const { updateNote } = useUserStore();
   const { openProfile } = useProfileStore();
 
@@ -81,8 +81,12 @@ const StoryBar = () => {
     const directConvo = conversations.find(
       (c) => c.type === "direct" && c.participants?.some((p) => p._id === friendId)
     );
+    
     if (directConvo) {
       setActiveConversation(directConvo._id);
+    } else {
+      // Nếu chưa có, tạo cuộc trò chuyện mới để bắt đầu chat
+      await createConversation("direct", "", [friendId]);
     }
   };
 

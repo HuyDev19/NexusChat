@@ -9,7 +9,7 @@ import friendRoute from "./routes/friendRoute.js";
 import messageRoute from "./routes/messageRoute.js";
 import conversationRoute from "./routes/conversationRoute.js";
 import callRoute from "./routes/callRoute.js";
-import { registerCallSocketHandlers } from "./libs/callSocket.js";
+import { registerCallSocketHandlers, activeGroupCalls } from "./libs/callSocket.js";
 import cookieParser from "cookie-parser";
 import { protectedRoute } from "./middlewares/authMiddleware.js";
 import cors from "cors";
@@ -71,7 +71,7 @@ io.on("connection", (socket) => {
     socket.data.userId = userId;
     socket.join(`user:${userId}`);
     console.log(`Socket ${socket.id} joined personal room user:${userId}`);
-    
+
     onlineUsers.add(userId);
     io.emit("online-users", Array.from(onlineUsers));
   }
@@ -80,6 +80,17 @@ io.on("connection", (socket) => {
     if (conversationId) {
       socket.join(conversationId);
       console.log(`Socket ${socket.id} joined room ${conversationId}`);
+
+      // Gửi trạng thái cuộc gọi nhóm hiện tại nếu có
+      const activeCall = activeGroupCalls.get(conversationId);
+      if (activeCall) {
+        socket.emit("call:active_update", {
+          conversationId,
+          roomName: activeCall.roomName,
+          isVideo: activeCall.isVideo,
+          active: true
+        });
+      }
     }
   });
 

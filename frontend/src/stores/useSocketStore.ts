@@ -33,6 +33,12 @@ export const useSocketStore = create<SocketState>((set, get) => ({
 
     socket.on("connect", () => {
       console.log("Đã kết nối với socket");
+      const conversations = useChatStore.getState().conversations;
+      if (conversations && conversations.length > 0) {
+        conversations.forEach((c) => {
+          socket.emit("join-conversation", c._id);
+        });
+      }
     });
 
     socket.on("connect_error", (error) => {
@@ -189,16 +195,28 @@ export const useSocketStore = create<SocketState>((set, get) => ({
       console.log(`[Socket] Thành viên chấp nhận cuộc gọi tại phòng: ${roomName}`);
     });
 
-    socket.on("call:declined", ({ roomName, declineId, reason }) => {
+    socket.on("call:declined", ({ roomName, declineId, reason, conversationType }) => {
       import("./useCallStore").then((store) => {
         const activeCall = store.useCallStore.getState().activeCall;
         if (activeCall && activeCall.roomName === roomName) {
-          // Báo hiệu từ chối
-          store.useCallStore.getState().endCall();
-          import("sonner").then(({ toast }) => {
-            toast.info("Cuộc gọi bị từ chối.");
-          });
+          if (conversationType === 'group' || conversationType === 'community') {
+            import("sonner").then(({ toast }) => {
+              toast.info("Một thành viên đã từ chối cuộc gọi.");
+            });
+          } else {
+            // Cuộc gọi 1:1, kết thúc hoàn toàn
+            store.useCallStore.getState().endCall();
+            import("sonner").then(({ toast }) => {
+              toast.info("Cuộc gọi bị từ chối.");
+            });
+          }
         }
+      });
+    });
+
+    socket.on("call:active_update", (data) => {
+      import("./useCallStore").then((store) => {
+        store.useCallStore.getState().setActiveGroupCall(data.conversationId, data);
       });
     });
 
@@ -226,6 +244,7 @@ export const useSocketStore = create<SocketState>((set, get) => ({
       socket.off("call:accepted");
       socket.off("call:declined");
       socket.off("call:ended");
+      socket.off("call:active_update");
       socket.off("user:updated");
       socket.off("typing-start");
       socket.off("typing-end");

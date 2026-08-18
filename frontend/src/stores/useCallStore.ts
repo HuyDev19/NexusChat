@@ -11,6 +11,7 @@ export interface IncomingCall {
   callerName: string;
   callerAvatar?: string;
   isVideo: boolean;
+  conversationType?: string;
 }
 
 export interface ActiveCall {
@@ -24,24 +25,45 @@ export interface ActiveCall {
 interface CallState {
   incomingCall: IncomingCall | null;
   activeCall: ActiveCall | null;
+  activeGroupCalls: Record<string, { roomName: string; isVideo: boolean; active: boolean }>;
   
   // Actions
   setIncomingCall: (call: IncomingCall | null) => void;
   setActiveCall: (call: ActiveCall | null) => void;
+  setActiveGroupCall: (conversationId: string, data: { roomName?: string; isVideo?: boolean; active: boolean }) => void;
   
   // Nghiệp vụ cuộc gọi
   startCall: (conversationId: string, isVideo: boolean) => Promise<void>;
   acceptCall: () => Promise<void>;
   declineCall: () => void;
   endCall: () => void;
+  joinExistingCall: (conversationId: string, roomName: string, isVideo: boolean) => Promise<void>;
 }
 
 export const useCallStore = create<CallState>((set, get) => ({
   incomingCall: null,
   activeCall: null,
+  activeGroupCalls: {},
 
   setIncomingCall: (call) => set({ incomingCall: call }),
   setActiveCall: (call) => set({ activeCall: call }),
+  setActiveGroupCall: (conversationId, data) => set((state) => {
+    if (!data.active) {
+      const updated = { ...state.activeGroupCalls };
+      delete updated[conversationId];
+      return { activeGroupCalls: updated };
+    }
+    return {
+      activeGroupCalls: {
+        ...state.activeGroupCalls,
+        [conversationId]: {
+          roomName: data.roomName || "",
+          isVideo: data.isVideo || false,
+          active: true
+        }
+      }
+    };
+  }),
 
   /**
    * Bắt đầu cuộc gọi mới (Người gọi)
@@ -73,7 +95,13 @@ export const useCallStore = create<CallState>((set, get) => ({
         isVideo,
         callerName: currentUser.displayName || currentUser.username,
         callerAvatar: currentUser.avatarUrl || "",
+        conversationType: activeChat.type,
       });
+
+      // Nếu là nhóm, cập nhật luôn local state activeGroupCalls
+      if (activeChat.type === 'group' || activeChat.type === 'community') {
+        get().setActiveGroupCall(conversationId, { roomName, isVideo, active: true });
+      }
 
       // 4. Vào phòng gọi ở giao diện người gọi
       set({
@@ -113,6 +141,8 @@ export const useCallStore = create<CallState>((set, get) => ({
       socket.emit("call:accept", {
         roomName: incomingCall.roomName,
         callerId: incomingCall.callerId,
+        conversationId: incomingCall.conversationId,
+        conversationType: incomingCall.conversationType,
       });
 
       // 3. Cập nhật state activeCall
@@ -144,6 +174,7 @@ export const useCallStore = create<CallState>((set, get) => ({
         roomName: incomingCall.roomName,
         callerId: incomingCall.callerId,
         reason: "declined",
+        conversationType: incomingCall.conversationType,
       });
     }
 
@@ -162,17 +193,62 @@ export const useCallStore = create<CallState>((set, get) => ({
     );
 
     if (activeCall && socket && currentUser && activeChat) {
-      const targetUserIds = activeChat.participants
-        .map((p) => p._id)
-        .filter((id) => id !== currentUser._id);
+      const isGroup = activeChat.type === 'group' || activeChat.type === 'community';
+      
+      if (isGroup) {
+        // Nếu là gọi nhóm, chỉ thoát khỏi phòng (leave)
+        socket.emit("call:leave", {
+          conversationId: activeCall.conversationId,
+          roomName: activeCall.roomName
+        });
+      } else {
+        // Cuộc gọi 1:1, kết thúc hoàn toàn
+        const targetUserIds = activeChat.participants
+          .map((p) => p._id)
+          .filter((id) => id !== currentUser._id);
 
-      // Phát sự kiện kết thúc cuộc gọi cho tất cả mọi người trong phòng biết để tự động thoát
-      socket.emit("call:end", {
-        roomName: activeCall.roomName,
-        participantIds: targetUserIds,
-      });
+        socket.emit("call:end", {
+          roomName: activeCall.roomName,
+          participantIds: targetUserIds,
+          conversationId: activeCall.conversationId,
+          conversationType: activeChat.type
+        });
+      }
     }
 
     set({ activeCall: null, incomingCall: null });
+  },
+
+  /**
+   * Tính năng Rejoin: Tham gia vào cuộc gọi nhóm đang diễn ra
+   */
+  joinExistingCall: async (conversationId: string, roomName: string, isVideo: boolean) => {
+    try {
+      const socket = useSocketStore.getState().socket;
+      if (!socket) return;
+
+      const callData = await callService.getCallToken(conversationId, roomName, isVideo);
+      
+      // Notify backend we joined
+      socket.emit("call:accept", {
+        roomName,
+        callerId: "rejoin", // dummy callerId since we are rejoining
+        conversationId,
+        conversationType: 'group'
+      });
+
+      set({
+        activeCall: {
+          conversationId,
+          roomName,
+          token: callData.token,
+          serverUrl: callData.serverUrl,
+          isVideo,
+        },
+        incomingCall: null
+      });
+    } catch (error) {
+      console.error("[useCallStore] Lỗi joinExistingCall:", error);
+    }
   },
 }));
