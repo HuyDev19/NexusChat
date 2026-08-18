@@ -38,12 +38,12 @@ const SearchForm = ({
           htmlFor="username"
           className="text-sm font-semibold"
         >
-          Tìm bằng username
+          Tìm bằng Tên hoặc Username
         </Label>
 
         <Input
           id="username"
-          placeholder="Gõ tên username vào đây..."
+          placeholder="Gõ tên hoặc username vào đây..."
           className="glass border-border/50 focus:border-primary/50 transition-smooth"
           {...register("username", {
             required: "Username không được bỏ trống",

@@ -13,6 +13,7 @@ import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import SearchForm from "@/components/AddFriendModal/SearchForm";
 import SendFriendRequestForm from "@/components/AddFriendModal/SendFriendRequestForm";
+import UserAvatar from "./UserAvatar";
 
 export interface IFormValues {
   username: string;
@@ -29,9 +30,10 @@ const AddFriendModal = ({ open, onOpenChange }: AddFriendModalProps) => {
   const isControlled = open !== undefined;
   const showModal = isControlled ? open : internalOpen;
 
-  const [isFound, setIsFound] = useState<boolean | null>(null);
-  const [searchUser, setSearchUser] = useState<User>();
-  const [searchedUsername, setSearchedUsername] = useState("");
+  const [step, setStep] = useState<0 | 1 | 2>(0); // 0: Search, 1: Results, 2: Send Request
+  const [foundUsers, setFoundUsers] = useState<User[]>([]);
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [searchedKeyword, setSearchedKeyword] = useState("");
   const { loading, searchByUsername, addFriend } = useFriendStore();
 
   const {
@@ -48,8 +50,10 @@ const AddFriendModal = ({ open, onOpenChange }: AddFriendModalProps) => {
 
   const handleCancel = () => {
     reset();
-    setSearchedUsername("");
-    setIsFound(null);
+    setSearchedKeyword("");
+    setFoundUsers([]);
+    setSelectedUser(null);
+    setStep(0);
   };
 
   const handleOpenChange = (val: boolean) => {
@@ -64,31 +68,27 @@ const AddFriendModal = ({ open, onOpenChange }: AddFriendModalProps) => {
   };
 
   const handleSearch = handleSubmit(async (data) => {
-    const username = data.username.trim();
-    if (!username) return;
+    const keyword = data.username.trim();
+    if (!keyword) return;
 
-    setIsFound(null);
-    setSearchedUsername(username);
+    setSearchedKeyword(keyword);
 
     try {
-      const foundUser = await searchByUsername(username);
-      if (foundUser) {
-        setIsFound(true);
-        setSearchUser(foundUser);
-      } else {
-        setIsFound(false);
-      }
+      const users = await searchByUsername(keyword);
+      setFoundUsers(users || []);
+      setStep(1); // Go to results step
     } catch (error) {
       console.error(error);
-      setIsFound(false);
+      setFoundUsers([]);
+      setStep(1);
     }
   });
 
   const handleSend = handleSubmit(async (data) => {
-    if (!searchUser) return;
+    if (!selectedUser) return;
 
     try {
-      const message = await addFriend(searchUser._id, data.message.trim());
+      const message = await addFriend(selectedUser._id, data.message.trim());
       toast.success(message);
 
       handleCancel();
@@ -128,26 +128,84 @@ const AddFriendModal = ({ open, onOpenChange }: AddFriendModalProps) => {
           </DialogTitle>
         </DialogHeader>
 
-        {!isFound && (
+        {step === 0 && (
           <SearchForm
             register={register}
             errors={errors}
             usernameValue={usernameValue}
             loading={loading}
-            isFound={isFound}
-            searchedUsername={searchedUsername}
+            isFound={null}
+            searchedUsername={searchedKeyword}
             onSubmit={handleSearch}
             onCancel={handleCancel}
           />
         )}
 
-        {isFound && (
+        {step === 1 && (
+          <div className="space-y-4">
+            {foundUsers.length > 0 ? (
+              <div className="space-y-2">
+                <p className="text-sm font-medium text-muted-foreground mb-3">
+                  Tìm thấy {foundUsers.length} kết quả cho "{searchedKeyword}":
+                </p>
+                <div className="max-h-60 overflow-y-auto space-y-2 custom-scrollbar pr-2">
+                  {foundUsers.map((user) => (
+                    <div
+                      key={user._id}
+                      onClick={() => {
+                        setSelectedUser(user);
+                        setStep(2);
+                      }}
+                      className="flex items-center justify-between p-3 rounded-xl border border-border/50 bg-muted/20 hover:bg-muted/50 cursor-pointer transition-colors"
+                    >
+                      <div className="flex items-center gap-3">
+                        <UserAvatar
+                          name={user.displayName || user.username}
+                          avatarUrl={user.avatarUrl}
+                          type="sidebar"
+                        />
+                        <div className="flex flex-col">
+                          <span className="font-semibold text-sm">
+                            {user.displayName}
+                          </span>
+                          <span className="text-xs text-muted-foreground">
+                            @{user.username}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="text-xs font-medium text-primary bg-primary/10 px-2 py-1 rounded-md">
+                        Chọn
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className="text-center py-6">
+                <p className="text-sm font-semibold text-foreground">Không tìm thấy người dùng nào</p>
+                <p className="text-xs text-muted-foreground mt-1">Vui lòng thử lại với tên khác.</p>
+              </div>
+            )}
+
+            <div className="flex gap-2 pt-2">
+              <button
+                type="button"
+                className="w-full py-2 px-4 rounded-xl border border-border bg-background hover:bg-muted text-sm font-medium transition-colors"
+                onClick={() => setStep(0)}
+              >
+                Quay lại tìm kiếm
+              </button>
+            </div>
+          </div>
+        )}
+
+        {step === 2 && selectedUser && (
           <SendFriendRequestForm
             register={register}
             loading={loading}
-            searchedUsername={searchedUsername}
+            searchedUsername={selectedUser.username}
             onSubmit={handleSend}
-            onBack={() => setIsFound(null)}
+            onBack={() => setStep(1)}
           />
         )}
       </DialogContent>

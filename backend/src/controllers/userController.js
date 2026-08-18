@@ -22,23 +22,26 @@ export const authMe = async (req, res) => {
 
 export const searchUserByUsername = async (req, res) => {
   try {
-    const username = String(req.query.username || "")
-      .trim()
-      .toLowerCase();
+    const query = String(req.query.username || "").trim();
 
-    if (!username) {
-      return res.status(400).json({ message: "Thiếu username để tìm kiếm" });
+    if (!query) {
+      return res.status(400).json({ message: "Thiếu từ khóa tìm kiếm" });
     }
 
-    const user = await User.findOne({
-      username: { $regex: `^${escapeRegExp(username)}`, $options: "i" },
-    }).select("_id username displayName avatarUrl coverUrl note bio phone");
+    const users = await User.find({
+      $or: [
+        { username: { $regex: `^${escapeRegExp(query.toLowerCase())}`, $options: "i" } },
+        { displayName: { $regex: escapeRegExp(query), $options: "i" } }
+      ]
+    })
+    .select("_id username displayName avatarUrl coverUrl note bio phone")
+    .limit(20);
 
-    if (!user) {
+    if (users.length === 0) {
       return res.status(404).json({ message: "Không tìm thấy người dùng" });
     }
 
-    return res.status(200).json({ user });
+    return res.status(200).json({ users });
   } catch (error) {
     console.error("Lỗi khi tìm user theo username", error);
     return res.status(500).json({ message: "Lỗi hệ thống" });

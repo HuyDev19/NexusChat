@@ -11,14 +11,12 @@ export const useFriendStore = create<FriendState>((set, get) => ({
     try {
       set({ loading: true });
 
-      const user = await friendService.searchByUsername(username);
-
-      return user;
-    } catch (error) {
-      console.error("Lỗi xảy ra khi tìm user bằng username", error);
-      return null;
-    } finally {
+      const users = await friendService.searchByUsername(username);
       set({ loading: false });
+      return users;
+    } catch (error) {
+      set({ loading: false });
+      return [];
     }
   },
   addFriend: async (to, message) => {
