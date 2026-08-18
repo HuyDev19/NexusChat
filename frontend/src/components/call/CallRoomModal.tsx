@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useCallStore } from "@/stores/useCallStore";
 import { useChatStore } from "@/stores/useChatStore";
+import { useAuthStore } from "@/stores/useAuthStore";
 import { LiveKitRoom, RoomAudioRenderer, useParticipants } from "@livekit/components-react";
 import { Maximize2, Minimize2, PhoneOff } from "lucide-react";
 import "@livekit/components-styles";
@@ -37,9 +38,22 @@ const CallRoomModal = () => {
   const [isMaximized, setIsMaximized] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
 
+  const { user } = useAuthStore();
+
   if (!activeCall) return null;
 
   const selectedConvo = conversations.find((c) => c._id === activeCall.conversationId);
+
+  // Tạo tên hiển thị cho cuộc gọi dựa trên loại nhóm hoặc tên người dùng
+  let displayRoomName = activeCall.roomName;
+  if (selectedConvo) {
+    if (selectedConvo.type === 'group' || selectedConvo.type === 'community') {
+      displayRoomName = selectedConvo.group?.name || "Cuộc gọi Nhóm";
+    } else {
+      const otherParticipant = selectedConvo.participants?.find((p: any) => p._id !== user?._id);
+      displayRoomName = selectedConvo.nicknames?.[otherParticipant?._id] || otherParticipant?.displayName || "Cuộc gọi";
+    }
+  }
 
   return (
     <div
@@ -47,15 +61,15 @@ const CallRoomModal = () => {
         isMaximized
           ? "inset-0 md:inset-4"
           : isMinimized
-          ? "bottom-4 right-4 w-72 h-16 shadow-lg rounded-2xl"
+          ? "bottom-4 right-4 w-72 h-28 shadow-lg rounded-2xl"
           : "inset-4 md:inset-12 lg:inset-20 shadow-2xl rounded-2xl"
       }`}
     >
       <div className={`bg-[#2b2d31] w-full h-full border border-black/20 overflow-hidden flex flex-col ${!isMaximized && "rounded-2xl"}`}>
         {/* Header */}
         <div className="bg-[#1e1f22] px-4 py-3 flex items-center justify-between border-b border-black/20 text-gray-200 select-none">
-          <span className="text-sm font-semibold truncate max-w-[250px]">
-            {activeCall.roomName}
+          <span className="text-sm font-semibold truncate max-w-[200px]">
+            {displayRoomName}
           </span>
           <div className="flex items-center gap-2 shrink-0">
             {/* Toggle Minimize */}

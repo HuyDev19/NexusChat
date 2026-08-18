@@ -9,7 +9,7 @@ interface DeviceSettingsModalProps {
 
 // Sub-component for individual device select
 const DeviceSelect = ({ kind, label }: { kind: MediaDeviceKind; label: string }) => {
-  const { devices, activeDeviceId, setActiveMediaDevice } = useMediaDeviceSelect({ kind });
+  const { devices, activeDeviceId, setActiveMediaDevice } = useMediaDeviceSelect({ kind, requestPermissions: true });
 
   return (
     <div className="flex flex-col gap-1.5">

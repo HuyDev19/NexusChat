@@ -1,6 +1,7 @@
 import React from "react";
 import { useLocalParticipant } from "@livekit/components-react";
-import { Mic, MicOff, Video, VideoOff, MonitorUp, MonitorOff, MessageSquare, PhoneOff, Settings } from "lucide-react";
+import { Mic, MicOff, Video, VideoOff, MonitorUp, MonitorOff, MessageSquare, PhoneOff, Settings, Waves } from "lucide-react";
+import { useKrispNoiseFilter } from "@livekit/components-react/krisp";
 import DeviceSettingsModal from "./DeviceSettingsModal";
 import { useState } from "react";
 
@@ -12,6 +13,7 @@ interface CustomControlBarProps {
 
 const CustomControlBar: React.FC<CustomControlBarProps> = ({ onEndCall, onToggleChat, isChatOpen }) => {
   const { localParticipant, isMicrophoneEnabled, isCameraEnabled, isScreenShareEnabled } = useLocalParticipant();
+  const krisp = useKrispNoiseFilter();
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   const toggleMic = () => {
@@ -63,6 +65,22 @@ const CustomControlBar: React.FC<CustomControlBarProps> = ({ onEndCall, onToggle
 
       {/* Dấu gạch chia */}
       <div className="w-px h-8 bg-white/20 mx-2 block"></div>
+
+      {/* Nút Lọc âm AI */}
+      <button
+        onClick={() => {
+          if (!krisp.isNoiseFilterPending) {
+            krisp.setNoiseFilterEnabled(!krisp.isNoiseFilterEnabled);
+          }
+        }}
+        disabled={krisp.isNoiseFilterPending}
+        className={`w-12 h-12 flex items-center justify-center rounded-full transition-all ${
+          krisp.isNoiseFilterEnabled ? "bg-indigo-500 hover:bg-indigo-600 text-white" : "bg-[#313338] hover:bg-[#3f4147] text-white"
+        } ${krisp.isNoiseFilterPending ? "opacity-50 cursor-not-allowed" : ""}`}
+        title="Lọc tiếng ồn AI (Krisp)"
+      >
+        <Waves size={20} />
+      </button>
 
       {/* Nút Mở/Đóng Chat */}
       <button
