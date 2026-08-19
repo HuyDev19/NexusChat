@@ -98,6 +98,7 @@ export interface ChatState {
   // update convo
   updateConversation: (conversation: unknown) => void;
   markAsSeen: () => Promise<void>;
+  markMessagesAsReadBy: (conversationId: string, userId: string) => void;
   addConvo: (convo: Conversation) => void;
   createConversation: (
     type: "group" | "direct",
@@ -123,6 +124,7 @@ export interface ChatState {
   updateGroupRole: (conversationId: string, memberId: string, role: "leader" | "member") => Promise<void>;
   updateGroupInfo: (conversationId: string, name?: string, description?: string) => Promise<void>;
   updateGroupAvatar: (conversationId: string, file: File) => Promise<void>;
+  removeGroupAvatar: (conversationId: string) => Promise<void>;
   voteOnPoll: (messageId: string, optionIndex: number) => Promise<void>;
 }
 
@@ -151,6 +153,7 @@ export interface FriendState {
 
 export interface UserState {
   updateAvatarUrl: (formData: FormData) => Promise<void>;
+  removeAvatar: () => Promise<void>;
   updateCoverUrl: (formData: FormData) => Promise<void>;
   updateNote: (content: string, expiresInHours?: number) => Promise<void>;
   updateProfile: (data: { 
@@ -160,4 +163,5 @@ export interface UserState {
     presenceStatus?: 'online' | 'offline' | 'busy';
     lockedConversations?: { conversationId: string; pin: string }[];
   }) => Promise<void>;
+  toggleReadReceipts: (enabled: boolean) => Promise<void>;
 }

@@ -4,6 +4,8 @@ import {
   markConversationAsSeen,
   getConversations,
   getMessages,
+  getPinnedMessages,
+  searchMessages,
   updateWallpaper,
   updateNickname,
   addGroupMembers,
@@ -11,6 +13,7 @@ import {
   updateGroupRole,
   updateGroupInfo,
   updateGroupAvatar,
+  removeGroupAvatar,
   deleteConversation,
   clearChatHistory,
   leaveGroup,
@@ -25,6 +28,8 @@ const router = express.Router();
 router.post("/", checkFriendship, createConversation);
 router.get("/", getConversations);
 router.get("/:conversationId/messages", getMessages);
+router.get("/:conversationId/messages/pinned", getPinnedMessages);
+router.get("/:conversationId/messages/search", searchMessages);
 router.patch("/:conversationId/seen", markConversationAsSeen);
 router.post("/:id/wallpaper", upload.single("image"), updateWallpaper);
 router.post("/:id/nickname", updateNickname);
@@ -34,6 +39,7 @@ router.delete("/:id/members/:memberId", removeGroupMember);
 router.patch("/:id/role", updateGroupRole);
 router.patch("/:id/info", updateGroupInfo);
 router.post("/:id/avatar", upload.single("avatar"), updateGroupAvatar);
+router.delete("/:id/avatar", removeGroupAvatar);
 router.delete("/:id", deleteConversation);
 router.post("/:id/clear", clearChatHistory);
 router.post("/:id/leave", leaveGroup);

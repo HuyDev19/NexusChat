@@ -10,12 +10,12 @@ interface GroupChatAvatarProps {
 }
 
 const GroupChatAvatar = ({ participants, type, groupAvatar, groupName }: GroupChatAvatarProps) => {
-  if (groupAvatar) {
+  if (groupAvatar || type === "profile") {
     return (
       <UserAvatar
         type={type}
-        name={groupName || "Group"}
-        avatarUrl={groupAvatar}
+        name={groupName || "Nhóm"}
+        avatarUrl={groupAvatar ?? undefined}
       />
     );
   }

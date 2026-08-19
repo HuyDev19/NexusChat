@@ -12,6 +12,10 @@ export const userService = {
 
     return res.data;
   },
+  removeAvatar: async () => {
+    const res = await api.delete("/users/avatar");
+    return res.data;
+  },
   uploadCover: async (formData: FormData) => {
     const res = await api.post("/users/uploadCover", formData, {
       headers: { "Content-Type": "multipart/form-data" },
@@ -58,6 +62,10 @@ export const userService = {
   getBlockedUsers: async () => {
     const res = await api.get("/users/me/blocked");
     return res.data.blockedUsers;
+  },
+  toggleReadReceipts: async (enabled: boolean) => {
+    const res = await api.put("/users/read-receipts", { enabled });
+    return res.data;
   },
   changePasswordWithOtp: async (otp: string, newPassword: string) => {
     const res = await api.post("/users/change-password", { otp, newPassword });

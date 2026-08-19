@@ -295,6 +295,11 @@ const MessageItem = ({
             message.isOwn ? "items-end" : "items-start"
           )}
         >
+          {!message.isOwn && selectedConvo.type === "group" && isGroupBreak && (
+             <span className="text-[11px] text-muted-foreground ml-1 mb-0.5">
+               {getDisplayName()}
+             </span>
+          )}
           {message.isPinned && (
             <div className="flex items-center text-[10px] font-medium text-muted-foreground mb-0.5 gap-1">
               <Pin className="size-3" /> Đã ghim
@@ -303,8 +308,9 @@ const MessageItem = ({
 
           <div className={cn("relative flex items-center gap-2", message.isOwn ? "flex-row-reverse" : "flex-row")}>
             <Card
+              onDoubleClick={() => !message.isRecalled && reactToMessage(message._id, '❤️')}
               className={cn(
-                "p-3 relative",
+                "p-3 relative select-none",
                 message.isOwn ? "chat-bubble-sent border-0" : "chat-bubble-received",
                 message.isRecalled ? "bg-muted/50 border border-border" : ""
               )}
@@ -469,22 +475,44 @@ const MessageItem = ({
             </div>
           )}
 
-          {/* seen/ delivered */}
-          {message.isOwn && message._id === selectedConvo.lastMessage?._id && (
-            <Badge
-              variant="outline"
-              className={cn(
-                "text-[10px] px-1.5 py-0 h-4 border font-medium lowercase",
-                lastMessageStatus === "đã xem"
-                  ? "bg-primary/10 text-primary border-primary/20"
-                  : lastMessageStatus === "đã nhận"
-                  ? "bg-muted text-muted-foreground border-transparent"
-                  : "bg-transparent text-muted-foreground/70 border-muted-foreground/30"
-              )}
-            >
-              {lastMessageStatus}
-            </Badge>
-          )}
+          {/* seen/ delivered and read receipt avatars */}
+          <div className="flex items-center justify-end gap-1 mt-1">
+            {message.isOwn && message.viewedBy && message.viewedBy.length > 0 && (
+              <div className="flex -space-x-1 justify-end">
+                {message.viewedBy
+                  .filter((vid) => vid !== user?._id) // don't show self
+                  .map((vid) => {
+                    const p = participants.find((part) => part._id.toString() === vid);
+                    if (!p) return null;
+                    return (
+                      <img
+                        key={vid}
+                        src={p.avatarUrl || "https://cdn-icons-png.flaticon.com/512/847/847969.png"}
+                        alt={p.displayName}
+                        className="size-3.5 rounded-full border border-background shadow-sm"
+                        title={`Đã xem bởi ${p.displayName}`}
+                      />
+                    );
+                  })}
+              </div>
+            )}
+            
+            {message.isOwn && message._id === selectedConvo.lastMessage?._id && (
+              <Badge
+                variant="outline"
+                className={cn(
+                  "text-[10px] px-1.5 py-0 h-4 border font-medium lowercase",
+                  lastMessageStatus === "đã xem"
+                    ? "bg-primary/10 text-primary border-primary/20"
+                    : lastMessageStatus === "đã nhận"
+                    ? "bg-muted text-muted-foreground border-transparent"
+                    : "bg-transparent text-muted-foreground/70 border-muted-foreground/30"
+                )}
+              >
+                {lastMessageStatus}
+              </Badge>
+            )}
+          </div>
         </div>
       </div>
     </>

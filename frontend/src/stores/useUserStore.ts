@@ -24,6 +24,25 @@ export const useUserStore = create<UserState>((set, get) => ({
       toast.error("Upload avatar không thành công!");
     }
   },
+  removeAvatar: async () => {
+    try {
+      const { user, setUser } = useAuthStore.getState();
+      await userService.removeAvatar();
+
+      if (user) {
+        setUser({
+          ...user,
+          avatarUrl: undefined,
+        });
+
+        useChatStore.getState().fetchConversations();
+        toast.success("Đã gỡ ảnh đại diện!");
+      }
+    } catch (error) {
+      console.error("Lỗi khi removeAvatar", error);
+      toast.error("Gỡ ảnh đại diện không thành công!");
+    }
+  },
   updateCoverUrl: async (formData) => {
     try {
       const { user, setUser } = useAuthStore.getState();
@@ -74,6 +93,23 @@ export const useUserStore = create<UserState>((set, get) => ({
     } catch (error) {
       console.error("Lỗi khi updateProfile", error);
       toast.error("Cập nhật thông tin thất bại!");
+    }
+  },
+  toggleReadReceipts: async (enabled) => {
+    try {
+      const { user, setUser } = useAuthStore.getState();
+      const resData = await userService.toggleReadReceipts(enabled);
+
+      if (user) {
+        setUser({
+          ...user,
+          readReceipts: resData.readReceipts,
+        });
+        toast.success(enabled ? "Đã bật thông báo đã đọc!" : "Đã tắt thông báo đã đọc!");
+      }
+    } catch (error) {
+      console.error("Lỗi khi toggleReadReceipts", error);
+      toast.error("Cập nhật cài đặt thất bại!");
     }
   }
 }));

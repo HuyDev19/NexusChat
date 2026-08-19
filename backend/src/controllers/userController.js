@@ -137,6 +137,31 @@ export const uploadAvatar = async (req, res) => {
   }
 };
 
+export const removeAvatar = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: "Không tìm thấy người dùng" });
+    }
+
+    if (user.avatarId) {
+      await cloudinary.uploader.destroy(user.avatarId);
+    }
+
+    user.avatarUrl = null;
+    user.avatarId = null;
+    await user.save();
+
+    req.app.get("io").emit("user:updated", user);
+
+    return res.status(200).json({ message: "Đã gỡ ảnh đại diện" });
+  } catch (error) {
+    console.error("Lỗi khi gỡ avatar:", error);
+    return res.status(500).json({ message: "Lỗi hệ thống khi gỡ ảnh" });
+  }
+};
+
 export const uploadCover = async (req, res) => {
   try {
     const userId = req.user._id;
@@ -413,15 +438,34 @@ export const deleteAccountWithOtp = async (req, res) => {
 export const getBlockedUsers = async (req, res) => {
   try {
     const userId = req.user._id;
-    const user = await User.findById(userId).populate("blockedUsers", "_id displayName avatarUrl username");
+    const user = await User.findById(userId).populate("blockedUsers", "displayName avatarUrl username");
+    if (!user) return res.status(404).json({ message: "Không tìm thấy người dùng" });
+    
+    return res.status(200).json({ blockedUsers: user.blockedUsers });
+  } catch (error) {
+    console.error("Lỗi lấy danh sách block:", error);
+    return res.status(500).json({ message: "Lỗi hệ thống" });
+  }
+};
 
+export const toggleReadReceipts = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const { enabled } = req.body;
+
+    const user = await User.findById(userId);
     if (!user) {
       return res.status(404).json({ message: "Không tìm thấy người dùng" });
     }
 
-    return res.status(200).json({ blockedUsers: user.blockedUsers || [] });
+    user.readReceipts = enabled;
+    await user.save();
+
+    req.app.get("io").emit("user:updated", user);
+
+    return res.status(200).json({ readReceipts: user.readReceipts });
   } catch (error) {
-    console.error("Lỗi khi lấy danh sách chặn:", error);
+    console.error("Lỗi khi cập nhật read receipts:", error);
     return res.status(500).json({ message: "Lỗi hệ thống" });
   }
 };

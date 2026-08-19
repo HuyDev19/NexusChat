@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Shield, Bell, ShieldBan, KeyRound, Loader2, Mail, RotateCcw, X, UserX, Trash2, CheckCircle2, AlertTriangle } from "lucide-react";
+import { Shield, Bell, ShieldBan, KeyRound, Loader2, Mail, RotateCcw, X, UserX, Trash2, CheckCircle2, AlertTriangle, Eye } from "lucide-react";
 import {
   Card,
   CardHeader,
@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuthStore } from "@/stores/useAuthStore";
+import { useUserStore } from "@/stores/useUserStore";
 import { userService } from "@/services/userService";
 import UserAvatar from "../chat/UserAvatar";
 import { toast } from "sonner";
@@ -25,6 +26,7 @@ interface BlockedUser {
 
 const PrivacySettings = () => {
   const { user, sendOtp, changePassword, deleteAccount, unblockUser } = useAuthStore();
+  const { toggleReadReceipts } = useUserStore();
 
   // Notification State
   const [notificationsEnabled, setNotificationsEnabled] = useState<boolean>(() => {
@@ -75,18 +77,32 @@ const PrivacySettings = () => {
     }
 
     if (!notificationsEnabled) {
-      const permission = await Notification.requestPermission();
-      if (permission === "granted") {
-        localStorage.setItem("desktop_notifications", "enabled");
-        setNotificationsEnabled(true);
-        toast.success("Đã bật thông báo đẩy trình duyệt!");
+      if (Notification.permission === "default") {
+        Notification.requestPermission().then((perm) => {
+          if (perm === "granted") {
+            setNotificationsEnabled(true);
+            localStorage.setItem("desktop_notifications", "enabled");
+            toast.success("Đã bật thông báo trình duyệt");
+          } else {
+            toast.error("Vui lòng cấp quyền thông báo trong cài đặt trình duyệt!");
+          }
+        });
+      } else if (Notification.permission === "denied") {
+        toast.error("Vui lòng cấp quyền thông báo trong cài đặt trình duyệt!");
       } else {
-        toast.error("Bạn chưa cấp quyền thông báo cho trình duyệt.");
+        setNotificationsEnabled(true);
+        localStorage.setItem("desktop_notifications", "enabled");
       }
     } else {
       localStorage.setItem("desktop_notifications", "disabled");
       setNotificationsEnabled(false);
       toast.info("Đã tắt thông báo đẩy trình duyệt.");
+    }
+  };
+
+  const handleToggleReadReceipts = async () => {
+    if (user) {
+      await toggleReadReceipts(!user.readReceipts);
     }
   };
 
@@ -332,6 +348,24 @@ const PrivacySettings = () => {
                 {notificationsEnabled ? "Đã bật" : "Đã tắt"}
               </span>
               <div className={cn("w-2 h-2 rounded-full", notificationsEnabled ? "bg-green-500 animate-pulse" : "bg-muted-foreground")} />
+            </div>
+          </Button>
+
+          {/* Cài đặt đã xem */}
+          <Button
+            variant="outline"
+            onClick={handleToggleReadReceipts}
+            className="w-full justify-between glass-light border-border/30 hover:border-purple-500/50 hover:bg-purple-500/10 transition-all text-xs h-10 px-4 rounded-xl"
+          >
+            <div className="flex items-center gap-2">
+              <Eye className="h-4 w-4 text-sky-400" />
+              <span>Hiển thị "Đã xem" (Read receipts)</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className={cn("text-[11px] font-medium", user?.readReceipts ? "text-green-400" : "text-muted-foreground")}>
+                {user?.readReceipts ? "Đã bật" : "Đã tắt"}
+              </span>
+              <div className={cn("w-2 h-2 rounded-full", user?.readReceipts ? "bg-green-500 animate-pulse" : "bg-muted-foreground")} />
             </div>
           </Button>
 

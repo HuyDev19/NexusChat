@@ -15,6 +15,7 @@ export interface User {
   presenceStatus?: 'online' | 'offline' | 'busy';
   lockedConversations?: { conversationId: string; pin: string }[];
   blockedUsers?: string[];
+  readReceipts?: boolean;
   createdAt?: string;
   updatedAt?: string;
 }

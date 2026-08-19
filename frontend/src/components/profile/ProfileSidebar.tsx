@@ -5,10 +5,15 @@ import { X, Calendar, Phone, Image as ImageIcon, CaseSensitive, Ban, Settings, F
 import UserAvatar from "../chat/UserAvatar";
 import GroupChatAvatar from "../chat/GroupChatAvatar";
 import { useState } from "react";
+import { isNoteExpired } from "@/lib/utils";
 import WallpaperModal from "../chat/WallpaperModal";
 import NicknameModal from "../chat/NicknameModal";
 import GroupSettingsModal from "../chat/GroupSettingsModal";
+import RenameGroupModal from "../chat/RenameGroupModal";
+import { Edit3, Search, Pin } from "lucide-react";
 import SharedMediaModal from "./SharedMediaModal";
+import SearchMessagesModal from "../chat/SearchMessagesModal";
+import PinnedMessagesModal from "../chat/PinnedMessagesModal";
 
 const ProfileSidebar = () => {
   const { isOpen, profileData, loading, mode, closeProfile } = useProfileStore();
@@ -18,7 +23,9 @@ const ProfileSidebar = () => {
   const [showWallpaperModal, setShowWallpaperModal] = useState(false);
   const [showNicknameModal, setShowNicknameModal] = useState(false);
   const [showGroupSettings, setShowGroupSettings] = useState(false);
-  
+  const [showRenameGroup, setShowRenameGroup] = useState(false);
+  const [showSearchMessages, setShowSearchMessages] = useState(false);
+  const [showPinnedMessages, setShowPinnedMessages] = useState(false);
   const [showSharedMedia, setShowSharedMedia] = useState(false);
   const [sharedMediaTab, setSharedMediaTab] = useState<"media" | "docs" | "links">("media");
 
@@ -100,7 +107,7 @@ const ProfileSidebar = () => {
   );
 
   return (
-    <div className="w-80 h-full bg-card border-l border-border flex flex-col shadow-sm transition-all duration-300 animate-in slide-in-from-right-8 relative z-20">
+    <div className="absolute md:relative right-0 top-0 bottom-0 w-full md:w-80 h-full bg-card border-l border-border flex flex-col shadow-sm transition-all duration-300 animate-in slide-in-from-right-8 z-50 md:z-20">
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-border shrink-0">
         <h2 className="text-lg font-semibold">
@@ -140,7 +147,7 @@ const ProfileSidebar = () => {
                     name={mode === "chat" && isDirect ? (chat?.nicknames?.[otherUser?._id] || otherUser?.displayName) : profileData?.displayName}
                     avatarUrl={mode === "chat" && isDirect ? otherUser?.avatarUrl : profileData?.avatarUrl}
                     className="ring-4 ring-card bg-card"
-                    note={mode === "chat" && isDirect ? otherUser?.note?.content : profileData?.note?.content}
+                    note={mode === "chat" && isDirect ? (isNoteExpired(otherUser?.note) ? undefined : otherUser?.note?.content) : (isNoteExpired(profileData?.note) ? undefined : profileData?.note?.content)}
                     userId={mode === "chat" && isDirect ? otherUser?._id : profileData?._id}
                   />
                   <div
@@ -224,12 +231,20 @@ const ProfileSidebar = () => {
                   
                   <ActionRow icon={ImageIcon} label="Đổi hình nền" onClick={() => setShowWallpaperModal(true)} />
                   
-                  {isDirect && (
-                    <ActionRow icon={CaseSensitive} label="Đổi biệt danh" onClick={() => setShowNicknameModal(true)} />
-                  )}
+                  <ActionRow icon={CaseSensitive} label="Đổi biệt danh" onClick={() => setShowNicknameModal(true)} />
                   
                   {isGroup && (
+                    <ActionRow icon={Edit3} label="Đổi tên nhóm" onClick={() => setShowRenameGroup(true)} />
+                  )}
+                  {isGroup && (
                     <ActionRow icon={Settings} label="Cài đặt nhóm" onClick={() => setShowGroupSettings(true)} />
+                  )}
+                  
+                  {mode === "chat" && (
+                    <>
+                      <ActionRow icon={Search} label="Tìm kiếm tin nhắn" onClick={() => setShowSearchMessages(true)} />
+                      <ActionRow icon={Pin} label="Tin nhắn đã ghim" onClick={() => setShowPinnedMessages(true)} />
+                    </>
                   )}
 
                   {isDirect && (
@@ -259,11 +274,24 @@ const ProfileSidebar = () => {
           {isGroup && (
             <GroupSettingsModal open={showGroupSettings} onOpenChange={setShowGroupSettings} conversation={chat} />
           )}
+          {isGroup && (
+            <RenameGroupModal open={showRenameGroup} onOpenChange={setShowRenameGroup} conversation={chat} />
+          )}
           <SharedMediaModal 
             open={showSharedMedia} 
             onOpenChange={setShowSharedMedia} 
             conversationId={chat._id} 
             defaultTab={sharedMediaTab} 
+          />
+          <SearchMessagesModal 
+            open={showSearchMessages} 
+            onOpenChange={setShowSearchMessages} 
+            conversation={chat} 
+          />
+          <PinnedMessagesModal 
+            open={showPinnedMessages} 
+            onOpenChange={setShowPinnedMessages} 
+            conversation={chat} 
           />
         </>
       )}

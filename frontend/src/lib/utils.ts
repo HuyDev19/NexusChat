@@ -81,3 +81,9 @@ export function removeVietnameseTones(str: string): string {
   str = str.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
   return str.toLowerCase().trim();
 }
+
+export const isNoteExpired = (note?: { content: string, expiresAt: string | null } | null) => {
+  if (!note || !note.content) return true;
+  if (!note.expiresAt) return false;
+  return new Date(note.expiresAt).getTime() < Date.now();
+};

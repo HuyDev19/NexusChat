@@ -4,12 +4,22 @@ import {
   DialogHeader,
   DialogTitle,
 } from "../ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "../ui/alert-dialog";
 import { useChatStore } from "@/stores/useChatStore";
 import { useAuthStore } from "@/stores/useAuthStore";
 import type { Conversation } from "@/types/chat";
 import { Button } from "../ui/button";
 import UserAvatar from "./UserAvatar";
-import { Trash2, ShieldAlert, UserPlus, Save, Camera } from "lucide-react";
+import { Camera, Edit2, LogOut, Save, Trash2, UserPlus, ShieldAlert, X } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { useFriendStore } from "@/stores/useFriendStore";
 import { Input } from "../ui/input";
@@ -24,7 +34,7 @@ export default function GroupSettingsModal({
   onOpenChange: (open: boolean) => void;
   conversation: Conversation;
 }) {
-  const { user } = useAuthStore();
+  const { user, fetchMe } = useAuthStore();
   const { friends, getFriends } = useFriendStore();
   const {
     addGroupMembers,
@@ -37,6 +47,7 @@ export default function GroupSettingsModal({
 
   const [isAddingMember, setIsAddingMember] = useState(false);
   const [selectedFriends, setSelectedFriends] = useState<string[]>([]);
+  const [memberToPromote, setMemberToPromote] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -77,6 +88,8 @@ export default function GroupSettingsModal({
     (f) => !participants.some((p) => p._id === f._id)
   );
 
+  if (!conversation || conversation.type === "direct") return null;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md max-h-[80vh] overflow-y-auto">
@@ -116,12 +129,29 @@ export default function GroupSettingsModal({
                       groupName={conversation.group?.name}
                     />
                     {/* Avatar Upload Overlay */}
-                    <div 
-                      className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer z-20"
-                      onClick={() => !convoLoading && fileInputRef.current?.click()}
-                    >
-                      <Camera className="size-6 text-white" />
-                    </div>
+                    {isLeader && (
+                      <div 
+                        className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer z-20"
+                        onClick={() => !convoLoading && fileInputRef.current?.click()}
+                      >
+                        <Camera className="size-6 text-white" />
+                      </div>
+                    )}
+                    {isLeader && conversation.group?.avatar && (
+                      <Button
+                        size="icon"
+                        variant="secondary"
+                        className="absolute top-0 left-0 size-6 rounded-full shadow-md hover:scale-115 transition duration-300 z-30 bg-muted/80 hover:bg-muted text-muted-foreground"
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          if (confirm("Bạn có chắc muốn gỡ ảnh đại diện nhóm?")) {
+                            await useChatStore.getState().removeGroupAvatar(conversation._id);
+                          }
+                        }}
+                      >
+                        <X className="size-3" />
+                      </Button>
+                    )}
                     <input
                       type="file"
                       ref={fileInputRef}
@@ -206,7 +236,7 @@ export default function GroupSettingsModal({
                           variant="ghost"
                           className="text-yellow-500 hover:text-yellow-600 hover:bg-yellow-100 dark:hover:bg-yellow-900/50"
                           title="Phong trưởng nhóm"
-                          onClick={() => updateGroupRole(conversation._id, p._id, "leader")}
+                          onClick={() => setMemberToPromote(p._id)}
                         >
                           <ShieldAlert className="size-4" />
                         </Button>
@@ -228,6 +258,27 @@ export default function GroupSettingsModal({
           </div>
         </div>
       </DialogContent>
+
+      <AlertDialog open={!!memberToPromote} onOpenChange={(open) => !open && setMemberToPromote(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Xác nhận phong trưởng nhóm</AlertDialogTitle>
+            <AlertDialogDescription>
+              Bạn có chắc chắn muốn chuyển quyền trưởng nhóm cho người này không? Nếu chuyển, bạn sẽ trở thành thành viên thường.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Hủy</AlertDialogCancel>
+            <AlertDialogAction onClick={() => {
+              if (memberToPromote) {
+                updateGroupRole(conversation._id, memberToPromote, "leader");
+                setMemberToPromote(null);
+                onOpenChange(false); // Đóng setting modal sau khi chuyển quyền
+              }
+            }}>Xác nhận</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   );
 }

@@ -17,7 +17,7 @@ import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Plus, Sparkles, Trash2, Smile, Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { cn } from "@/lib/utils";
+import { cn, isNoteExpired } from "@/lib/utils";
 
 const StoryBar = () => {
   const { user } = useAuthStore();
@@ -29,16 +29,17 @@ const StoryBar = () => {
 
   const [openNoteModal, setOpenNoteModal] = useState(false);
   const [noteInput, setNoteInput] = useState("");
+  const [expiresIn, setExpiresIn] = useState<number>(24);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     getFriends();
   }, [getFriends]);
 
-  const userNote = user?.note?.content;
+  const activeUserNote = isNoteExpired(user?.note) ? null : user?.note?.content;
 
   const handleOpenMyNote = () => {
-    setNoteInput(userNote || "");
+    setNoteInput(activeUserNote || "");
     setOpenNoteModal(true);
   };
 
@@ -49,7 +50,7 @@ const StoryBar = () => {
     }
     try {
       setIsSubmitting(true);
-      await updateNote(noteInput.trim(), 24);
+      await updateNote(noteInput.trim(), expiresIn);
       setOpenNoteModal(false);
       toast.success("Đã cập nhật trạng thái ghi chú!");
     } catch (error) {
@@ -90,10 +91,10 @@ const StoryBar = () => {
     }
   };
 
-  // Sort friends: Friends with notes come first
+  // Sort friends: Friends with active notes come first
   const sortedFriends = [...(friends || [])].sort((a, b) => {
-    const hasNoteA = a.note?.content ? 1 : 0;
-    const hasNoteB = b.note?.content ? 1 : 0;
+    const hasNoteA = !isNoteExpired(a.note) ? 1 : 0;
+    const hasNoteB = !isNoteExpired(b.note) ? 1 : 0;
     return hasNoteB - hasNoteA;
   });
 
@@ -119,9 +120,9 @@ const StoryBar = () => {
           >
             {/* Speech Bubble on top */}
             <div className="h-[28px] flex items-center justify-center mb-1 relative">
-              {userNote ? (
+              {activeUserNote ? (
                 <div className="relative max-w-[70px] bg-card text-foreground text-[10px] font-medium px-2 py-0.5 rounded-full shadow-md border border-purple-500/30 truncate text-center animate-in fade-in zoom-in-95 duration-200">
-                  <span className="truncate block max-w-[54px]">{userNote}</span>
+                  <span className="truncate block max-w-[54px]">{activeUserNote}</span>
                   {/* Bubble Tail */}
                   <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 bg-card border-r border-b border-purple-500/30 rotate-45" />
                 </div>
@@ -163,7 +164,7 @@ const StoryBar = () => {
           {/* 2. Danh sách Bạn bè & Trạng thái Note                     */}
           {/* ========================================================= */}
           {sortedFriends.map((friend) => {
-            const hasNote = Boolean(friend.note?.content);
+            const hasNote = !isNoteExpired(friend.note);
             const isOnline = onlineUsers.includes(friend._id);
             const shortName = friend.displayName.split(" ").pop() || friend.displayName;
 
@@ -175,9 +176,9 @@ const StoryBar = () => {
               >
                 {/* Speech Bubble on top */}
                 <div className="h-[28px] flex items-center justify-center mb-1 relative">
-                  {hasNote ? (
+                  {hasNote && friend.note ? (
                     <div className="relative max-w-[70px] bg-card text-foreground text-[10px] font-medium px-2 py-0.5 rounded-full shadow-md border border-purple-500/30 truncate text-center animate-in fade-in zoom-in-95 duration-200">
-                      <span className="truncate block max-w-[54px]">{friend.note?.content}</span>
+                      <span className="truncate block max-w-[54px]">{friend.note.content}</span>
                       {/* Bubble Tail */}
                       <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 bg-card border-r border-b border-purple-500/30 rotate-45" />
                     </div>
@@ -233,7 +234,7 @@ const StoryBar = () => {
               Ghi chú trạng thái
             </DialogTitle>
             <p className="text-xs text-muted-foreground">
-              Chia sẻ suy nghĩ ngắn của bạn. Ghi chú sẽ hiển thị trên đầu ảnh đại diện trong 24 giờ.
+              Chia sẻ suy nghĩ ngắn của bạn. Ghi chú sẽ tự động gỡ sau khoảng thời gian bạn chọn.
             </p>
           </DialogHeader>
 
@@ -266,10 +267,31 @@ const StoryBar = () => {
                 </button>
               ))}
             </div>
+
+            <div className="pt-2">
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">Tự động gỡ sau</label>
+              <div className="flex gap-2">
+                {[6, 12, 24].map(hours => (
+                  <button
+                    key={hours}
+                    type="button"
+                    onClick={() => setExpiresIn(hours)}
+                    className={cn(
+                      "flex-1 py-1.5 text-xs rounded-lg border transition-colors",
+                      expiresIn === hours 
+                        ? "bg-purple-500/20 border-purple-500 text-purple-600 dark:text-purple-400 font-medium" 
+                        : "bg-muted/30 border-border hover:bg-muted/60"
+                    )}
+                  >
+                    {hours} giờ
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
 
           <DialogFooter className="flex-row gap-2 sm:gap-2 pt-2">
-            {userNote && (
+            {activeUserNote && (
               <Button
                 type="button"
                 variant="outline"

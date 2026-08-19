@@ -182,6 +182,12 @@ export const getMessages = async (req, res) => {
     }
 
     const userId = req.user._id;
+
+    // Security check: only participants can read messages
+    const isMember = conversation.participants.some(p => p.userId.toString() === userId.toString());
+    if (!isMember) {
+      return res.status(403).json({ message: "Bạn không có quyền xem cuộc trò chuyện này" });
+    }
     let clearedTime = null;
     if (conversation.clearedAt && conversation.clearedAt.get) {
       clearedTime = conversation.clearedAt.get(userId.toString());
@@ -209,7 +215,14 @@ export const getMessages = async (req, res) => {
       messages.pop();
     }
 
-    messages = messages.reverse();
+    messages = messages.reverse().map(msg => {
+      const msgObj = msg.toObject();
+      if (msgObj.isViewOnce && msgObj.viewedBy && msgObj.viewedBy.some(id => id.toString() === userId.toString())) {
+        msgObj.imgUrl = null;
+        msgObj.audioUrl = null;
+      }
+      return msgObj;
+    });
 
     return res.status(200).json({
       messages,
@@ -217,6 +230,97 @@ export const getMessages = async (req, res) => {
     });
   } catch (error) {
     console.error("Lỗi xảy ra khi lấy messages", error);
+    return res.status(500).json({ message: "Lỗi hệ thống" });
+  }
+};
+
+export const getPinnedMessages = async (req, res) => {
+  try {
+    const { conversationId } = req.params;
+    const userId = req.user._id;
+
+    const conversation = await Conversation.findById(conversationId);
+    if (!conversation) return res.status(404).json({ message: "Conversation not found" });
+
+    const isMember = conversation.participants.some(p => p.userId.toString() === userId.toString());
+    if (!isMember) {
+      return res.status(403).json({ message: "Bạn không có quyền xem cuộc trò chuyện này" });
+    }
+
+    let clearedTime = null;
+    if (conversation.clearedAt && conversation.clearedAt.get) {
+      clearedTime = conversation.clearedAt.get(userId.toString());
+    }
+
+    const query = { conversationId, isPinned: true };
+    if (clearedTime) {
+      query.createdAt = { $gt: new Date(clearedTime) };
+    }
+
+    let messages = await Message.find(query).sort({ createdAt: -1 }).populate("senderId", "displayName avatarUrl");
+    
+    messages = messages.map(msg => {
+      const msgObj = msg.toObject();
+      if (msgObj.isViewOnce && msgObj.viewedBy && msgObj.viewedBy.some(id => id.toString() === userId.toString())) {
+        msgObj.imgUrl = null;
+        msgObj.audioUrl = null;
+      }
+      return msgObj;
+    });
+
+    return res.status(200).json(messages);
+  } catch (error) {
+    console.error("Lỗi lấy tin nhắn ghim", error);
+    return res.status(500).json({ message: "Lỗi hệ thống" });
+  }
+};
+
+export const searchMessages = async (req, res) => {
+  try {
+    const { conversationId } = req.params;
+    const { q } = req.query;
+    const userId = req.user._id;
+
+    if (!q || q.trim() === "") {
+      return res.status(200).json([]);
+    }
+
+    const conversation = await Conversation.findById(conversationId);
+    if (!conversation) return res.status(404).json({ message: "Conversation not found" });
+
+    const isMember = conversation.participants.some(p => p.userId.toString() === userId.toString());
+    if (!isMember) {
+      return res.status(403).json({ message: "Bạn không có quyền xem cuộc trò chuyện này" });
+    }
+
+    let clearedTime = null;
+    if (conversation.clearedAt && conversation.clearedAt.get) {
+      clearedTime = conversation.clearedAt.get(userId.toString());
+    }
+
+    const query = { 
+      conversationId, 
+      content: { $regex: q, $options: "i" } 
+    };
+    
+    if (clearedTime) {
+      query.createdAt = { $gt: new Date(clearedTime) };
+    }
+
+    let messages = await Message.find(query).sort({ createdAt: -1 }).limit(50).populate("senderId", "displayName avatarUrl");
+
+    messages = messages.map(msg => {
+      const msgObj = msg.toObject();
+      if (msgObj.isViewOnce && msgObj.viewedBy && msgObj.viewedBy.some(id => id.toString() === userId.toString())) {
+        msgObj.imgUrl = null;
+        msgObj.audioUrl = null;
+      }
+      return msgObj;
+    });
+
+    return res.status(200).json(messages);
+  } catch (error) {
+    console.error("Lỗi tìm kiếm tin nhắn", error);
     return res.status(500).json({ message: "Lỗi hệ thống" });
   }
 };
@@ -240,17 +344,32 @@ export const markConversationAsSeen = async (req, res) => {
       return res.status(403).json({ message: "Bạn không ở trong cuộc trò chuyện này" });
     }
 
+    const allowReadReceipts = req.user.readReceipts !== false;
+
+    const updateObj = {
+      $set: { [`unreadCounts.${userId}`]: 0 }
+    };
+
+    if (allowReadReceipts) {
+      updateObj.$addToSet = { seenBy: userId };
+    }
+
     const updatedConversation = await Conversation.findByIdAndUpdate(
       conversationId,
-      {
-        $addToSet: { seenBy: userId },
-        $set: { [`unreadCounts.${userId}`]: 0 }
-      },
+      updateObj,
       { new: true }
     ).populate({
         path: "lastMessage.senderId",
         select: "displayName avatarUrl coverUrl note",
       });
+
+    if (allowReadReceipts) {
+      // Update individual messages viewedBy array
+      await Message.updateMany(
+        { conversationId, senderId: { $ne: userId }, viewedBy: { $ne: userId } },
+        { $addToSet: { viewedBy: userId } }
+      );
+    }
 
     // Start disappearing messages timer
     const expiringMessages = await Message.find({
@@ -283,6 +402,7 @@ export const markConversationAsSeen = async (req, res) => {
           io.to(`user:${p.userId}`).emit("read-message", {
             conversation: updatedConversation,
             lastMessage: updatedConversation.lastMessage,
+            readerId: allowReadReceipts ? userId : null
           });
         }
       });
@@ -500,13 +620,17 @@ export const updateGroupRole = async (req, res) => {
     const userId = req.user._id;
 
     const conversation = await Conversation.findById(id);
-    if (!conversation || conversation.type !== "group") return res.status(404).json({ message: "Không tìm thấy nhóm" });
+    if (!conversation || !["group", "community"].includes(conversation.type)) return res.status(404).json({ message: "Không tìm thấy nhóm" });
 
     const currentUser = conversation.participants.find(p => p.userId.toString() === userId.toString());
-    if (!currentUser || currentUser.role !== "leader") return res.status(403).json({ message: "Chỉ trưởng nhóm" });
+    if (!currentUser || currentUser.role !== "leader") return res.status(403).json({ message: "Chỉ trưởng nhóm mới có quyền" });
 
     const member = conversation.participants.find(p => p.userId.toString() === memberId.toString());
     if (member) member.role = role;
+
+    if (role === "leader" && memberId.toString() !== userId.toString()) {
+      currentUser.role = "member";
+    }
 
     await conversation.save();
 
@@ -616,7 +740,6 @@ export const updateGroupAvatar = async (req, res) => {
     conversation.group.avatarId = result.public_id;
     await conversation.save();
 
-    const io = req.app.get("io");
     if (io) {
       conversation.participants.forEach((p) => {
         io.to(`user:${p.userId}`).emit("conversation:update", {
@@ -628,6 +751,47 @@ export const updateGroupAvatar = async (req, res) => {
 
     return res.status(200).json({ message: "Cập nhật ảnh đại diện nhóm thành công", group: conversation.group });
   } catch (error) {
+    return res.status(500).json({ message: "Lỗi hệ thống" });
+  }
+};
+
+export const removeGroupAvatar = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user._id;
+
+    const conversation = await Conversation.findById(id);
+    if (!conversation || conversation.type !== "group") {
+      return res.status(404).json({ message: "Không tìm thấy nhóm" });
+    }
+
+    const currentUser = conversation.participants.find(p => p.userId.toString() === userId.toString());
+    if (!currentUser || currentUser.role !== "leader") {
+      return res.status(403).json({ message: "Chỉ trưởng nhóm mới có quyền gỡ ảnh nhóm" });
+    }
+
+    if (conversation.group.avatarId) {
+      const cloudinary = (await import("../libs/cloudinary.js")).default;
+      await cloudinary.uploader.destroy(conversation.group.avatarId);
+    }
+
+    conversation.group.avatar = null;
+    conversation.group.avatarId = null;
+    await conversation.save();
+
+    const io = req.app.get("io");
+    if (io) {
+      conversation.participants.forEach((p) => {
+        io.to(`user:${p.userId}`).emit("conversation:update", {
+          conversationId: conversation._id,
+          updates: { group: conversation.group }
+        });
+      });
+    }
+
+    return res.status(200).json({ message: "Đã gỡ ảnh đại diện nhóm", group: conversation.group });
+  } catch (error) {
+    console.error("Error in removeGroupAvatar:", error);
     return res.status(500).json({ message: "Lỗi hệ thống" });
   }
 };

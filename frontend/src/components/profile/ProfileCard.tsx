@@ -2,7 +2,7 @@ import type { User } from "@/types/user";
 import { Card, CardContent } from "../ui/card";
 import UserAvatar from "../chat/UserAvatar";
 import { Badge } from "../ui/badge";
-import { cn } from "@/lib/utils";
+import { cn, isNoteExpired } from "@/lib/utils";
 import { useSocketStore } from "@/stores/useSocketStore";
 import AvatarUploader from "./AvatarUploader";
 import CoverUploader from "./CoverUploader";
@@ -36,7 +36,7 @@ const ProfileCard = ({ user }: ProfileCardProps) => {
                         name={user.displayName}
                         avatarUrl={user.avatarUrl ?? undefined}
                         className="ring-4 ring-white shadow-lg"
-                        note={user.note?.content}
+                        note={isNoteExpired(user.note) ? undefined : user.note?.content}
                     />
 
                     <AvatarUploader />

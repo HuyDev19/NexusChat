@@ -108,7 +108,7 @@ export const useSocketStore = create<SocketState>((set, get) => ({
     });
 
     // read message
-    socket.on("read-message", ({ conversation, lastMessage }) => {
+    socket.on("read-message", ({ conversation, lastMessage, readerId }) => {
       const updated = {
         _id: conversation._id,
         lastMessage,
@@ -118,6 +118,10 @@ export const useSocketStore = create<SocketState>((set, get) => ({
       };
 
       useChatStore.getState().updateConversation(updated);
+      
+      if (readerId) {
+        useChatStore.getState().markMessagesAsReadBy(conversation._id, readerId);
+      }
     });
 
     // new group chat

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useFriendStore } from "@/stores/useFriendStore";
 import { useChatStore } from "@/stores/useChatStore";
-import { Search, X, Users, UserPlus, UsersRound, Archive, Edit3 } from "lucide-react";
+import { Search, X, Users, UserPlus, UsersRound, Archive, Plus } from "lucide-react";
 import FriendListModal from "../createNewChat/FriendListModal";
 import NewGroupChatModal from "./NewGroupChatModal";
 import AddFriendModal from "./AddFriendModal";
@@ -71,7 +71,7 @@ const CreateNewChat = () => {
               title="Tùy chọn đoạn chat"
               className="h-9 w-9 shrink-0 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white shadow-sm relative"
             >
-              <Edit3 className="w-4 h-4" />
+              <Plus className="w-5 h-5" />
               {archivedCount > 0 && (
                 <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5 rounded-full bg-indigo-400 ring-2 ring-background animate-pulse" />
               )}

@@ -4,6 +4,7 @@ import {
   searchUserByUsername,
   updateMe,
   uploadAvatar,
+  removeAvatar,
   uploadCover,
   updateNote,
   getUserProfile,
@@ -15,6 +16,7 @@ import {
   changePasswordWithOtp,
   deleteAccountWithOtp,
   getBlockedUsers,
+  toggleReadReceipts,
 } from "../controllers/userController.js";
 import { protectedRoute } from "../middlewares/authMiddleware.js";
 import upload from "../middlewares/multerMiddleware.js";
@@ -28,8 +30,10 @@ router.put("/me", updateMe);
 router.delete("/me", protectedRoute, deleteAccountWithOtp);
 router.post("/change-password", protectedRoute, changePasswordWithOtp);
 router.get("/me/blocked", protectedRoute, getBlockedUsers);
+router.put("/read-receipts", protectedRoute, toggleReadReceipts);
 
 router.post("/uploadAvatar", upload.single("file"), uploadAvatar);
+router.delete("/avatar", protectedRoute, removeAvatar);
 router.post("/uploadCover", upload.single("file"), uploadCover);
 router.put("/note", protectedRoute, updateNote);
 

@@ -334,7 +334,7 @@ export const useChatStore = create<ChatState>()(
 
           set((state) => ({
             conversations: state.conversations.map((c) =>
-              c._id === activeConversationId && c.lastMessage
+              c._id === activeConversationId
                 ? {
                   ...c,
                   unreadCounts: {
@@ -348,6 +348,32 @@ export const useChatStore = create<ChatState>()(
         } catch (error) {
           console.error("Lỗi xảy ra khi gọi markAsSeen trong store", error);
         }
+      },
+      markMessagesAsReadBy: (conversationId, userId) => {
+        set((state) => {
+          if (state.activeConversationId !== conversationId) return state;
+          
+          const convoData = state.messages[conversationId];
+          if (!convoData) return state;
+
+          return {
+            messages: {
+              ...state.messages,
+              [conversationId]: {
+                ...convoData,
+                items: convoData.items.map((msg) => {
+                  if (msg.senderId !== userId && !msg.viewedBy?.includes(userId)) {
+                    return {
+                      ...msg,
+                      viewedBy: [...(msg.viewedBy || []), userId]
+                    };
+                  }
+                  return msg;
+                })
+              }
+            }
+          };
+        });
       },
       addConvo: (convo) => {
         set((state) => {
@@ -729,6 +755,19 @@ export const useChatStore = create<ChatState>()(
           toast.success("Cập nhật ảnh đại diện nhóm thành công!");
         } catch (error: any) {
           toast.error(error.response?.data?.message || "Lỗi cập nhật ảnh đại diện");
+        }
+      },
+      removeGroupAvatar: async (conversationId) => {
+        try {
+          const res = await chatService.removeGroupAvatar(conversationId);
+          set((state) => ({
+            conversations: state.conversations.map((c) =>
+              c._id === conversationId ? { ...c, group: res.group } : c
+            )
+          }));
+          toast.success("Gỡ ảnh đại diện nhóm thành công!");
+        } catch (error: any) {
+          toast.error(error.response?.data?.message || "Lỗi gỡ ảnh đại diện");
         }
       },
       voteOnPoll: async (messageId, optionIndex) => {

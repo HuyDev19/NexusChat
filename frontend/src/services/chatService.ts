@@ -22,6 +22,16 @@ export const chatService = {
     return { messages: res.data.messages, cursor: res.data.nextCursor };
   },
 
+  async getPinnedMessages(id: string): Promise<Message[]> {
+    const res = await api.get(`/conversations/${id}/messages/pinned`);
+    return res.data;
+  },
+
+  async searchMessages(id: string, q: string): Promise<Message[]> {
+    const res = await api.get(`/conversations/${id}/messages/search?q=${encodeURIComponent(q)}`);
+    return res.data;
+  },
+
   async sendDirectMessage(
     recipientId: string,
     content: string = "",
@@ -158,6 +168,11 @@ export const chatService = {
     const res = await api.post(`/conversations/${conversationId}/avatar`, formData, {
       headers: { "Content-Type": "multipart/form-data" },
     });
+    return res.data;
+  },
+
+  async removeGroupAvatar(conversationId: string) {
+    const res = await api.delete(`/conversations/${conversationId}/avatar`);
     return res.data;
   },
 
