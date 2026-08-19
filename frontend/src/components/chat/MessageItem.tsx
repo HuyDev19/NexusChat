@@ -310,7 +310,7 @@ const MessageItem = ({
             <Card
               onDoubleClick={() => !message.isRecalled && reactToMessage(message._id, '❤️')}
               className={cn(
-                "p-3 relative select-none",
+                "p-3 relative select-none transition-all duration-300 hover:shadow-md hover:shadow-primary/10 hover:-translate-y-[1px]",
                 message.isOwn ? "chat-bubble-sent border-0" : "chat-bubble-received",
                 message.isRecalled ? "bg-muted/50 border border-border" : ""
               )}

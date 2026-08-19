@@ -137,7 +137,7 @@ const StoryBar = () => {
 
             {/* Avatar with Plus Badge */}
             <div className="relative">
-              <div className="w-12 h-12 rounded-full p-0.5 bg-gradient-to-tr from-purple-600 via-pink-500 to-indigo-600 group-hover:scale-105 transition-transform duration-200 shadow-sm shadow-purple-500/20">
+              <div className="w-12 h-12 rounded-full p-0.5 bg-gradient-to-tr from-purple-600 via-pink-500 to-indigo-600 group-hover:scale-105 group-hover:shadow-md group-hover:shadow-primary/30 group-hover:-translate-y-[2px] transition-all duration-300 shadow-sm shadow-purple-500/20">
                 <div className="w-full h-full rounded-full overflow-hidden bg-background">
                   <UserAvatar
                     type="sidebar"
@@ -189,7 +189,7 @@ const StoryBar = () => {
                 <div className="relative">
                   <div
                     className={cn(
-                      "w-12 h-12 rounded-full p-0.5 transition-transform duration-200 group-hover:scale-105",
+                      "w-12 h-12 rounded-full p-0.5 transition-all duration-300 group-hover:scale-105 group-hover:shadow-md group-hover:shadow-primary/30 group-hover:-translate-y-[2px]",
                       hasNote
                         ? "bg-gradient-to-tr from-purple-600 via-indigo-600 to-pink-500 shadow-sm shadow-purple-500/20"
                         : "bg-border/60"

@@ -90,7 +90,7 @@ const ChatCard = ({
     <>
       <Card
         className={cn(
-          "group border-none p-3 cursor-pointer transition-smooth glass hover:bg-muted/30",
+          "group border-none p-3 cursor-pointer transition-all duration-300 glass hover:bg-muted/40 hover:shadow-md hover:shadow-primary/10 hover:-translate-y-[1px]",
           isActive &&
             "ring-2 ring-primary/50 bg-gradient-to-tr from-primary-glow/10 to-primary-foreground"
         )}
