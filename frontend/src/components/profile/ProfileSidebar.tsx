@@ -5,7 +5,7 @@ import { X, Calendar, Phone, Image as ImageIcon, CaseSensitive, Ban, Settings, F
 import UserAvatar from "../chat/UserAvatar";
 import GroupChatAvatar from "../chat/GroupChatAvatar";
 import { useState } from "react";
-import { isNoteExpired } from "@/lib/utils";
+import { cn, isNoteExpired } from "@/lib/utils";
 import WallpaperModal from "../chat/WallpaperModal";
 import NicknameModal from "../chat/NicknameModal";
 import GroupSettingsModal from "../chat/GroupSettingsModal";
@@ -33,15 +33,23 @@ const ProfileSidebar = () => {
   
   if (!isOpen) return null;
 
-  const chat = mode === "chat" ? conversations.find(c => c._id === activeConversationId) : null;
+  const activeChat = conversations.find(c => c._id === activeConversationId);
+  const isActiveDirect = activeChat?.type === "direct";
+  
+  let activeOtherUser: any = null;
+  if (isActiveDirect && activeChat) {
+    const participants = activeChat.participants || [];
+    activeOtherUser = participants.find((p) => p._id !== user?._id);
+  }
+
+  const chat = mode === "chat" ? activeChat : null;
   const isDirect = chat?.type === "direct";
   const isGroup = chat?.type === "group";
 
-  // For direct chats
+  // For direct chats (legacy variable for mode === "chat")
   let otherUser: any = null;
   if (isDirect) {
-    const participants = chat.participants || [];
-    otherUser = participants.find((p) => p._id !== user?._id);
+    otherUser = activeOtherUser;
   }
 
   const isBlocked = otherUser && user?.blockedUsers?.includes(otherUser._id);
@@ -122,26 +130,58 @@ const ProfileSidebar = () => {
       </div>
 
       {/* Body */}
-      <div className="flex-1 overflow-y-auto beautiful-scrollbar p-4 flex flex-col items-center">
+      <div className="flex-1 overflow-y-auto beautiful-scrollbar flex flex-col relative">
         {(mode === "user" && (loading || !profileData)) || (mode === "chat" && isDirect && loading) ? (
-          <div className="flex flex-col items-center justify-center h-full w-full space-y-4">
+          <div className="flex flex-col items-center justify-center h-full w-full space-y-4 p-4">
             <div className="size-24 rounded-full bg-muted animate-pulse"></div>
             <div className="h-6 w-32 bg-muted animate-pulse rounded"></div>
             <div className="h-4 w-48 bg-muted animate-pulse rounded mt-4"></div>
           </div>
         ) : (
           <>
-            {/* Avatar Section */}
-            <div className="mt-8 mb-4 relative z-10">
-              {mode === "chat" && isGroup ? (
-                <GroupChatAvatar
-                  participants={chat.participants || []}
-                  type="chat"
-                  groupAvatar={chat?.group?.avatar}
-                  groupName={chat?.group?.name}
-                />
-              ) : (
-                <>
+            {/* Cover Photo Area */}
+            {mode === "chat" && isGroup ? null : (
+              <div className="w-full h-32 bg-muted relative shrink-0">
+                {(mode === "chat" && isDirect ? otherUser?.coverUrl : profileData?.coverUrl) ? (
+                  <img
+                    src={mode === "chat" && isDirect ? otherUser?.coverUrl : profileData?.coverUrl}
+                    alt="Cover"
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full bg-gradient-to-tr from-muted to-muted/50" />
+                )}
+              </div>
+            )}
+
+            {/* Content Container */}
+            <div className="flex flex-col items-center px-4 pb-4">
+              {/* Avatar Section */}
+              <div 
+                className={cn(
+                  "relative z-10 transition-transform duration-200", 
+                  mode === "chat" && isGroup ? "mt-8 mb-4" : "-mt-12 mb-3",
+                  isActiveDirect && "cursor-pointer hover:scale-105 hover:brightness-110"
+                )}
+                onClick={() => {
+                  if (isActiveDirect && activeOtherUser) {
+                    if (mode === "chat") {
+                      useProfileStore.getState().openProfile(activeOtherUser._id);
+                    } else {
+                      useProfileStore.getState().openChatDetails(activeOtherUser._id);
+                    }
+                  }
+                }}
+              >
+                {mode === "chat" && isGroup ? (
+                  <GroupChatAvatar
+                    participants={chat.participants || []}
+                    type="chat"
+                    groupAvatar={chat?.group?.avatar}
+                    groupName={chat?.group?.name}
+                  />
+                ) : (
+                  <>
                   <UserAvatar
                     type="profile"
                     name={mode === "chat" && isDirect ? (chat?.nicknames?.[otherUser?._id] || otherUser?.displayName) : profileData?.displayName}
@@ -171,7 +211,21 @@ const ProfileSidebar = () => {
             </div>
 
             {/* Name */}
-            <h3 className="text-xl font-bold text-center text-foreground">
+            <h3 
+              className={cn(
+                "text-xl font-bold text-center text-foreground",
+                isActiveDirect && "cursor-pointer hover:text-purple-400 transition-colors"
+              )}
+              onClick={() => {
+                if (isActiveDirect && activeOtherUser) {
+                  if (mode === "chat") {
+                    useProfileStore.getState().openProfile(activeOtherUser._id);
+                  } else {
+                    useProfileStore.getState().openChatDetails(activeOtherUser._id);
+                  }
+                }
+              }}
+            >
               {mode === "chat" && isGroup 
                 ? chat?.group?.name 
                 : mode === "chat" && isDirect 
@@ -233,9 +287,7 @@ const ProfileSidebar = () => {
                   
                   <ActionRow icon={CaseSensitive} label="Đổi biệt danh" onClick={() => setShowNicknameModal(true)} />
                   
-                  {isGroup && (
-                    <ActionRow icon={Edit3} label="Đổi tên nhóm" onClick={() => setShowRenameGroup(true)} />
-                  )}
+
                   {isGroup && (
                     <ActionRow icon={Settings} label="Cài đặt nhóm" onClick={() => setShowGroupSettings(true)} />
                   )}
@@ -261,6 +313,7 @@ const ProfileSidebar = () => {
 
               {/* Stats for Chat Mode */}
               {mode === "chat" && chat && renderStats()}
+            </div>
             </div>
           </>
         )}

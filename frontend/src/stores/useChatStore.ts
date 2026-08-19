@@ -21,6 +21,7 @@ export const useChatStore = create<ChatState>()(
       archivedConversations: [],
       pinnedConversations: [],
       mutedConversations: {},
+      drafts: {},
 
       setSearchQuery: (searchQuery) => set({ searchQuery }),
       archiveConversation: (id) =>
@@ -52,6 +53,10 @@ export const useChatStore = create<ChatState>()(
           delete updated[id];
           return { mutedConversations: updated };
         }),
+      setDraft: (conversationId, text) =>
+        set((state) => ({
+          drafts: { ...state.drafts, [conversationId]: text },
+        })),
       setActiveConversation: (id) => set({ activeConversationId: id }),
       reset: () => {
         set({

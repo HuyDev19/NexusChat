@@ -5,10 +5,15 @@ interface UserProfile {
   _id: string;
   displayName: string;
   avatarUrl?: string;
+  coverUrl?: string;
   bio?: string;
   phone?: string;
   presenceStatus?: "online" | "offline" | "busy";
   createdAt?: string;
+  note?: {
+    content: string;
+    expiresAt: string | null;
+  };
 }
 
 interface ProfileStore {

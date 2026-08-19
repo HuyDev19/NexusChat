@@ -57,6 +57,7 @@ export interface ChatState {
   archivedConversations: string[];
   pinnedConversations: string[];
   mutedConversations: Record<string, number>; // convoId -> expiresAt timestamp (-1 = permanent)
+  drafts: Record<string, string>; // conversationId -> draft message
   setSearchQuery: (query: string) => void;
   archiveConversation: (id: string) => void;
   unarchiveConversation: (id: string) => void;
@@ -64,6 +65,7 @@ export interface ChatState {
   unpinConversation: (id: string) => void;
   muteConversation: (id: string, durationMs?: number) => void;
   unmuteConversation: (id: string) => void;
+  setDraft: (conversationId: string, text: string) => void;
   reset: () => void;
 
   setActiveConversation: (id: string | null) => void;

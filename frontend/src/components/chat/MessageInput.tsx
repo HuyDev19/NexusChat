@@ -19,7 +19,7 @@ import { Timer, EyeOff, Ban } from "lucide-react";
 
 const MessageInput = ({ selectedConvo }: { selectedConvo: Conversation }) => {
   const { user } = useAuthStore();
-  const { sendDirectMessage, sendGroupMessage, uploadAudio, uploadImage } = useChatStore();
+  const { sendDirectMessage, sendGroupMessage, uploadAudio, uploadImage, setDraft } = useChatStore();
 
   let isBlocked = false;
   if (selectedConvo.type === "direct") {
@@ -29,7 +29,14 @@ const MessageInput = ({ selectedConvo }: { selectedConvo: Conversation }) => {
       isBlocked = true;
     }
   }
+  
   const [value, setValue] = useState("");
+
+  useEffect(() => {
+    const draft = useChatStore.getState().drafts[selectedConvo._id] || "";
+    setValue(draft);
+    inputRef.current?.focus();
+  }, [selectedConvo._id]);
 
   const [isRecording, setIsRecording] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
@@ -74,6 +81,7 @@ const MessageInput = ({ selectedConvo }: { selectedConvo: Conversation }) => {
     // Xóa text ngay và giữ con trỏ chuột nháy liên tục trong ô input
     if (!isMedia) {
       setValue("");
+      setDraft(selectedConvo._id, "");
     }
     inputRef.current?.focus();
 
@@ -249,6 +257,7 @@ const MessageInput = ({ selectedConvo }: { selectedConvo: Conversation }) => {
 
       const newValue = `${beforeAt}@${name} ${textAfterCursor}`;
       setValue(newValue);
+      setDraft(selectedConvo._id, newValue);
       setMentionQuery(null);
 
       setTimeout(() => {
@@ -294,6 +303,7 @@ const MessageInput = ({ selectedConvo }: { selectedConvo: Conversation }) => {
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
     setValue(val);
+    setDraft(selectedConvo._id, val);
 
     const participantIds = selectedConvo.participants.map(p => p._id);
     emitTypingStart(selectedConvo._id, participantIds);
@@ -462,7 +472,11 @@ const MessageInput = ({ selectedConvo }: { selectedConvo: Conversation }) => {
                 <div>
                   <EmojiPicker
                     onChange={(emoji: string) => {
-                      setValue((prev) => `${prev}${emoji}`);
+                      setValue((prev) => {
+                        const newVal = `${prev}${emoji}`;
+                        setDraft(selectedConvo._id, newVal);
+                        return newVal;
+                      });
                       setTimeout(() => inputRef.current?.focus(), 10);
                     }}
                   />

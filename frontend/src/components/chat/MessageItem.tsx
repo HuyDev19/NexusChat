@@ -481,6 +481,11 @@ const MessageItem = ({
               <div className="flex -space-x-1 justify-end">
                 {message.viewedBy
                   .filter((vid) => vid !== user?._id) // don't show self
+                  .filter((vid) => {
+                    // Only show on the latest message this user has read
+                    const latestReadMessage = messages.find((m) => m.viewedBy?.includes(vid));
+                    return latestReadMessage?._id === message._id;
+                  })
                   .map((vid) => {
                     const p = participants.find((part) => part._id.toString() === vid);
                     if (!p) return null;
