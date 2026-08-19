@@ -33,7 +33,8 @@ export const handleAIResponse = async (conversationId, io) => {
     });
 
     // Notify typing
-    io.to(conversationId).emit("typing-start", { conversationId, userId: NEXUS_AI_ID });
+    const roomId = conversationId.toString();
+    io.to(roomId).emit("typing-start", { conversationId: roomId, userId: NEXUS_AI_ID });
 
     // Fetch conversation context (last 15 messages)
     const recentMessages = await Message.find({ conversationId })
@@ -76,7 +77,7 @@ export const handleAIResponse = async (conversationId, io) => {
     const responseText = result.response.text();
 
     // End typing
-    io.to(conversationId).emit("typing-end", { conversationId, userId: NEXUS_AI_ID });
+    io.to(roomId).emit("typing-end", { conversationId: roomId, userId: NEXUS_AI_ID });
 
     if (responseText) {
       // Save AI message to database
@@ -104,7 +105,8 @@ export const handleAIResponse = async (conversationId, io) => {
 
   } catch (error) {
     console.error("Lỗi khi xử lý phản hồi AI:", error);
-    io.to(conversationId).emit("typing-end", { conversationId, userId: NEXUS_AI_ID });
+    const roomId = conversationId.toString();
+    io.to(roomId).emit("typing-end", { conversationId: roomId, userId: NEXUS_AI_ID });
     
     try {
       const conversation = await Conversation.findById(conversationId);

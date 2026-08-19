@@ -223,7 +223,7 @@ const MessageInput = ({ selectedConvo }: { selectedConvo: Conversation }) => {
       username: "NexusAI",
       displayName: "NexusAI",
       isAllOption: false,
-      avatarUrl: "https://api.dicebear.com/9.x/bottts/svg?seed=NexusAI&backgroundColor=b6e3f4"
+      avatarUrl: "https://cdn-icons-png.flaticon.com/512/826/826963.png"
     } as any] : [];
 
     const users = selectedConvo.participants.filter(

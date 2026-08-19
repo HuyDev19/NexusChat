@@ -187,9 +187,17 @@ const MessageItem = ({
     (p: Participant) => p._id.toString() === message.senderId.toString()
   );
 
+  const isAI = message.senderId === "000000000000000000000000";
+
   const getDisplayName = () => {
+    if (isAI) return "NexusAI";
     if (!participant) return "Unknown";
     return selectedConvo.nicknames?.[participant._id] || participant.displayName;
+  };
+
+  const getAvatarUrl = () => {
+    if (isAI) return "https://cdn-icons-png.flaticon.com/512/826/826963.png";
+    return participant?.avatarUrl;
   };
 
   // Group reactions
@@ -268,8 +276,8 @@ const MessageItem = ({
               >
                 <UserAvatar
                   type="chat"
-                  name={getDisplayName() ?? "Moji"}
-                  avatarUrl={participant?.avatarUrl ?? undefined}
+                  name={getDisplayName()}
+                  avatarUrl={getAvatarUrl()}
                 />
               </div>
             )}

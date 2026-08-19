@@ -1,6 +1,7 @@
 import { useChatStore } from "@/stores/useChatStore";
 import ChatWelcomeScreen from "./ChatWelcomeScreen";
 import MessageItem from "./MessageItem";
+import UserAvatar from "./UserAvatar";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import InfiniteScroll from "react-infinite-scroll-component";
 import { Pin } from "lucide-react";
@@ -199,11 +200,23 @@ const ChatWindowBody = () => {
                 <div ref={messagesEndRef}></div>
 
                 {activeTypingUsers.map((typingUserId) => {
+                    const isAI = typingUserId === "000000000000000000000000";
                     const typingUser = selectedConvo?.participants.find(p => p._id === typingUserId);
-                    if (!typingUser) return null;
+                    if (!typingUser && !isAI) return null;
+                    
+                    const avatarUrl = isAI ? "https://cdn-icons-png.flaticon.com/512/826/826963.png" : (typingUser as any)?.avatarUrl;
+                    const displayName = isAI ? "NexusAI" : (selectedConvo.nicknames?.[typingUserId] || (typingUser as any)?.displayName || "User");
+
                     return (
-                        <div key={typingUserId} className="flex items-end mb-2 mt-1 opacity-70 transition-opacity justify-start w-full">
-                            <div className="bg-muted p-3 rounded-2xl rounded-bl-sm w-fit flex gap-1.5 items-center h-[38px] ml-10">
+                        <div key={typingUserId} className="flex items-end mb-2 mt-1 opacity-70 transition-opacity justify-start w-full gap-2">
+                            <div className="w-8">
+                                <UserAvatar
+                                    type="chat"
+                                    name={displayName}
+                                    avatarUrl={avatarUrl}
+                                />
+                            </div>
+                            <div className="bg-muted p-3 rounded-2xl rounded-bl-sm w-fit flex gap-1.5 items-center h-[38px]">
                                 <span className="size-1.5 bg-foreground/50 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
                                 <span className="size-1.5 bg-foreground/50 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
                                 <span className="size-1.5 bg-foreground/50 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
