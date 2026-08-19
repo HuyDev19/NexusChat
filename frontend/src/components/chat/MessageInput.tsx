@@ -15,11 +15,11 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Timer, EyeOff, Ban } from "lucide-react";
+import { Timer, EyeOff, Ban, X, Reply } from "lucide-react";
 
 const MessageInput = ({ selectedConvo }: { selectedConvo: Conversation }) => {
   const { user } = useAuthStore();
-  const { sendDirectMessage, sendGroupMessage, uploadAudio, uploadImage, setDraft } = useChatStore();
+  const { sendDirectMessage, sendGroupMessage, uploadAudio, uploadImage, setDraft, replyingToMessage, setReplyingToMessage } = useChatStore();
 
   let isBlocked = false;
   if (selectedConvo.type === "direct") {
@@ -136,10 +136,11 @@ const MessageInput = ({ selectedConvo }: { selectedConvo: Conversation }) => {
       if (selectedConvo.type === "direct") {
         const participants = selectedConvo.participants || [];
         const otherUser = participants.filter((p) => p._id !== user._id)[0];
-        await sendDirectMessage(otherUser._id, isMedia ? "" : currValue, imgUrl, audioUrl, expiresIn, isViewOnce, mentions);
+        await sendDirectMessage(otherUser._id, isMedia ? "" : currValue, imgUrl, audioUrl, expiresIn, isViewOnce, mentions, replyingToMessage?._id);
       } else {
-        await sendGroupMessage(selectedConvo._id, isMedia ? "" : currValue, imgUrl, audioUrl, expiresIn, isViewOnce, undefined, mentions);
+        await sendGroupMessage(selectedConvo._id, isMedia ? "" : currValue, imgUrl, audioUrl, expiresIn, isViewOnce, undefined, mentions, replyingToMessage?._id);
       }
+      if (replyingToMessage) setReplyingToMessage(null);
     } catch (error: any) {
       console.error(error);
       toast.error(error.response?.data?.message || "Lỗi xảy ra khi gửi tin nhắn. Bạn hãy thử lại!");
@@ -336,8 +337,27 @@ const MessageInput = ({ selectedConvo }: { selectedConvo: Conversation }) => {
   }
 
   return (
-    <div className="flex items-center gap-2 p-3 min-h-[56px] bg-background">
-      {!isRecording ? (
+    <div className="flex flex-col bg-background">
+      {replyingToMessage && (
+        <div className="flex items-center justify-between px-4 py-2 bg-muted/30 border-t border-b">
+          <div className="flex items-center gap-2 overflow-hidden">
+            <Reply className="size-4 text-primary shrink-0" />
+            <div className="flex flex-col text-sm truncate">
+              <span className="font-semibold text-primary truncate">
+                Đang trả lời {selectedConvo.participants.find(p => p._id === replyingToMessage.senderId)?.displayName || "người dùng"}
+              </span>
+              <span className="text-muted-foreground truncate">
+                {replyingToMessage.audioUrl ? "🎵 Tin nhắn thoại" : replyingToMessage.imgUrl ? "🖼️ Hình ảnh" : replyingToMessage.content}
+              </span>
+            </div>
+          </div>
+          <Button variant="ghost" size="icon" className="size-6 shrink-0" onClick={() => setReplyingToMessage(null)}>
+            <X className="size-4" />
+          </Button>
+        </div>
+      )}
+      <div className="flex items-center gap-2 p-3 min-h-[56px]">
+        {!isRecording ? (
         <div className="flex items-center gap-1">
           <input
             type="file"
@@ -514,6 +534,7 @@ const MessageInput = ({ selectedConvo }: { selectedConvo: Conversation }) => {
         onOpenChange={setShowPollModal}
         onCreatePoll={handleCreatePoll}
       />
+      </div>
     </div>
   );
 };

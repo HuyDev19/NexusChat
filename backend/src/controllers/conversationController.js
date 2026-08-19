@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import Conversation from "../models/Conversation.js";
 import Message from "../models/Message.js";
 import cloudinary from "../libs/cloudinary.js";
@@ -26,7 +27,7 @@ export const createConversation = async (req, res) => {
 
       conversation = await Conversation.findOne({
         type: "direct",
-        "participants.userId": { $all: [userId, participantId] },
+        "participants.userId": { $all: [userId, new mongoose.Types.ObjectId(participantId)] },
       });
 
       if (!conversation) {
@@ -162,7 +163,42 @@ export const getConversations = async (req, res) => {
       return true;
     });
 
-    return res.status(200).json({ conversations: formatted });
+    // Deduplicate direct conversations, keeping the one with the most recent lastMessageAt
+    const directMap = new Map();
+    const uniqueFormatted = [];
+
+    formatted.forEach((convo) => {
+      if (convo.type === "direct") {
+        const otherUser = (convo.participants || []).find((p) => p._id && p._id.toString() !== userId.toString());
+        if (otherUser) {
+          const otherId = otherUser._id.toString();
+          const existing = directMap.get(otherId);
+          if (!existing) {
+            directMap.set(otherId, convo);
+          } else {
+            const existingTime = existing.lastMessageAt ? new Date(existing.lastMessageAt).getTime() : 0;
+            const currentTime = convo.lastMessageAt ? new Date(convo.lastMessageAt).getTime() : 0;
+            if (currentTime > existingTime) {
+              directMap.set(otherId, convo);
+            }
+          }
+        } else {
+          uniqueFormatted.push(convo);
+        }
+      } else {
+        uniqueFormatted.push(convo);
+      }
+    });
+
+    uniqueFormatted.push(...Array.from(directMap.values()));
+    
+    uniqueFormatted.sort((a, b) => {
+      const timeA = a.lastMessageAt ? new Date(a.lastMessageAt).getTime() : 0;
+      const timeB = b.lastMessageAt ? new Date(b.lastMessageAt).getTime() : 0;
+      return timeB - timeA;
+    });
+
+    return res.status(200).json({ conversations: uniqueFormatted });
   } catch (error) {
     console.error("Lỗi xảy ra khi lấy conversations", error);
     return res.status(500).json({ message: "Lỗi hệ thống" });
@@ -203,7 +239,8 @@ export const getMessages = async (req, res) => {
 
     let messages = await Message.find(query)
       .sort({ createdAt: -1 })
-      .limit(Number(limit) + 1);
+      .limit(Number(limit) + 1)
+      .populate("replyTo", "content senderId imgUrl audioUrl isRecalled");
 
     let nextCursor = null;
 
@@ -257,7 +294,10 @@ export const getPinnedMessages = async (req, res) => {
       query.createdAt = { $gt: new Date(clearedTime) };
     }
 
-    let messages = await Message.find(query).sort({ createdAt: -1 }).populate("senderId", "displayName avatarUrl");
+    let messages = await Message.find(query)
+      .sort({ createdAt: -1 })
+      .populate("senderId", "displayName avatarUrl")
+      .populate("replyTo", "content senderId imgUrl audioUrl isRecalled");
     
     messages = messages.map(msg => {
       const msgObj = msg.toObject();
@@ -307,7 +347,11 @@ export const searchMessages = async (req, res) => {
       query.createdAt = { $gt: new Date(clearedTime) };
     }
 
-    let messages = await Message.find(query).sort({ createdAt: -1 }).limit(50).populate("senderId", "displayName avatarUrl");
+    let messages = await Message.find(query)
+      .sort({ createdAt: -1 })
+      .limit(50)
+      .populate("senderId", "displayName avatarUrl")
+      .populate("replyTo", "content senderId imgUrl audioUrl isRecalled");
 
     messages = messages.map(msg => {
       const msgObj = msg.toObject();

@@ -86,4 +86,13 @@ export interface Message {
     }[];
     allowMultiple: boolean;
   };
+  replyTo?: {
+    _id: string;
+    content: string | null;
+    senderId: string;
+    imgUrl?: string | null;
+    audioUrl?: string | null;
+    isRecalled?: boolean;
+  };
+  isForwarded?: boolean;
 }

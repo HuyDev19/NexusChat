@@ -83,11 +83,11 @@ export const useSocketStore = create<SocketState>((set, get) => ({
         streak: conversation.streak,
       };
 
+      useChatStore.getState().updateConversation(updatedConversation);
+
       if (useChatStore.getState().activeConversationId === message.conversationId) {
         useChatStore.getState().markAsSeen();
       }
-
-      useChatStore.getState().updateConversation(updatedConversation);
 
       // Phát thông báo đẩy trình duyệt khi tab bị ẩn
       if (

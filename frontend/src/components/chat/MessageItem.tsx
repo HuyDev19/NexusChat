@@ -5,7 +5,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Card } from "../ui/card";
 import { Badge } from "../ui/badge";
-import { Play, Pause, Pin, Smile, FastForward, PinOff, Timer, EyeOff, Eye, Undo2, MoreHorizontal } from "lucide-react";
+import { Play, Pause, Pin, Smile, FastForward, PinOff, Timer, EyeOff, Eye, Undo2, MoreHorizontal, Reply, Forward } from "lucide-react";
 import { useState, useRef, useEffect, Fragment } from "react";
 import { useChatStore } from "@/stores/useChatStore";
 import { useAuthStore } from "@/stores/useAuthStore";
@@ -174,7 +174,7 @@ const MessageItem = ({
   selectedConvo,
   lastMessageStatus,
 }: MessageItemProps) => {
-  const { reactToMessage, pinMessage, recallMessage, markMediaAsViewed, voteOnPoll } = useChatStore();
+  const { reactToMessage, pinMessage, recallMessage, markMediaAsViewed, voteOnPoll, setReplyingToMessage, setForwardingMessage } = useChatStore();
   const { user } = useAuthStore();
   const prev = index + 1 < messages.length ? messages[index + 1] : undefined;
 
@@ -300,11 +300,43 @@ const MessageItem = ({
                {getDisplayName()}
              </span>
           )}
-          {message.isPinned && (
-            <div className="flex items-center text-[10px] font-medium text-muted-foreground mb-0.5 gap-1">
-              <Pin className="size-3" /> Đã ghim
+
+          {message.replyTo && (
+            <div
+              className="flex items-center gap-2 mb-1 px-3 py-1.5 bg-muted/40 rounded-lg border-l-2 border-primary cursor-pointer hover:bg-muted/60 transition-colors max-w-full"
+              onClick={() => {
+                const el = document.querySelector(`.message-${message.replyTo?._id}`);
+                el?.scrollIntoView({ behavior: "smooth", block: "center" });
+                el?.classList.add("bg-primary/20", "transition-colors", "duration-500");
+                setTimeout(() => el?.classList.remove("bg-primary/20"), 1500);
+              }}
+            >
+              <Reply className="size-3 text-muted-foreground shrink-0" />
+              <div className="flex flex-col text-[11px] min-w-0">
+                <span className="font-semibold text-primary truncate">
+                  {message.replyTo.senderId === user?._id ? "Bạn" : (selectedConvo.participants.find(p => p._id === message.replyTo?.senderId)?.displayName || "người dùng")}
+                </span>
+                <span className="text-muted-foreground truncate">
+                  {message.replyTo.isRecalled ? "Tin nhắn đã thu hồi" : message.replyTo.audioUrl ? "🎵 Tin nhắn thoại" : message.replyTo.imgUrl ? "🖼️ Hình ảnh" : message.replyTo.content}
+                </span>
+              </div>
             </div>
           )}
+
+          {message.isForwarded && (
+            <div className="flex items-center gap-1 text-[11px] text-muted-foreground italic mb-0.5 ml-1">
+              <Forward className="size-3" />
+              <span>Đã chuyển tiếp</span>
+            </div>
+          )}
+
+          <div className="flex items-center gap-2 max-w-full group/actions">
+            {message.isPinned && (
+              <div className="flex items-center text-[10px] font-medium text-muted-foreground mb-0.5 gap-1">
+                <Pin className="size-3" /> Đã ghim
+              </div>
+            )}
+          </div>
 
           <div className={cn("relative flex items-center gap-2", message.isOwn ? "flex-row-reverse" : "flex-row")}>
             <Card
@@ -433,6 +465,22 @@ const MessageItem = ({
                       ))}
                     </div>
                     <DropdownMenuItem
+                      onClick={() => setReplyingToMessage(message)}
+                      className="cursor-pointer font-medium flex items-center gap-2"
+                    >
+                      <Reply className="size-4" />
+                      Trả lời
+                    </DropdownMenuItem>
+                    {!message.isViewOnce && (
+                      <DropdownMenuItem
+                        onClick={() => setForwardingMessage(message)}
+                        className="cursor-pointer font-medium flex items-center gap-2"
+                      >
+                        <Forward className="size-4" />
+                        Chuyển tiếp
+                      </DropdownMenuItem>
+                    )}
+                    <DropdownMenuItem
                       onClick={() => pinMessage(message._id)}
                       className="cursor-pointer font-medium flex items-center gap-2"
                     >
@@ -483,8 +531,9 @@ const MessageItem = ({
                   .filter((vid) => vid !== user?._id) // don't show self
                   .filter((vid) => {
                     // Only show on the latest message this user has read
-                    const latestReadMessage = messages.find((m) => m.viewedBy?.includes(vid));
-                    return latestReadMessage?._id === message._id;
+                    // messages array is newest-first
+                    const latestReadMsg = messages.find(m => m.isOwn && m.viewedBy?.includes(vid));
+                    return latestReadMsg?._id === message._id;
                   })
                   .map((vid) => {
                     const p = participants.find((part) => part._id.toString() === vid);
@@ -502,14 +551,12 @@ const MessageItem = ({
               </div>
             )}
             
-            {message.isOwn && message._id === selectedConvo.lastMessage?._id && (
+            {message.isOwn && message._id === selectedConvo.lastMessage?._id && lastMessageStatus !== "đã xem" && (
               <Badge
                 variant="outline"
                 className={cn(
                   "text-[10px] px-1.5 py-0 h-4 border font-medium lowercase",
-                  lastMessageStatus === "đã xem"
-                    ? "bg-primary/10 text-primary border-primary/20"
-                    : lastMessageStatus === "đã nhận"
+                  lastMessageStatus === "đã nhận"
                     ? "bg-muted text-muted-foreground border-transparent"
                     : "bg-transparent text-muted-foreground/70 border-muted-foreground/30"
                 )}

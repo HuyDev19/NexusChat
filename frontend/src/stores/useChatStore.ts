@@ -22,6 +22,8 @@ export const useChatStore = create<ChatState>()(
       pinnedConversations: [],
       mutedConversations: {},
       drafts: {},
+      replyingToMessage: null,
+      forwardingMessage: null,
 
       setSearchQuery: (searchQuery) => set({ searchQuery }),
       archiveConversation: (id) =>
@@ -57,6 +59,8 @@ export const useChatStore = create<ChatState>()(
         set((state) => ({
           drafts: { ...state.drafts, [conversationId]: text },
         })),
+      setReplyingToMessage: (message) => set({ replyingToMessage: message }),
+      setForwardingMessage: (message) => set({ forwardingMessage: message }),
       setActiveConversation: (id) => set({ activeConversationId: id }),
       reset: () => {
         set({
@@ -137,21 +141,24 @@ export const useChatStore = create<ChatState>()(
           set({ messageLoading: false });
         }
       },
-      sendDirectMessage: async (recipientId, content, imgUrl, audioUrl, expiresIn, isViewOnce, mentions) => {
+      sendDirectMessage: async (recipientId, content, imgUrl, audioUrl, expiresIn, isViewOnce, mentions, replyTo, isForwarded, targetConversationId) => {
         try {
           const { activeConversationId } = get();
+          const convoIdToUse = targetConversationId || activeConversationId || undefined;
           const sentMessage = await chatService.sendDirectMessage(
             recipientId,
             content,
             imgUrl || undefined,
-            activeConversationId || undefined,
+            convoIdToUse,
             audioUrl || undefined,
             expiresIn,
             isViewOnce,
-            mentions
+            mentions,
+            replyTo,
+            isForwarded
           );
 
-          const conversationId = sentMessage.conversationId || activeConversationId;
+          const conversationId = sentMessage.conversationId || convoIdToUse;
 
           if (conversationId) {
             set((state) => {
@@ -186,6 +193,7 @@ export const useChatStore = create<ChatState>()(
                       }
                     : c
                 ),
+                replyingToMessage: null
               };
             });
           }
@@ -194,9 +202,31 @@ export const useChatStore = create<ChatState>()(
           throw error;
         }
       },
-      sendGroupMessage: async (conversationId, content, imgUrl, audioUrl, expiresIn, isViewOnce, poll, mentions) => {
+      sendGroupMessage: async (
+        conversationId,
+        content,
+        imgUrl,
+        audioUrl,
+        expiresIn,
+        isViewOnce,
+        poll,
+        mentions,
+        replyTo,
+        isForwarded
+      ) => {
         try {
-          const sentMessage = await chatService.sendGroupMessage(conversationId, content, imgUrl || undefined, audioUrl || undefined, expiresIn, isViewOnce, poll, mentions);
+          const sentMessage = await chatService.sendGroupMessage(
+            conversationId,
+            content,
+            imgUrl,
+            audioUrl,
+            expiresIn,
+            isViewOnce,
+            poll,
+            mentions,
+            replyTo,
+            isForwarded
+          );
 
           set((state) => {
             const prevItems = state.messages[conversationId]?.items ?? [];
@@ -356,8 +386,6 @@ export const useChatStore = create<ChatState>()(
       },
       markMessagesAsReadBy: (conversationId, userId) => {
         set((state) => {
-          if (state.activeConversationId !== conversationId) return state;
-          
           const convoData = state.messages[conversationId];
           if (!convoData) return state;
 

@@ -58,6 +58,8 @@ export interface ChatState {
   pinnedConversations: string[];
   mutedConversations: Record<string, number>; // convoId -> expiresAt timestamp (-1 = permanent)
   drafts: Record<string, string>; // conversationId -> draft message
+  replyingToMessage: Message | null;
+  forwardingMessage: Message | null;
   setSearchQuery: (query: string) => void;
   archiveConversation: (id: string) => void;
   unarchiveConversation: (id: string) => void;
@@ -66,6 +68,8 @@ export interface ChatState {
   muteConversation: (id: string, durationMs?: number) => void;
   unmuteConversation: (id: string) => void;
   setDraft: (conversationId: string, text: string) => void;
+  setReplyingToMessage: (message: Message | null) => void;
+  setForwardingMessage: (message: Message | null) => void;
   reset: () => void;
 
   setActiveConversation: (id: string | null) => void;
@@ -78,7 +82,10 @@ export interface ChatState {
     audioUrl?: string,
     expiresIn?: number,
     isViewOnce?: boolean,
-    mentions?: string[]
+    mentions?: string[],
+    replyTo?: string,
+    isForwarded?: boolean,
+    targetConversationId?: string
   ) => Promise<void>;
   sendGroupMessage: (
     conversationId: string,
@@ -88,7 +95,9 @@ export interface ChatState {
     expiresIn?: number,
     isViewOnce?: boolean,
     poll?: any,
-    mentions?: string[]
+    mentions?: string[],
+    replyTo?: string,
+    isForwarded?: boolean
   ) => Promise<void>;
   deleteConversation: (id: string) => Promise<void>;
   clearChatHistory: (id: string) => Promise<void>;

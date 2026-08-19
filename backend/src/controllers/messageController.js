@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import Conversation from "../models/Conversation.js";
 import Message from "../models/Message.js";
 import { updateConversationAfterCreateMessage } from "../utils/messageHelper.js";
@@ -8,7 +9,7 @@ import { NEXUS_AI_ID } from "../utils/seedNexusAI.js";
 
 export const sendDirectMessage = async (req, res) => {
   try {
-    const { recipientId, content, conversationId, audioUrl, expiresIn, isViewOnce, mentions } = req.body;
+    const { recipientId, content, conversationId, audioUrl, expiresIn, isViewOnce, mentions, replyTo, isForwarded } = req.body;
     const senderId = req.user._id;
 
     let conversation;
@@ -19,6 +20,11 @@ export const sendDirectMessage = async (req, res) => {
 
     if (conversationId) {
       conversation = await Conversation.findById(conversationId);
+    } else {
+      conversation = await Conversation.findOne({
+        type: "direct",
+        "participants.userId": { $all: [senderId, new mongoose.Types.ObjectId(recipientId)] }
+      });
     }
 
     if (!conversation) {
@@ -42,11 +48,15 @@ export const sendDirectMessage = async (req, res) => {
       expiresIn,
       isViewOnce,
       mentions,
+      replyTo,
+      isForwarded,
     });
 
     updateConversationAfterCreateMessage(conversation, message, senderId);
     
     await conversation.save();
+
+    await message.populate("replyTo", "content senderId imgUrl audioUrl isRecalled");
 
     const io = req.app.get("io");
     if (io) {
@@ -72,7 +82,7 @@ export const sendDirectMessage = async (req, res) => {
 
 export const sendGroupMessage = async (req, res) => {
   try {
-    const { conversationId, content, audioUrl, imgUrl, expiresIn, isViewOnce, poll, mentions } = req.body;
+    const { conversationId, content, audioUrl, imgUrl, expiresIn, isViewOnce, poll, mentions, replyTo, isForwarded } = req.body;
     const senderId = req.user._id;
     const conversation = req.conversation;
 
@@ -90,11 +100,15 @@ export const sendGroupMessage = async (req, res) => {
       isViewOnce,
       poll,
       mentions,
+      replyTo,
+      isForwarded,
     });
 
     updateConversationAfterCreateMessage(conversation, message, senderId);
 
     await conversation.save();
+
+    await message.populate("replyTo", "content senderId imgUrl audioUrl isRecalled");
 
     const io = req.app.get("io");
     if (io) {

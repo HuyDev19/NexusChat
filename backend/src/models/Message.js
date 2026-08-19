@@ -78,6 +78,15 @@ const messageSchema = new mongoose.Schema(
       ],
       allowMultiple: { type: Boolean, default: false },
     },
+    replyTo: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Message",
+      default: null,
+    },
+    isForwarded: {
+      type: Boolean,
+      default: false,
+    },
   },
   {
     timestamps: true,

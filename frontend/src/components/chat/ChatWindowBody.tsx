@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 import { THEMES } from "./WallpaperModal";
 import { useSocketStore } from "@/stores/useSocketStore";
 import { useAuthStore } from "@/stores/useAuthStore";
+import ForwardMessageModal from "./ForwardMessageModal";
 
 const ChatWindowBody = () => {
     const {
@@ -250,6 +251,8 @@ const ChatWindowBody = () => {
                     ))}
                 </InfiniteScroll>
             </div>
+            
+            <ForwardMessageModal />
         </div>
     );
 };

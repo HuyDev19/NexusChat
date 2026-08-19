@@ -40,7 +40,9 @@ export const chatService = {
     audioUrl?: string,
     expiresIn?: number,
     isViewOnce?: boolean,
-    mentions?: string[]
+    mentions?: string[],
+    replyTo?: string,
+    isForwarded?: boolean
   ) {
     const res = await api.post("/messages/direct", {
       recipientId,
@@ -51,6 +53,8 @@ export const chatService = {
       expiresIn,
       isViewOnce,
       mentions,
+      replyTo,
+      isForwarded,
     });
 
     return res.data.message;
@@ -64,7 +68,9 @@ export const chatService = {
     expiresIn?: number,
     isViewOnce?: boolean,
     poll?: any,
-    mentions?: string[]
+    mentions?: string[],
+    replyTo?: string,
+    isForwarded?: boolean
   ) {
     const res = await api.post("/messages/group", {
       conversationId,
@@ -75,6 +81,8 @@ export const chatService = {
       isViewOnce,
       poll,
       mentions,
+      replyTo,
+      isForwarded,
     });
     return res.data.message;
   },
