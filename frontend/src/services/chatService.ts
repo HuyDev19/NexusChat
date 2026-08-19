@@ -180,4 +180,9 @@ export const chatService = {
     const response = await api.post(`/conversations/${conversationId}/leave`);
     return response.data;
   },
+
+  summarizeChat: async (conversationId: string) => {
+    const response = await api.get(`/conversations/${conversationId}/summarize`);
+    return response.data;
+  },
 };

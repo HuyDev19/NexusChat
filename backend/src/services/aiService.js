@@ -4,6 +4,7 @@ import Conversation from "../models/Conversation.js";
 import User from "../models/User.js";
 import { NEXUS_AI_ID } from "../utils/seedNexusAI.js";
 import { updateConversationAfterCreateMessage } from "../utils/messageHelper.js";
+import { checkAIRateLimit } from "../middlewares/aiRateLimiter.js";
 
 const SYSTEM_INSTRUCTION = `Bạn là NexusAI, một trợ lý ảo thông minh, vui tính và hòa đồng trong ứng dụng nhắn tin NexusChat. 
 Hãy xưng hô bằng "mình" và gọi người dùng bằng "cậu" hoặc tên của họ nếu biết.
@@ -13,8 +14,31 @@ Không bao giờ xưng "tôi" - "bạn" một cách máy móc, trừ khi cần t
 Tuyệt đối không trả lời dài dòng kiểu bách khoa toàn thư, trừ khi được yêu cầu giải thích chi tiết một khái niệm khó.
 Nếu bạn không biết, hãy nói "Chịu thôi, mình không biết cái này 😅" thay vì cố bịa ra câu trả lời.`;
 
-export const handleAIResponse = async (conversationId, io) => {
+export const handleAIResponse = async (conversationId, io, senderId) => {
   try {
+    if (senderId && !checkAIRateLimit(senderId.toString())) {
+      const conversation = await Conversation.findById(conversationId);
+      if (conversation) {
+        const aiMessage = await Message.create({
+          conversationId: conversation._id,
+          senderId: NEXUS_AI_ID,
+          content: "Bạn thao tác quá nhanh, vui lòng đợi 1 phút nữa nhé! ⏳",
+        });
+
+        updateConversationAfterCreateMessage(conversation, aiMessage, NEXUS_AI_ID);
+        await conversation.save();
+
+        conversation.participants.forEach((p) => {
+          io.to(`user:${p.userId}`).emit("new-message", {
+            message: aiMessage,
+            conversation,
+            unreadCounts: Object.fromEntries(conversation.unreadCounts || new Map()),
+          });
+        });
+      }
+      return;
+    }
+
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
       console.warn("NexusAI is called but GEMINI_API_KEY is missing in .env");

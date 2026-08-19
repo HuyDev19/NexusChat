@@ -1,6 +1,8 @@
 import { cn, formatMessageTime } from "@/lib/utils";
 import type { Conversation, Message, Participant } from "@/types/chat";
 import UserAvatar from "./UserAvatar";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { Card } from "../ui/card";
 import { Badge } from "../ui/badge";
 import { Play, Pause, Pin, Smile, FastForward, PinOff, Timer, EyeOff, Eye, Undo2, MoreHorizontal } from "lucide-react";
@@ -21,8 +23,6 @@ const EMOJI_LIST = ["👍", "❤️", "😂", "😮", "🔥"];
 const FormattedText = ({ content, participants, nicknames }: { content: string; participants: Participant[], nicknames?: Record<string, string> }) => {
   if (!content) return null;
   
-  const urlRegexSource = `(https?:\\/\\/[^\\s]+)`;
-  
   const names = participants.map(p => nicknames?.[p._id] || p.displayName).filter(Boolean);
   names.push("All", "Mọi người");
   
@@ -30,45 +30,49 @@ const FormattedText = ({ content, participants, nicknames }: { content: string; 
   const escapedNames = names.map(n => n.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&'));
   
   const mentionRegexSource = names.length > 0 ? `(@(?:${escapedNames.join('|')}))` : `(@_NEVER_MATCH_)`;
-  
-  const tokenRegex = new RegExp(`${urlRegexSource}|${mentionRegexSource}`, 'g');
-  const urlRegex = new RegExp(`^${urlRegexSource}$`);
-  const mentionRegex = new RegExp(`^${mentionRegexSource}$`);
+  const mentionRegex = new RegExp(mentionRegexSource, 'g');
 
-  const parts = content.split(tokenRegex);
+  const processedContent = content.replace(mentionRegex, (match, name) => {
+    const pureName = name.slice(1);
+    return `[${name}](mention:${encodeURIComponent(pureName)})`;
+  });
 
   return (
-    <p className="text-sm leading-relaxed break-words whitespace-pre-wrap">
-      {parts.map((part, i) => {
-        if (!part) return null;
-        if (part.match(urlRegex)) {
-          return (
-            <a key={i} href={part} target="_blank" rel="noreferrer" className="text-blue-500 hover:underline">
-              {part}
-            </a>
-          );
-        }
-        if (part.match(mentionRegex)) {
-          const name = part.slice(1);
-          if (name === "All" || name === "Mọi người") {
-            return (
-              <span key={i} className="text-primary font-bold cursor-pointer hover:underline" title="Nhắc cả nhóm">
-                @{name}
-              </span>
+    <div className="text-sm leading-relaxed break-words whitespace-pre-wrap">
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        components={{
+          a: ({ node, href, children, ...props }) => {
+            if (href?.startsWith('mention:')) {
+              const name = decodeURIComponent(href.slice(8));
+              return (
+                <span className="text-primary font-bold cursor-pointer hover:underline" title={name === "All" || name === "Mọi người" ? "Nhắc cả nhóm" : `Tên gốc: ${name}`}>
+                  {children}
+                </span>
+              );
+            }
+            return <a href={href} target="_blank" rel="noreferrer" className="text-blue-500 hover:underline" {...props}>{children}</a>;
+          },
+          p: ({ node, children, ...props }) => <p className="mb-1 last:mb-0" {...props}>{children}</p>,
+          code: ({ node, inline, className, children, ...props }: any) => {
+            return inline ? (
+              <code className="bg-muted px-1.5 py-0.5 rounded text-[13px] font-mono" {...props}>{children}</code>
+            ) : (
+              <div className="relative group mt-2 mb-2 w-full max-w-[200px] sm:max-w-xs md:max-w-sm">
+                <pre className="bg-zinc-950 text-zinc-50 p-3 rounded-md overflow-x-auto text-[13px] font-mono w-full beautiful-scrollbar">
+                  <code {...props}>{children}</code>
+                </pre>
+              </div>
             );
-          }
-          const user = participants.find(p => (nicknames?.[p._id] || p.displayName) === name);
-          if (user) {
-            return (
-              <span key={i} className="text-primary font-bold cursor-pointer hover:underline" title={`Tên gốc: ${user.displayName}`}>
-                @{name}
-              </span>
-            );
-          }
-        }
-        return <Fragment key={i}>{part}</Fragment>;
-      })}
-    </p>
+          },
+          ul: ({ node, children, ...props }) => <ul className="list-disc pl-4 mb-1" {...props}>{children}</ul>,
+          ol: ({ node, children, ...props }) => <ol className="list-decimal pl-4 mb-1" {...props}>{children}</ol>,
+          li: ({ node, children, ...props }) => <li className="mb-0.5" {...props}>{children}</li>
+        }}
+      >
+        {processedContent}
+      </ReactMarkdown>
+    </div>
   );
 };
 

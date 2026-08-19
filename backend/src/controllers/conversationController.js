@@ -770,3 +770,61 @@ export const leaveGroup = async (req, res) => {
     return res.status(500).json({ message: "Lỗi hệ thống" });
   }
 };
+
+export const summarizeConversation = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user._id;
+
+    const conversation = await Conversation.findById(id);
+    if (!conversation) {
+      return res.status(404).json({ message: "Không tìm thấy cuộc trò chuyện" });
+    }
+
+    const isMember = conversation.participants.some(p => p.userId.toString() === userId.toString());
+    if (!isMember) {
+      return res.status(403).json({ message: "Bạn không ở trong cuộc trò chuyện này" });
+    }
+
+    // eslint-disable-next-line no-undef
+    const Message = (await import("../models/Message.js")).default;
+    let messages = await Message.find({ conversationId: id })
+      .sort({ createdAt: -1 })
+      .limit(50)
+      .populate("senderId", "displayName");
+
+    if (!messages || messages.length === 0) {
+      return res.status(400).json({ message: "Không có tin nhắn nào để tóm tắt" });
+    }
+
+    messages = messages.reverse();
+
+    const historyText = messages.map(msg => {
+      const senderName = msg.senderId?.displayName || "Người dùng";
+      let textContent = msg.content || "";
+      if (msg.imgUrl) textContent += " [Hình ảnh đính kèm]";
+      if (msg.audioUrl) textContent += " [Âm thanh đính kèm]";
+      return `[${senderName}]: ${textContent}`;
+    }).join("\\n");
+
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      return res.status(500).json({ message: "API Key bị thiếu" });
+    }
+
+    const { GoogleGenerativeAI } = await import("@google/generative-ai");
+    const genAI = new GoogleGenerativeAI(apiKey);
+    const model = genAI.getGenerativeModel({
+      model: "gemini-3.5-flash-lite",
+      systemInstruction: "Bạn là trợ lý ảo. Hãy đọc kỹ các tin nhắn gần nhất của cuộc trò chuyện sau đây. Nhiệm vụ của bạn là tóm tắt ngắn gọn những ý chính đang được bàn luận, ai đã nói gì quan trọng. Hãy trình bày dưới dạng gạch đầu dòng Markdown rõ ràng, súc tích và dễ đọc."
+    });
+
+    const result = await model.generateContent(`Đây là nội dung cuộc trò chuyện:\\n\\n${historyText}\\n\\nHãy tóm tắt lại.`);
+    const summary = result.response.text();
+
+    return res.status(200).json({ summary });
+  } catch (error) {
+    console.error("Lỗi khi tóm tắt chat:", error);
+    return res.status(500).json({ message: "Lỗi hệ thống khi tóm tắt" });
+  }
+};

@@ -15,7 +15,10 @@ import { Input } from "../ui/input";
 import { Button } from "../ui/button";
 import { userService } from "@/services/userService";
 import { toast } from "sonner";
-import { Settings, Ban, Flame, Pencil, Edit3 } from "lucide-react";
+import { Settings, Ban, Flame, Pencil, Edit3, Sparkles, Loader2 } from "lucide-react";
+import { chatService } from "@/services/chatService";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { Label } from "../ui/label";
 import { cn } from "@/lib/utils";
 
@@ -58,6 +61,26 @@ const ChatWindowHeader = ({ chat }: { chat?: Conversation }) => {
 
   const [showRenameModal, setShowRenameModal] = useState(false);
   const [renameVal, setRenameVal] = useState(chat?.group?.name || "");
+
+  const [showSummaryModal, setShowSummaryModal] = useState(false);
+  const [summaryText, setSummaryText] = useState("");
+  const [isSummarizing, setIsSummarizing] = useState(false);
+
+  const handleSummarize = async () => {
+    if (!chat?._id) return;
+    setShowSummaryModal(true);
+    setIsSummarizing(true);
+    setSummaryText("");
+    try {
+      const data = await chatService.summarizeChat(chat._id);
+      setSummaryText(data.summary);
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || "Lỗi khi tóm tắt đoạn chat");
+      setShowSummaryModal(false);
+    } finally {
+      setIsSummarizing(false);
+    }
+  };
 
   const handleRenameSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -222,6 +245,13 @@ const ChatWindowHeader = ({ chat }: { chat?: Conversation }) => {
             </div>
           ) : (
             <div className="flex items-center gap-1 sm:gap-2 pr-2 shrink-0">
+              <button
+                onClick={handleSummarize}
+                className="p-2 rounded-full hover:bg-purple-500/10 text-purple-400 hover:text-purple-300 transition-colors duration-200"
+                title="Tóm tắt đoạn chat bằng AI"
+              >
+                <Sparkles size={20} />
+              </button>
               {!isLocked && (
                 <button
                   onClick={() => setShowLockDialog(true)}
@@ -315,6 +345,51 @@ const ChatWindowHeader = ({ chat }: { chat?: Conversation }) => {
               </Button>
             </div>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog Tóm tắt đoạn chat */}
+      <Dialog open={showSummaryModal} onOpenChange={setShowSummaryModal}>
+        <DialogContent className="sm:max-w-xl p-6 rounded-3xl max-h-[85vh] flex flex-col">
+          <DialogHeader className="border-b border-border/40 pb-3 shrink-0">
+            <DialogTitle className="flex items-center gap-2 text-base font-bold text-purple-400">
+              <Sparkles className="w-5 h-5" />
+              <span>Tóm tắt cuộc trò chuyện</span>
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="flex-1 overflow-y-auto pt-4 pb-2 pr-2 beautiful-scrollbar">
+            {isSummarizing ? (
+              <div className="flex flex-col items-center justify-center py-8 text-muted-foreground gap-3">
+                <Loader2 className="w-8 h-8 animate-spin text-purple-400" />
+                <p className="text-sm font-medium">NexusAI đang đọc tin nhắn và tóm tắt...</p>
+              </div>
+            ) : (
+              <div className="text-sm leading-relaxed whitespace-pre-wrap markdown-body">
+                <ReactMarkdown
+                  remarkPlugins={[remarkGfm]}
+                  components={{
+                    ul: ({ node, children, ...props }) => <ul className="list-disc pl-4 mb-2" {...props}>{children}</ul>,
+                    ol: ({ node, children, ...props }) => <ol className="list-decimal pl-4 mb-2" {...props}>{children}</ol>,
+                    li: ({ node, children, ...props }) => <li className="mb-1" {...props}>{children}</li>,
+                    p: ({ node, children, ...props }) => <p className="mb-2 last:mb-0" {...props}>{children}</p>,
+                  }}
+                >
+                  {summaryText}
+                </ReactMarkdown>
+              </div>
+            )}
+          </div>
+
+          <div className="flex justify-end pt-3 border-t border-border/40 shrink-0">
+            <Button
+              type="button"
+              onClick={() => setShowSummaryModal(false)}
+              className="h-9 rounded-xl text-xs bg-muted hover:bg-muted/80 text-foreground"
+            >
+              Đóng
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </header>

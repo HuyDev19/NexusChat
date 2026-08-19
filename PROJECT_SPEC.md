@@ -218,7 +218,8 @@ The project is organized as a monorepo with two main parts:
 - **Shared Nicknames** for participants in a conversation
 - **Block/Unblock Users** in direct conversations
 - **Real-time synchronization**: Instant message delivery and conversation list updates via Socket.IO
-- **@NexusAI Chatbot**: Tích hợp trợ lý ảo thông minh sử dụng Gemini API, cho phép người dùng gọi `@NexusAI` trong chat để trò chuyện, hỏi đáp. Bot sẽ đọc ngữ cảnh 15 tin nhắn gần nhất và tự động phản hồi lại vào đoạn chat.
+- **@NexusAI Chatbot**: Tích hợp trợ lý ảo thông minh sử dụng Gemini API, cho phép người dùng gọi `@NexusAI` trong chat để trò chuyện, hỏi đáp. Bot sẽ đọc ngữ cảnh 15 tin nhắn gần nhất và tự động phản hồi lại vào đoạn chat. 
+- **Rich Text & Markdown**: Hỗ trợ hiển thị Markdown (`in đậm`, `in nghiêng`, `danh sách`, `code block`) giúp cho các tin nhắn (đặc biệt là tin nhắn từ AI) trở nên rõ ràng và dễ đọc.
 
 ### Group Management
 - **Role Management**: Distinguish between `leader` (Admin) and `member`.

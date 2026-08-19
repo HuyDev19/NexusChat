@@ -14,9 +14,11 @@ import {
   deleteConversation,
   clearChatHistory,
   leaveGroup,
+  summarizeConversation,
 } from "../controllers/conversationController.js";
 import { checkFriendship } from "../middlewares/friendMiddleware.js";
 import upload from "../middlewares/multerMiddleware.js";
+import { aiRateLimiterMiddleware } from "../middlewares/aiRateLimiter.js";
 
 const router = express.Router();
 
@@ -35,5 +37,6 @@ router.post("/:id/avatar", upload.single("avatar"), updateGroupAvatar);
 router.delete("/:id", deleteConversation);
 router.post("/:id/clear", clearChatHistory);
 router.post("/:id/leave", leaveGroup);
+router.get("/:id/summarize", aiRateLimiterMiddleware, summarizeConversation);
 
 export default router;

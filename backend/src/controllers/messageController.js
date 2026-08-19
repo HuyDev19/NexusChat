@@ -60,7 +60,7 @@ export const sendDirectMessage = async (req, res) => {
     }
 
     if (content?.includes("@NexusAI") || (mentions && mentions.includes(NEXUS_AI_ID))) {
-      handleAIResponse(conversation._id, io);
+      handleAIResponse(conversation._id, io, senderId);
     }
 
     return res.status(201).json({ message });
@@ -108,7 +108,7 @@ export const sendGroupMessage = async (req, res) => {
     }
 
     if (content?.includes("@NexusAI") || (mentions && mentions.includes(NEXUS_AI_ID))) {
-      handleAIResponse(conversation._id, io);
+      handleAIResponse(conversation._id, io, senderId);
     }
 
     return res.status(201).json({ message });
