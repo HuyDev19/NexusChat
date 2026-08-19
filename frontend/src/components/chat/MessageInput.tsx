@@ -43,7 +43,11 @@ const MessageInput = ({ selectedConvo }: { selectedConvo: Conversation }) => {
   const [expiresIn, setExpiresIn] = useState<number | undefined>(undefined);
   const [isViewOnce, setIsViewOnce] = useState(false);
   const [showPollModal, setShowPollModal] = useState(false);
-  
+
+  // Mention State
+  const [mentionQuery, setMentionQuery] = useState<string | null>(null);
+  const [mentionIndex, setMentionIndex] = useState(0);
+
   const { emitTypingStart, emitTypingEnd } = useSocketStore();
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -92,12 +96,41 @@ const MessageInput = ({ selectedConvo }: { selectedConvo: Conversation }) => {
         imgUrl = await uploadImage(imageFile);
       }
 
+      const parseMentions = (text: string) => {
+        const participants = selectedConvo.participants || [];
+        const validIds: Set<string> = new Set();
+
+        if (text.includes("@All") || text.includes("@Mọi người")) {
+          participants.forEach(p => {
+            if (p._id !== user?._id) validIds.add(p._id);
+          });
+        }
+
+        const sortedParticipants = [...participants].sort((a, b) => {
+          const nameA = (selectedConvo.nicknames?.[a._id] || a.displayName || "").length;
+          const nameB = (selectedConvo.nicknames?.[b._id] || b.displayName || "").length;
+          return nameB - nameA;
+        });
+
+        sortedParticipants.forEach(p => {
+          const name = selectedConvo.nicknames?.[p._id] || p.displayName;
+          if (name && text.includes(`@${name}`)) {
+            if (p._id !== user?._id) validIds.add(p._id);
+            text = text.replace(new RegExp(`@${name}`, 'g'), '');
+          }
+        });
+
+        return validIds.size > 0 ? Array.from(validIds) : undefined;
+      };
+
+      const mentions = parseMentions(currValue);
+
       if (selectedConvo.type === "direct") {
         const participants = selectedConvo.participants || [];
         const otherUser = participants.filter((p) => p._id !== user._id)[0];
-        await sendDirectMessage(otherUser._id, isMedia ? "" : currValue, imgUrl, audioUrl, expiresIn, isViewOnce);
+        await sendDirectMessage(otherUser._id, isMedia ? "" : currValue, imgUrl, audioUrl, expiresIn, isViewOnce, mentions);
       } else {
-        await sendGroupMessage(selectedConvo._id, isMedia ? "" : currValue, imgUrl, audioUrl, expiresIn, isViewOnce);
+        await sendGroupMessage(selectedConvo._id, isMedia ? "" : currValue, imgUrl, audioUrl, expiresIn, isViewOnce, undefined, mentions);
       }
     } catch (error: any) {
       console.error(error);
@@ -173,10 +206,111 @@ const MessageInput = ({ selectedConvo }: { selectedConvo: Conversation }) => {
     }
   };
 
+  const getFilteredParticipants = () => {
+    if (mentionQuery === null) return [];
+
+    const showAll = "all".includes(mentionQuery) || "mọi người".includes(mentionQuery) || "moi nguoi".includes(mentionQuery);
+    const allOption = showAll && selectedConvo.type === "group" ? [{
+      _id: "ALL",
+      username: "all",
+      displayName: "Mọi người",
+      isAllOption: true
+    } as any] : [];
+
+    const showAI = "nexusai".includes(mentionQuery) || "ai".includes(mentionQuery);
+    const aiOption = showAI ? [{
+      _id: "000000000000000000000000",
+      username: "NexusAI",
+      displayName: "NexusAI",
+      isAllOption: false,
+      avatarUrl: "https://api.dicebear.com/9.x/bottts/svg?seed=NexusAI&backgroundColor=b6e3f4"
+    } as any] : [];
+
+    const users = selectedConvo.participants.filter(
+      p => p._id !== user?._id && (
+        (p.username?.toLowerCase() || "").includes(mentionQuery) ||
+        (p.displayName?.toLowerCase() || "").includes(mentionQuery) ||
+        (selectedConvo.nicknames?.[p._id]?.toLowerCase() || "").includes(mentionQuery)
+      )
+    ).slice(0, 5); // Limit suggestions
+
+    return [...aiOption, ...allOption, ...users];
+  };
+  const filteredParticipants = getFilteredParticipants();
+
+  const insertMention = (name: string) => {
+    if (inputRef.current) {
+      const cursorPosition = inputRef.current.selectionStart || 0;
+      const textBeforeCursor = value.slice(0, cursorPosition);
+      const textAfterCursor = value.slice(cursorPosition);
+
+      const lastAtPos = textBeforeCursor.lastIndexOf("@");
+      const beforeAt = value.slice(0, lastAtPos);
+
+      const newValue = `${beforeAt}@${name} ${textAfterCursor}`;
+      setValue(newValue);
+      setMentionQuery(null);
+
+      setTimeout(() => {
+        if (inputRef.current) {
+          inputRef.current.focus();
+          const newCursorPos = lastAtPos + name.length + 2; // +1 for @, +1 for space
+          inputRef.current.setSelectionRange(newCursorPos, newCursorPos);
+        }
+      }, 0);
+    }
+  };
+
   const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (mentionQuery !== null && filteredParticipants.length > 0) {
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        setMentionIndex(prev => (prev + 1) % filteredParticipants.length);
+        return;
+      }
+      if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setMentionIndex(prev => (prev - 1 + filteredParticipants.length) % filteredParticipants.length);
+        return;
+      }
+      if (e.key === "Enter" || e.key === "Tab") {
+        e.preventDefault();
+        const p = filteredParticipants[mentionIndex];
+        if (p.isAllOption) {
+          insertMention("All");
+        } else {
+          insertMention(selectedConvo.nicknames?.[p._id] || p.displayName);
+        }
+        return;
+      }
+    }
+
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       sendMessage();
+    }
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setValue(val);
+
+    const participantIds = selectedConvo.participants.map(p => p._id);
+    emitTypingStart(selectedConvo._id, participantIds);
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+    typingTimeoutRef.current = setTimeout(() => {
+      emitTypingEnd(selectedConvo._id, participantIds);
+    }, 2000);
+
+    const cursorPosition = e.target.selectionStart || 0;
+    const textBeforeCursor = val.slice(0, cursorPosition);
+    const lastWord = textBeforeCursor.split(/[\s\n]/).pop();
+
+    if (lastWord && lastWord.startsWith("@")) {
+      setMentionQuery(lastWord.slice(1).toLowerCase());
+      setMentionIndex(0);
+    } else {
+      setMentionQuery(null);
     }
   };
 
@@ -256,19 +390,46 @@ const MessageInput = ({ selectedConvo }: { selectedConvo: Conversation }) => {
           </div>
         ) : (
           <>
+            {mentionQuery !== null && filteredParticipants.length > 0 && (
+              <div className="absolute bottom-full left-0 mb-2 w-64 bg-background border border-border/50 rounded-xl shadow-lg z-50 overflow-hidden">
+                <div className="py-1">
+                  {filteredParticipants.map((p, index) => (
+                    <div
+                      key={p._id}
+                      onClick={() => insertMention(p.isAllOption ? "All" : (selectedConvo.nicknames?.[p._id] || p.displayName))}
+                      className={`flex items-center gap-2 px-3 py-2 cursor-pointer transition-colors ${index === mentionIndex ? "bg-primary/10" : "hover:bg-muted/50"
+                        }`}
+                      onMouseEnter={() => setMentionIndex(index)}
+                    >
+                      <div className="w-6 h-6 rounded-full bg-primary/20 shrink-0 overflow-hidden flex items-center justify-center">
+                        {p.avatarUrl ? (
+                          <img src={p.avatarUrl} alt={p.displayName} className="w-full h-full object-cover" />
+                        ) : p.isAllOption ? (
+                          <span className="text-[10px] font-semibold text-primary">@</span>
+                        ) : (
+                          <span className="text-[10px] font-semibold text-primary">
+                            {p.displayName ? p.displayName.charAt(0) : "?"}
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex flex-col flex-1 overflow-hidden">
+                        <span className="text-sm font-semibold truncate leading-tight">
+                          {p.isAllOption ? p.displayName : (selectedConvo.nicknames?.[p._id] || p.displayName || "Unknown User")}
+                        </span>
+                        <span className="text-xs text-muted-foreground truncate leading-tight">
+                          {p.isAllOption ? "Nhắc tất cả mọi người trong nhóm" : `Tên gốc: ${p.displayName || "Unknown"}`}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
             <Input
               ref={inputRef}
-              onKeyPress={handleKeyPress}
+              onKeyDown={handleKeyPress}
               value={value}
-              onChange={(e) => {
-                setValue(e.target.value);
-                const participantIds = selectedConvo.participants.map(p => p._id);
-                emitTypingStart(selectedConvo._id, participantIds);
-                if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
-                typingTimeoutRef.current = setTimeout(() => {
-                  emitTypingEnd(selectedConvo._id, participantIds);
-                }, 2000);
-              }}
+              onChange={handleInputChange}
               placeholder="Soạn tin nhắn..."
               className="pr-20 h-9 bg-white dark:bg-background border-border/50 focus:border-primary/50 transition-smooth resize-none"
             />

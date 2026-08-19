@@ -3,10 +3,12 @@ import Message from "../models/Message.js";
 import { updateConversationAfterCreateMessage } from "../utils/messageHelper.js";
 import cloudinary from "../libs/cloudinary.js";
 import fs from "fs";
+import { handleAIResponse } from "../services/aiService.js";
+import { NEXUS_AI_ID } from "../utils/seedNexusAI.js";
 
 export const sendDirectMessage = async (req, res) => {
   try {
-    const { recipientId, content, conversationId, audioUrl, expiresIn, isViewOnce } = req.body;
+    const { recipientId, content, conversationId, audioUrl, expiresIn, isViewOnce, mentions } = req.body;
     const senderId = req.user._id;
 
     let conversation;
@@ -39,6 +41,7 @@ export const sendDirectMessage = async (req, res) => {
       imgUrl: req.body.imgUrl,
       expiresIn,
       isViewOnce,
+      mentions,
     });
 
     updateConversationAfterCreateMessage(conversation, message, senderId);
@@ -56,6 +59,10 @@ export const sendDirectMessage = async (req, res) => {
       });
     }
 
+    if (content?.includes("@NexusAI") || (mentions && mentions.includes(NEXUS_AI_ID))) {
+      handleAIResponse(conversation._id, io);
+    }
+
     return res.status(201).json({ message });
   } catch (error) {
     console.error("Lỗi xảy ra khi gửi tin nhắn trực tiếp", error);
@@ -65,7 +72,7 @@ export const sendDirectMessage = async (req, res) => {
 
 export const sendGroupMessage = async (req, res) => {
   try {
-    const { conversationId, content, audioUrl, imgUrl, expiresIn, isViewOnce, poll } = req.body;
+    const { conversationId, content, audioUrl, imgUrl, expiresIn, isViewOnce, poll, mentions } = req.body;
     const senderId = req.user._id;
     const conversation = req.conversation;
 
@@ -82,6 +89,7 @@ export const sendGroupMessage = async (req, res) => {
       expiresIn,
       isViewOnce,
       poll,
+      mentions,
     });
 
     updateConversationAfterCreateMessage(conversation, message, senderId);
@@ -97,6 +105,10 @@ export const sendGroupMessage = async (req, res) => {
           unreadCounts: Object.fromEntries(conversation.unreadCounts || new Map()),
         });
       });
+    }
+
+    if (content?.includes("@NexusAI") || (mentions && mentions.includes(NEXUS_AI_ID))) {
+      handleAIResponse(conversation._id, io);
     }
 
     return res.status(201).json({ message });

@@ -19,6 +19,12 @@ const messageSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    mentions: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
     imgUrl: {
       type: String,
     },

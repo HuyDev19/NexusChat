@@ -47,7 +47,7 @@ const ChatWindowBody = () => {
         }
 
         const seenBy = selectedConvo?.seenBy ?? [];
-        
+
         if (seenBy.length > 0) {
             setLastMessageStatus("đã xem");
         } else {
@@ -129,8 +129,8 @@ const ChatWindowBody = () => {
         );
     }
 
-    const wallpaperStyle = selectedConvo.wallpaper && selectedConvo.wallpaper.startsWith("http") 
-        ? { backgroundImage: `url(${selectedConvo.wallpaper})`, backgroundSize: 'cover', backgroundPosition: 'center' } 
+    const wallpaperStyle = selectedConvo.wallpaper && selectedConvo.wallpaper.startsWith("http")
+        ? { backgroundImage: `url(${selectedConvo.wallpaper})`, backgroundSize: 'cover', backgroundPosition: 'center' }
         : {};
 
     const wallpaperClass = selectedConvo.wallpaper && !selectedConvo.wallpaper.startsWith("http") && selectedConvo.wallpaper !== "default"
@@ -138,7 +138,7 @@ const ChatWindowBody = () => {
         : "";
 
     return (
-        <div 
+        <div
             className={cn("bg-primary-foreground h-full flex flex-col overflow-hidden relative", wallpaperClass)}
             style={wallpaperStyle}
         >
@@ -146,7 +146,7 @@ const ChatWindowBody = () => {
             {selectedConvo.wallpaper && selectedConvo.wallpaper.startsWith("http") && (
                 <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px] z-0 pointer-events-none"></div>
             )}
-            
+
             {pinnedMessages.length > 0 && (
                 <div className="px-4 pt-3 pb-1 z-20">
                     <Popover>
@@ -170,8 +170,8 @@ const ChatWindowBody = () => {
                                 {pinnedMessages.map((msg) => {
                                     const sender = selectedConvo?.participants.find(p => p._id === msg.senderId);
                                     return (
-                                        <div 
-                                            key={msg._id} 
+                                        <div
+                                            key={msg._id}
                                             onClick={() => scrollToMessage(msg._id)}
                                             className="p-3 bg-muted/50 rounded-md hover:bg-muted cursor-pointer transition-colors"
                                         >
@@ -189,7 +189,7 @@ const ChatWindowBody = () => {
                     </Popover>
                 </div>
             )}
-            
+
             <div
                 id="scrollableDiv"
                 ref={containerRef}
@@ -197,7 +197,7 @@ const ChatWindowBody = () => {
                 className="flex-1 w-full flex flex-col-reverse overflow-y-auto overflow-x-hidden beautiful-scrollbar px-4 sm:px-6 py-3 z-10"
             >
                 <div ref={messagesEndRef}></div>
-                
+
                 {activeTypingUsers.map((typingUserId) => {
                     const typingUser = selectedConvo?.participants.find(p => p._id === typingUserId);
                     if (!typingUser) return null;

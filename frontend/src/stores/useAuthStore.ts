@@ -121,8 +121,8 @@ export const useAuthStore = create<AuthState>()(
       },
       signOut: async () => {
         try {
-          get().clearState();
           await authService.signOut();
+          get().clearState();
           toast.success("Logout thành công!");
         } catch (error) {
           console.error(error);

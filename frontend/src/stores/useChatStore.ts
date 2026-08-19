@@ -132,7 +132,7 @@ export const useChatStore = create<ChatState>()(
           set({ messageLoading: false });
         }
       },
-      sendDirectMessage: async (recipientId, content, imgUrl, audioUrl, expiresIn, isViewOnce) => {
+      sendDirectMessage: async (recipientId, content, imgUrl, audioUrl, expiresIn, isViewOnce, mentions) => {
         try {
           const { activeConversationId } = get();
           const sentMessage = await chatService.sendDirectMessage(
@@ -142,7 +142,8 @@ export const useChatStore = create<ChatState>()(
             activeConversationId || undefined,
             audioUrl || undefined,
             expiresIn,
-            isViewOnce
+            isViewOnce,
+            mentions
           );
 
           const conversationId = sentMessage.conversationId || activeConversationId;
@@ -188,9 +189,9 @@ export const useChatStore = create<ChatState>()(
           throw error;
         }
       },
-      sendGroupMessage: async (conversationId, content, imgUrl, audioUrl, expiresIn, isViewOnce, poll) => {
+      sendGroupMessage: async (conversationId, content, imgUrl, audioUrl, expiresIn, isViewOnce, poll, mentions) => {
         try {
-          const sentMessage = await chatService.sendGroupMessage(conversationId, content, imgUrl || undefined, audioUrl || undefined, expiresIn, isViewOnce, poll);
+          const sentMessage = await chatService.sendGroupMessage(conversationId, content, imgUrl || undefined, audioUrl || undefined, expiresIn, isViewOnce, poll, mentions);
 
           set((state) => {
             const prevItems = state.messages[conversationId]?.items ?? [];

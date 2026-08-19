@@ -18,20 +18,53 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 
 const EMOJI_LIST = ["👍", "❤️", "😂", "😮", "🔥"];
 
-const LinkifiedText = ({ content }: { content: string }) => {
+const FormattedText = ({ content, participants, nicknames }: { content: string; participants: Participant[], nicknames?: Record<string, string> }) => {
   if (!content) return null;
-  const urlRegex = /(https?:\/\/[^\s]+)/g;
-  const parts = content.split(urlRegex);
+  
+  const urlRegexSource = `(https?:\\/\\/[^\\s]+)`;
+  
+  const names = participants.map(p => nicknames?.[p._id] || p.displayName).filter(Boolean);
+  names.push("All", "Mọi người");
+  
+  names.sort((a,b) => b.length - a.length); // match longest first
+  const escapedNames = names.map(n => n.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&'));
+  
+  const mentionRegexSource = names.length > 0 ? `(@(?:${escapedNames.join('|')}))` : `(@_NEVER_MATCH_)`;
+  
+  const tokenRegex = new RegExp(`${urlRegexSource}|${mentionRegexSource}`, 'g');
+  const urlRegex = new RegExp(`^${urlRegexSource}$`);
+  const mentionRegex = new RegExp(`^${mentionRegexSource}$`);
+
+  const parts = content.split(tokenRegex);
 
   return (
     <p className="text-sm leading-relaxed break-words whitespace-pre-wrap">
       {parts.map((part, i) => {
+        if (!part) return null;
         if (part.match(urlRegex)) {
           return (
             <a key={i} href={part} target="_blank" rel="noreferrer" className="text-blue-500 hover:underline">
               {part}
             </a>
           );
+        }
+        if (part.match(mentionRegex)) {
+          const name = part.slice(1);
+          if (name === "All" || name === "Mọi người") {
+            return (
+              <span key={i} className="text-primary font-bold cursor-pointer hover:underline" title="Nhắc cả nhóm">
+                @{name}
+              </span>
+            );
+          }
+          const user = participants.find(p => (nicknames?.[p._id] || p.displayName) === name);
+          if (user) {
+            return (
+              <span key={i} className="text-primary font-bold cursor-pointer hover:underline" title={`Tên gốc: ${user.displayName}`}>
+                @{name}
+              </span>
+            );
+          }
         }
         return <Fragment key={i}>{part}</Fragment>;
       })}
@@ -317,7 +350,7 @@ const MessageItem = ({
                   </div>
                 </div>
               ) : (
-                <LinkifiedText content={message.content} />
+                <FormattedText content={message.content} participants={participants} nicknames={selectedConvo.nicknames} />
               )}
 
               {message.expiresIn && !message.isRecalled && (

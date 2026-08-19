@@ -75,7 +75,8 @@ export interface ChatState {
     imgUrl?: string | null,
     audioUrl?: string,
     expiresIn?: number,
-    isViewOnce?: boolean
+    isViewOnce?: boolean,
+    mentions?: string[]
   ) => Promise<void>;
   sendGroupMessage: (
     conversationId: string,
@@ -84,7 +85,8 @@ export interface ChatState {
     audioUrl?: string,
     expiresIn?: number,
     isViewOnce?: boolean,
-    poll?: any
+    poll?: any,
+    mentions?: string[]
   ) => Promise<void>;
   deleteConversation: (id: string) => Promise<void>;
   clearChatHistory: (id: string) => Promise<void>;

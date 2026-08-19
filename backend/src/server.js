@@ -14,6 +14,7 @@ import cookieParser from "cookie-parser";
 import { protectedRoute } from "./middlewares/authMiddleware.js";
 import cors from "cors";
 import jwt from "jsonwebtoken";
+import { seedNexusAIUser } from "./utils/seedNexusAI.js";
 
 dotenv.config();
 
@@ -126,9 +127,12 @@ io.on("connection", (socket) => {
   });
 });
 
-connectDB().then(() => {
+connectDB().then(async () => {
+  await seedNexusAIUser();
   server.listen(PORT, () => {
     console.log(`server bắt đầu trên cổng ${PORT}`);
     console.log(`Socket.IO đang lắng nghe trên cổng ${PORT}`);
   });
 });
+console.log(`server bắt đầu trên cổng ${PORT}`);
+console.log(`Socket.IO đang lắng nghe trên cổng ${PORT}`);
