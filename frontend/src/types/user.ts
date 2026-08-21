@@ -16,6 +16,7 @@ export interface User {
   lastActiveAt?: string;
   lockedConversations?: { conversationId: string; pin: string }[];
   blockedUsers?: string[];
+  readReceipts?: boolean;
   photos?: {
     _id: string;
     url: string;

@@ -6,12 +6,16 @@ import { useSocketStore } from "@/stores/useSocketStore";
 import { useAccountInfoModalStore } from "@/stores/useAccountInfoModalStore";
 import { 
   X, Calendar, Phone, Image as ImageIcon, CaseSensitive, Ban, Settings, 
-  FileText, File, ChevronRight, UserMinus, Search, Pin 
+  FileText, File, ChevronRight, UserMinus, Search, Pin, Lock, Unlock 
 } from "lucide-react";
 import UserAvatar from "../chat/UserAvatar";
 import StatusBadge from "../chat/StatusBadge";
 import GroupChatAvatar from "../chat/GroupChatAvatar";
 import { useState } from "react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../ui/dialog";
+import { Input } from "../ui/input";
+import { Button } from "../ui/button";
+import { userService } from "@/services/userService";
 import { cn, isNoteExpired } from "@/lib/utils";
 import WallpaperModal from "../chat/WallpaperModal";
 import NicknameModal from "../chat/NicknameModal";
@@ -38,6 +42,17 @@ const ProfileSidebar = () => {
   const [showPinnedMessages, setShowPinnedMessages] = useState(false);
   const [showSharedMedia, setShowSharedMedia] = useState(false);
   const [sharedMediaTab, setSharedMediaTab] = useState<"media" | "docs" | "links">("media");
+
+  const [showLockDialog, setShowLockDialog] = useState(false);
+  const [newPin, setNewPin] = useState("");
+  
+  const [showResetLockDialog, setShowResetLockDialog] = useState(false);
+  const [resetMode, setResetMode] = useState<"remove" | "change">("remove");
+  const [resetPassword, setResetPassword] = useState("");
+  const [resetNewPin, setResetNewPin] = useState("");
+
+  const { fetchMe } = useAuthStore();
+  const { unlockConversation } = useChatStore();
 
   const messages = useChatStore(state => state.messages);
   
@@ -83,6 +98,56 @@ const ProfileSidebar = () => {
       }
     }
   };
+
+  const handleSetLock = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (newPin.length !== 4) {
+      toast.error("Mã PIN phải có 4 ký tự");
+      return;
+    }
+    if (chat?._id) {
+      try {
+        await userService.lockConversation(chat._id, newPin);
+        await fetchMe();
+        unlockConversation(chat._id); // So they don't get locked out immediately
+        toast.success("Đã khóa cuộc trò chuyện");
+        setShowLockDialog(false);
+        setNewPin("");
+      } catch {
+        toast.error("Lỗi khi khóa cuộc trò chuyện");
+      }
+    }
+  };
+
+  const handleResetLock = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!resetPassword) {
+      toast.error("Vui lòng nhập mật khẩu xác thực");
+      return;
+    }
+    if (resetMode === "change" && resetNewPin.length !== 4) {
+      toast.error("Mã PIN mới phải có 4 ký tự");
+      return;
+    }
+    if (chat?._id) {
+      try {
+        await userService.resetLock(chat._id, resetPassword, resetMode === "change" ? resetNewPin : undefined);
+        await fetchMe();
+        if (resetMode === "remove") {
+          toast.success("Đã gỡ khóa cuộc trò chuyện");
+        } else {
+          toast.success("Đã đổi mã PIN thành công");
+        }
+        setShowResetLockDialog(false);
+        setResetPassword("");
+        setResetNewPin("");
+      } catch (err: any) {
+        toast.error(err.response?.data?.message || "Lỗi khi xử lý");
+      }
+    }
+  };
+
+  const isLocked = user?.lockedConversations?.some(l => l.conversationId === chat?._id);
 
   const activeConvoMessages = activeConversationId ? messages[activeConversationId]?.items || [] : [];
   
@@ -324,6 +389,12 @@ const ProfileSidebar = () => {
                     <>
                       <ActionRow icon={Search} label="Tìm kiếm tin nhắn" onClick={() => setShowSearchMessages(true)} />
                       <ActionRow icon={Pin} label="Tin nhắn đã ghim" onClick={() => setShowPinnedMessages(true)} />
+                      {!isLocked && (
+                        <ActionRow icon={Lock} label="Khóa cuộc trò chuyện" onClick={() => setShowLockDialog(true)} />
+                      )}
+                      {isLocked && (
+                        <ActionRow icon={Unlock} label="Gỡ khóa / Đổi mã PIN" onClick={() => setShowResetLockDialog(true)} />
+                      )}
                     </>
                   )}
 
@@ -406,6 +477,91 @@ const ProfileSidebar = () => {
             onOpenChange={setShowPinnedMessages} 
             conversation={chat} 
           />
+          <Dialog open={showLockDialog} onOpenChange={setShowLockDialog}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Khóa cuộc trò chuyện</DialogTitle>
+              </DialogHeader>
+              <form onSubmit={handleSetLock} className="space-y-4 pt-4">
+                <p className="text-sm text-muted-foreground">
+                  Nhập mã PIN 4 số để khóa cuộc trò chuyện này. Bạn sẽ cần mã PIN này mỗi khi mở lại cuộc trò chuyện.
+                </p>
+                <Input
+                  type="password"
+                  placeholder="Nhập mã PIN mới (VD: 1234)"
+                  value={newPin}
+                  onChange={(e) => setNewPin(e.target.value)}
+                  maxLength={4}
+                  className="text-center tracking-widest text-lg"
+                />
+                <Button type="submit" className="w-full" disabled={newPin.length !== 4}>
+                  Xác nhận khóa <Lock className="ml-2 size-4" />
+                </Button>
+              </form>
+            </DialogContent>
+          </Dialog>
+
+          <Dialog open={showResetLockDialog} onOpenChange={setShowResetLockDialog}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Tùy chọn Khóa cuộc trò chuyện</DialogTitle>
+              </DialogHeader>
+              <form onSubmit={handleResetLock} className="space-y-4 pt-4">
+                <div className="flex gap-2 p-1 bg-muted rounded-lg">
+                  <button
+                    type="button"
+                    className={cn(
+                      "flex-1 py-1.5 text-sm font-medium rounded-md transition-colors",
+                      resetMode === "remove" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"
+                    )}
+                    onClick={() => setResetMode("remove")}
+                  >
+                    Gỡ khóa
+                  </button>
+                  <button
+                    type="button"
+                    className={cn(
+                      "flex-1 py-1.5 text-sm font-medium rounded-md transition-colors",
+                      resetMode === "change" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"
+                    )}
+                    onClick={() => setResetMode("change")}
+                  >
+                    Đổi mã PIN
+                  </button>
+                </div>
+                
+                <p className="text-sm text-muted-foreground">
+                  Để xác minh danh tính, vui lòng nhập mật khẩu tài khoản của bạn.
+                </p>
+                <Input
+                  type="password"
+                  placeholder="Nhập mật khẩu tài khoản"
+                  value={resetPassword}
+                  onChange={(e) => setResetPassword(e.target.value)}
+                  className="w-full"
+                />
+
+                {resetMode === "change" && (
+                  <Input
+                    type="password"
+                    placeholder="Nhập mã PIN mới (VD: 1234)"
+                    value={resetNewPin}
+                    onChange={(e) => setResetNewPin(e.target.value)}
+                    maxLength={4}
+                    className="text-center tracking-widest text-lg"
+                  />
+                )}
+                
+                <Button 
+                  type="submit" 
+                  className="w-full" 
+                  disabled={!resetPassword || (resetMode === "change" && resetNewPin.length !== 4)}
+                >
+                  Xác nhận <Unlock className="ml-2 size-4" />
+                </Button>
+              </form>
+            </DialogContent>
+          </Dialog>
         </>
       )}
     </div>

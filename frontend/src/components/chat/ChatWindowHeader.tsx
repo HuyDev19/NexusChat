@@ -9,7 +9,7 @@ import GroupChatAvatar from "./GroupChatAvatar";
 import { useSocketStore } from "@/stores/useSocketStore";
 import { useFriendStore } from "@/stores/useFriendStore";
 import { useCallStore } from "@/stores/useCallStore";
-import { Phone, Video, Lock as LockIcon } from "lucide-react";
+import { Phone, Video } from "lucide-react";
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../ui/dialog";
 import { Input } from "../ui/input";
@@ -81,12 +81,6 @@ const ChatWindowHeader = ({ chat }: { chat?: Conversation }) => {
     }
   };
 
-  const [showLockDialog, setShowLockDialog] = useState(false);
-  const [newPin, setNewPin] = useState("");
-  const { fetchMe } = useAuthStore();
-  const { unlockConversation, updateGroupInfo } = useChatStore();
-
-
   const [showSummaryModal, setShowSummaryModal] = useState(false);
   const [summaryText, setSummaryText] = useState("");
   const [isSummarizing, setIsSummarizing] = useState(false);
@@ -107,33 +101,10 @@ const ChatWindowHeader = ({ chat }: { chat?: Conversation }) => {
     }
   };
 
-
   const getDisplayName = (userObj: any) => {
     if (!userObj) return "Unknown";
     return chat?.nicknames?.[userObj._id] || userObj.displayName;
   };
-
-  const handleSetLock = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (newPin.length !== 4) {
-      toast.error("Mã PIN phải có 4 ký tự");
-      return;
-    }
-    if (chat?._id) {
-      try {
-        await userService.lockConversation(chat._id, newPin);
-        await fetchMe();
-        unlockConversation(chat._id); // So they don't get locked out immediately
-        toast.success("Đã khóa cuộc trò chuyện");
-        setShowLockDialog(false);
-        setNewPin("");
-      } catch (error) {
-        toast.error("Lỗi khi khóa cuộc trò chuyện");
-      }
-    }
-  };
-
-  const isLocked = user?.lockedConversations?.some(l => l.conversationId === chat?._id);
 
   return (
     <header className="sticky top-0 z-10 flex flex-col w-full bg-background border-b border-border/50">
@@ -277,15 +248,6 @@ const ChatWindowHeader = ({ chat }: { chat?: Conversation }) => {
               >
                 <Sparkles size={20} />
               </button>
-              {!isLocked && (
-                <button
-                  onClick={() => setShowLockDialog(true)}
-                  className="p-2 rounded-full hover:bg-accent text-muted-foreground hover:text-foreground transition-colors duration-200"
-                  title="Khóa cuộc trò chuyện"
-                >
-                  <LockIcon size={20} />
-                </button>
-              )}
               <button
                 onClick={() => handleStartCall(false)}
                 className="p-2 rounded-full hover:bg-accent text-muted-foreground hover:text-foreground transition-colors duration-200"
@@ -335,31 +297,6 @@ const ChatWindowHeader = ({ chat }: { chat?: Conversation }) => {
           </Button>
         </div>
       )}
-
-      <Dialog open={showLockDialog} onOpenChange={setShowLockDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Khóa cuộc trò chuyện</DialogTitle>
-          </DialogHeader>
-          <form onSubmit={handleSetLock} className="space-y-4 pt-4">
-            <p className="text-sm text-muted-foreground">
-              Nhập mã PIN 4 số để khóa cuộc trò chuyện này. Bạn sẽ cần mã PIN này mỗi khi mở lại cuộc trò chuyện.
-            </p>
-            <Input
-              type="password"
-              placeholder="Nhập mã PIN mới (VD: 1234)"
-              value={newPin}
-              onChange={(e) => setNewPin(e.target.value)}
-              maxLength={4}
-              className="text-center tracking-widest text-lg"
-            />
-            <Button type="submit" className="w-full" disabled={newPin.length !== 4}>
-              Xác nhận khóa <LockIcon className="ml-2 size-4" />
-            </Button>
-          </form>
-        </DialogContent>
-      </Dialog>
-
 
       {/* Dialog Tóm tắt đoạn chat */}
       <Dialog open={showSummaryModal} onOpenChange={setShowSummaryModal}>

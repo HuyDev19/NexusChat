@@ -50,8 +50,9 @@ const CallRoomModal = () => {
     if (selectedConvo.type === 'group' || selectedConvo.type === 'community') {
       displayRoomName = selectedConvo.group?.name || "Cuộc gọi Nhóm";
     } else {
-      const otherParticipant = selectedConvo.participants?.find((p: any) => p._id !== user?._id);
-      displayRoomName = selectedConvo.nicknames?.[otherParticipant?._id] || otherParticipant?.displayName || "Cuộc gọi";
+      const otherParticipant = selectedConvo.participants?.find((p) => p._id !== user?._id);
+      const otherId = otherParticipant?._id;
+      displayRoomName = (otherId && selectedConvo.nicknames?.[otherId]) || otherParticipant?.displayName || "Cuộc gọi";
     }
   }
 

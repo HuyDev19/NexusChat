@@ -116,7 +116,7 @@ const PrivacySettings = () => {
       await sendOtp(user.email, "change_password");
       setChangePwStep(2);
       setPwTimer(60);
-    } catch (error) {
+    } catch {
       // error handled in store
     } finally {
       setIsPwLoading(false);
@@ -144,7 +144,7 @@ const PrivacySettings = () => {
       setPwOtp("");
       setNewPw("");
       setConfirmPw("");
-    } catch (error) {
+    } catch {
       // error handled in store
     } finally {
       setIsPwLoading(false);
@@ -171,7 +171,7 @@ const PrivacySettings = () => {
     try {
       await unblockUser(targetId);
       setBlockedUsersList((prev) => prev.filter((u) => u._id !== targetId));
-    } catch (error) {
+    } catch {
       // error handled in store
     }
   };
@@ -186,7 +186,7 @@ const PrivacySettings = () => {
       await sendOtp(user.email, "delete_account");
       setDeleteStep(2);
       setDeleteTimer(60);
-    } catch (error) {
+    } catch {
       // error handled in store
     } finally {
       setIsDeleteLoading(false);
@@ -204,7 +204,7 @@ const PrivacySettings = () => {
       await deleteAccount(deleteOtp.trim());
       setShowDeleteModal(false);
       window.location.href = "/signup";
-    } catch (error) {
+    } catch {
       // error handled in store
     } finally {
       setIsDeleteLoading(false);
