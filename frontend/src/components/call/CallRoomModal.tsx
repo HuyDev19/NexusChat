@@ -140,7 +140,7 @@ const CallRoomModal = () => {
 
                 {/* Khung Chat (Mini Chat) */}
                 {isChatOpen && selectedConvo && (
-                  <div className="absolute md:relative right-0 inset-y-0 w-full md:w-80 border-l border-white/5 bg-[#313338] flex flex-col z-40 transition-all duration-300">
+                  <div className="absolute md:relative right-0 top-0 w-full h-[calc(100%-80px)] md:h-full md:w-80 border-l border-white/5 bg-[#313338] flex flex-col z-40 transition-all duration-300">
                     <div className="p-3 border-b border-white/5 bg-[#2b2d31] font-semibold text-gray-200 text-sm">
                       Chat trong cuộc gọi
                     </div>

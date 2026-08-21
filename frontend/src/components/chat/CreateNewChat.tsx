@@ -103,7 +103,7 @@ const CreateNewChat = () => {
               className="cursor-pointer rounded-xl font-medium text-xs py-2"
             >
               <Users className="w-4 h-4 mr-2.5 text-purple-400" />
-              <span>Danh sách bạn bè (Tên gốc)</span>
+              <span>Danh sách bạn bè</span>
             </DropdownMenuItem>
 
             <DropdownMenuSeparator className="my-1" />

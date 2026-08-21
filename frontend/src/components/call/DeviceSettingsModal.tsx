@@ -1,4 +1,5 @@
 import React from "react";
+import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { useMediaDeviceSelect } from "@livekit/components-react";
 
@@ -32,9 +33,9 @@ const DeviceSelect = ({ kind, label }: { kind: MediaDeviceKind; label: string })
 const DeviceSettingsModal: React.FC<DeviceSettingsModalProps> = ({ isOpen, onClose }) => {
   if (!isOpen) return null;
 
-  return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm">
-      <div className="bg-[#2b2d31] w-full max-w-sm rounded-xl shadow-2xl border border-white/10 flex flex-col overflow-hidden">
+  return createPortal(
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+      <div className="bg-[#2b2d31] w-full max-w-lg rounded-xl shadow-2xl border border-white/10 flex flex-col overflow-hidden">
         {/* Header */}
         <div className="px-5 py-4 border-b border-white/5 flex items-center justify-between">
           <h2 className="text-lg font-semibold text-white">Cài đặt thiết bị</h2>
@@ -63,7 +64,8 @@ const DeviceSettingsModal: React.FC<DeviceSettingsModalProps> = ({ isOpen, onClo
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 

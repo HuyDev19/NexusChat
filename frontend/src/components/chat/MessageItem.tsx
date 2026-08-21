@@ -24,10 +24,12 @@ const FormattedText = ({
   content,
   participants,
   nicknames,
+  isOwn,
 }: {
   content?: string | null;
   participants: Participant[];
   nicknames?: Record<string, string>;
+  isOwn?: boolean;
 }) => {
   if (!content) return null;
 
@@ -51,7 +53,10 @@ const FormattedText = ({
           return (
             <span
               key={i}
-              className="text-primary font-bold cursor-pointer hover:underline"
+              className={cn(
+                "font-bold cursor-pointer hover:underline",
+                isOwn ? "text-primary-foreground" : "text-primary"
+              )}
               title={
                 mentionName === "All" || mentionName === "Mọi người"
                   ? "Nhắc cả nhóm"
@@ -395,7 +400,7 @@ const MessageItem = ({
                   />
                   {message.content && (
                     <div className="pt-0.5">
-                      <FormattedText content={message.content} participants={participants} nicknames={selectedConvo.nicknames} />
+                      <FormattedText content={message.content} participants={participants} nicknames={selectedConvo.nicknames} isOwn={message.isOwn} />
                     </div>
                   )}
                 </div>
@@ -432,7 +437,7 @@ const MessageItem = ({
                   </div>
                 </div>
               ) : (
-                <FormattedText content={message.content} participants={participants} nicknames={selectedConvo.nicknames} />
+                <FormattedText content={message.content} participants={participants} nicknames={selectedConvo.nicknames} isOwn={message.isOwn} />
               )}
 
               {message.expiresIn && !message.isRecalled && (

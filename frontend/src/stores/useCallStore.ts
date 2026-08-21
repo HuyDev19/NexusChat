@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { persist, createJSONStorage } from "zustand/middleware";
 import { callService } from "@/services/callService";
 import { useSocketStore } from "./useSocketStore";
 import { useAuthStore } from "./useAuthStore";
@@ -40,7 +41,9 @@ interface CallState {
   joinExistingCall: (conversationId: string, roomName: string, isVideo: boolean) => Promise<void>;
 }
 
-export const useCallStore = create<CallState>((set, get) => ({
+export const useCallStore = create<CallState>()(
+  persist(
+    (set, get) => ({
   incomingCall: null,
   activeCall: null,
   activeGroupCalls: {},
@@ -251,4 +254,14 @@ export const useCallStore = create<CallState>((set, get) => ({
       console.error("[useCallStore] Lỗi joinExistingCall:", error);
     }
   },
-}));
+    }),
+    {
+      name: "call-storage",
+      storage: createJSONStorage(() => sessionStorage),
+      partialize: (state) => ({
+        activeCall: state.activeCall,
+        activeGroupCalls: state.activeGroupCalls,
+      }),
+    }
+  )
+);
