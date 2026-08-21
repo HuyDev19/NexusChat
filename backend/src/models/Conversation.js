@@ -15,7 +15,7 @@ const participantSchema = new mongoose.Schema(
     },
     role: {
       type: String,
-      enum: ["member", "leader"],
+      enum: ["member", "leader", "deputy"],
       default: "member",
     },
   },

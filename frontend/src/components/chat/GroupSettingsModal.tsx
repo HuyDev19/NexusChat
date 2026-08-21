@@ -14,12 +14,18 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "../ui/alert-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "../ui/dropdown-menu";
 import { useChatStore } from "@/stores/useChatStore";
 import { useAuthStore } from "@/stores/useAuthStore";
 import type { Conversation } from "@/types/chat";
 import { Button } from "../ui/button";
 import UserAvatar from "./UserAvatar";
-import { Camera, Edit2, LogOut, Save, Trash2, UserPlus, ShieldAlert, X } from "lucide-react";
+import { Camera, Edit2, LogOut, Save, Trash2, UserPlus, ShieldAlert, Shield, ArrowDown, X, MoreHorizontal } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { useFriendStore } from "@/stores/useFriendStore";
 import { Input } from "../ui/input";
@@ -63,6 +69,7 @@ export default function GroupSettingsModal({
   const participants = conversation.participants || [];
   const currentUser = participants.find((p) => p._id === user?._id);
   const isLeader = currentUser?.role === "leader";
+  const isDeputy = currentUser?.role === "deputy";
 
   const handleAddMember = async () => {
     if (selectedFriends.length > 0) {
@@ -129,7 +136,7 @@ export default function GroupSettingsModal({
                       groupName={conversation.group?.name}
                     />
                     {/* Avatar Upload Overlay */}
-                    {isLeader && (
+                    {(isLeader || isDeputy) && (
                       <div 
                         className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer z-20"
                         onClick={() => !convoLoading && fileInputRef.current?.click()}
@@ -137,7 +144,7 @@ export default function GroupSettingsModal({
                         <Camera className="size-6 text-white" />
                       </div>
                     )}
-                    {isLeader && conversation.group?.avatar && (
+                    {(isLeader || isDeputy) && conversation.group?.avatar && (
                       <Button
                         size="icon"
                         variant="secondary"
@@ -168,7 +175,7 @@ export default function GroupSettingsModal({
                     <p className="text-sm text-muted-foreground">{conversation.group?.description}</p>
                   )}
                 </div>
-                {isLeader && (
+                {(isLeader || isDeputy) && (
                   <Button variant="ghost" size="sm" onClick={() => setIsEditingInfo(true)}>
                     Sửa thông tin
                   </Button>
@@ -181,9 +188,11 @@ export default function GroupSettingsModal({
           <div className="space-y-4">
             <div className="flex justify-between items-center">
               <h3 className="font-medium">Thành viên ({participants.length})</h3>
-              <Button size="sm" onClick={() => setIsAddingMember(!isAddingMember)}>
-                <UserPlus className="size-4 mr-2" /> Thêm bạn
-              </Button>
+              {(isLeader || isDeputy) && (
+                <Button size="sm" onClick={() => setIsAddingMember(!isAddingMember)}>
+                  <UserPlus className="size-4 mr-2" /> Thêm bạn
+                </Button>
+              )}
             </div>
 
             {isAddingMember && (
@@ -224,33 +233,47 @@ export default function GroupSettingsModal({
                       <p className="text-sm font-medium">
                         {p.displayName} {p._id === user?._id ? "(Bạn)" : ""}
                       </p>
-                      <p className="text-xs text-muted-foreground uppercase">{p.role}</p>
+                      <p className="text-xs text-muted-foreground uppercase">
+                        {p.role === "leader" ? "TRƯỞNG NHÓM" : p.role === "deputy" ? "PHÓ NHÓM" : "THÀNH VIÊN"}
+                      </p>
                     </div>
                   </div>
 
-                  {isLeader && p._id !== user?._id && (
-                    <div className="flex items-center gap-1">
-                      {p.role === "member" && (
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="text-yellow-500 hover:text-yellow-600 hover:bg-yellow-100 dark:hover:bg-yellow-900/50"
-                          title="Phong trưởng nhóm"
-                          onClick={() => setMemberToPromote(p._id)}
-                        >
-                          <ShieldAlert className="size-4" />
+                  {((isLeader && p._id !== user?._id) || (isDeputy && p.role === "member" && p._id !== user?._id)) && (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="size-8 text-muted-foreground hover:text-foreground">
+                          <MoreHorizontal className="size-4" />
                         </Button>
-                      )}
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        className="text-red-500 hover:text-red-600 hover:bg-red-100 dark:hover:bg-red-900/50"
-                        title="Xóa khỏi nhóm"
-                        onClick={() => removeGroupMember(conversation._id, p._id)}
-                      >
-                        <Trash2 className="size-4" />
-                      </Button>
-                    </div>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-48">
+                        {isLeader && p.role === "member" && (
+                          <>
+                            <DropdownMenuItem onClick={() => updateGroupRole(conversation._id, p._id, "deputy")}>
+                              <Shield className="size-4 mr-2 text-blue-500" />
+                              Phong phó nhóm
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => setMemberToPromote(p._id)}>
+                              <ShieldAlert className="size-4 mr-2 text-yellow-500" />
+                              Phong trưởng nhóm
+                            </DropdownMenuItem>
+                          </>
+                        )}
+                        {isLeader && p.role === "deputy" && (
+                          <DropdownMenuItem onClick={() => updateGroupRole(conversation._id, p._id, "member")}>
+                            <ArrowDown className="size-4 mr-2 text-orange-500" />
+                            Giáng cấp
+                          </DropdownMenuItem>
+                        )}
+                        <DropdownMenuItem 
+                          className="text-red-500 focus:text-red-600 focus:bg-red-100 dark:focus:bg-red-900/50"
+                          onClick={() => removeGroupMember(conversation._id, p._id)}
+                        >
+                          <Trash2 className="size-4 mr-2" />
+                          Xóa khỏi nhóm
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   )}
                 </div>
               ))}

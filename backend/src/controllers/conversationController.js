@@ -566,7 +566,9 @@ export const addGroupMembers = async (req, res) => {
     if (!conversation || conversation.type !== "group") return res.status(404).json({ message: "Không tìm thấy nhóm" });
 
     const currentUser = conversation.participants.find(p => p.userId.toString() === userId.toString());
-    if (!currentUser || currentUser.role !== "leader") return res.status(403).json({ message: "Chỉ trưởng nhóm mới có thể thêm thành viên" });
+    if (!currentUser || (currentUser.role !== "leader" && currentUser.role !== "deputy")) {
+      return res.status(403).json({ message: "Chỉ trưởng hoặc phó nhóm mới có thể thêm thành viên" });
+    }
 
     memberIds.forEach(mId => {
       if (!conversation.participants.some(p => p.userId.toString() === mId.toString())) {
@@ -623,8 +625,19 @@ export const removeGroupMember = async (req, res) => {
     if (!conversation || conversation.type !== "group") return res.status(404).json({ message: "Không tìm thấy nhóm" });
 
     const currentUser = conversation.participants.find(p => p.userId.toString() === userId.toString());
-    if (!currentUser || (currentUser.role !== "leader" && userId.toString() !== memberId.toString())) {
+    const targetMember = conversation.participants.find(p => p.userId.toString() === memberId.toString());
+    
+    if (!currentUser || !targetMember) {
       return res.status(403).json({ message: "Không có quyền" });
+    }
+
+    if (userId.toString() !== memberId.toString()) {
+      if (currentUser.role === "member") {
+        return res.status(403).json({ message: "Bạn không có quyền xóa thành viên" });
+      }
+      if (currentUser.role === "deputy" && targetMember.role !== "member") {
+        return res.status(403).json({ message: "Phó nhóm chỉ có thể xóa thành viên thường" });
+      }
     }
 
     conversation.participants = conversation.participants.filter(p => p.userId.toString() !== memberId.toString());
@@ -671,6 +684,14 @@ export const updateGroupRole = async (req, res) => {
 
     const currentUser = conversation.participants.find(p => p.userId.toString() === userId.toString());
     if (!currentUser || currentUser.role !== "leader") return res.status(403).json({ message: "Chỉ trưởng nhóm mới có quyền" });
+
+    if (role === "deputy") {
+      const currentDeputies = conversation.participants.filter(p => p.role === "deputy");
+      const targetMember = conversation.participants.find(p => p.userId.toString() === memberId.toString());
+      if (targetMember && targetMember.role !== "deputy" && currentDeputies.length >= 3) {
+        return res.status(400).json({ message: "Chỉ có thể có tối đa 3 phó nhóm" });
+      }
+    }
 
     const member = conversation.participants.find(p => p.userId.toString() === memberId.toString());
     if (member) member.role = role;
@@ -721,8 +742,8 @@ export const updateGroupInfo = async (req, res) => {
     }
 
     const currentUser = conversation.participants.find(p => p.userId.toString() === userId.toString());
-    if (!currentUser || currentUser.role !== "leader") {
-      return res.status(403).json({ message: "Chỉ trưởng nhóm mới có thể thay đổi thông tin nhóm" });
+    if (!currentUser || (currentUser.role !== "leader" && currentUser.role !== "deputy")) {
+      return res.status(403).json({ message: "Chỉ trưởng hoặc phó nhóm mới có thể thay đổi thông tin nhóm" });
     }
 
     if (name) conversation.group.name = name;
@@ -762,8 +783,8 @@ export const updateGroupAvatar = async (req, res) => {
     }
 
     const currentUser = conversation.participants.find(p => p.userId.toString() === userId.toString());
-    if (!currentUser) {
-      return res.status(403).json({ message: "Không có quyền" });
+    if (!currentUser || (currentUser.role !== "leader" && currentUser.role !== "deputy")) {
+      return res.status(403).json({ message: "Chỉ trưởng hoặc phó nhóm mới có quyền thay đổi ảnh nhóm" });
     }
 
     // Upload to cloudinary

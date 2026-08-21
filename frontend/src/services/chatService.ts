@@ -162,7 +162,7 @@ export const chatService = {
     return res.data;
   },
 
-  async updateGroupRole(conversationId: string, memberId: string, role: "leader" | "member") {
+  async updateGroupRole(conversationId: string, memberId: string, role: "leader" | "member" | "deputy") {
     const res = await api.patch(`/conversations/${conversationId}/role`, { memberId, role });
     return res.data;
   },

@@ -12,7 +12,7 @@ export interface Participant {
   lastActiveAt?: string;
   updatedAt?: string;
   joinedAt: string;
-  role?: 'leader' | 'member';
+  role?: 'leader' | 'member' | 'deputy';
 }
 
 export interface SeenUser {

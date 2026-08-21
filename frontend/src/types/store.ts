@@ -132,7 +132,7 @@ export interface ChatState {
   unlockConversation: (conversationId: string) => void;
   addGroupMembers: (conversationId: string, memberIds: string[]) => Promise<void>;
   removeGroupMember: (conversationId: string, memberId: string) => Promise<void>;
-  updateGroupRole: (conversationId: string, memberId: string, role: "leader" | "member") => Promise<void>;
+  updateGroupRole: (conversationId: string, memberId: string, role: "leader" | "member" | "deputy") => Promise<void>;
   updateGroupInfo: (conversationId: string, name?: string, description?: string) => Promise<void>;
   updateGroupAvatar: (conversationId: string, file: File) => Promise<void>;
   removeGroupAvatar: (conversationId: string) => Promise<void>;
