@@ -15,6 +15,7 @@ import { protectedRoute } from "./middlewares/authMiddleware.js";
 import cors from "cors";
 import jwt from "jsonwebtoken";
 import { seedNexusAIUser } from "./utils/seedNexusAI.js";
+import User from "./models/User.js";
 
 dotenv.config();
 
@@ -74,6 +75,7 @@ io.on("connection", (socket) => {
     console.log(`Socket ${socket.id} joined personal room user:${userId}`);
 
     onlineUsers.add(userId);
+    User.findByIdAndUpdate(userId, { lastActiveAt: new Date() }).catch(() => {});
     io.emit("online-users", Array.from(onlineUsers));
   }
 
@@ -118,11 +120,18 @@ io.on("connection", (socket) => {
   // Đăng ký handlers cho cuộc gọi
   registerCallSocketHandlers(io, socket);
 
-  socket.on("disconnect", (reason) => {
+  socket.on("disconnect", async (reason) => {
     console.log(`Socket disconnected: ${socket.id} (${reason})`);
     if (userId) {
       onlineUsers.delete(userId);
+      const lastActiveAt = new Date();
+      try {
+        await User.findByIdAndUpdate(userId, { lastActiveAt });
+      } catch (err) {
+        console.error("Error updating lastActiveAt on disconnect", err);
+      }
       io.emit("online-users", Array.from(onlineUsers));
+      io.emit("user:last-active", { userId, lastActiveAt });
     }
   });
 });

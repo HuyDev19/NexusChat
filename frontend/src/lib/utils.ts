@@ -82,8 +82,54 @@ export function removeVietnameseTones(str: string): string {
   return str.toLowerCase().trim();
 }
 
-export const isNoteExpired = (note?: { content: string, expiresAt: string | null } | null) => {
-  if (!note || !note.content) return true;
+export const isNoteExpired = (note?: any) => {
+  if (!note) return true;
+  if (typeof note === "string") return false;
+  if (!note.content) return true;
   if (!note.expiresAt) return false;
   return new Date(note.expiresAt).getTime() < Date.now();
+};
+
+export const isStreakActive = (streak?: { count: number; lastMessageDate?: string | Date | null }) => {
+  if (!streak || !streak.count || streak.count < 1 || !streak.lastMessageDate) return false;
+  const d1 = new Date(streak.lastMessageDate);
+  const d2 = new Date();
+  const u1 = Date.UTC(d1.getFullYear(), d1.getMonth(), d1.getDate());
+  const u2 = Date.UTC(d2.getFullYear(), d2.getMonth(), d2.getDate());
+  const dayDiff = Math.floor((u2 - u1) / (1000 * 60 * 60 * 24));
+  return dayDiff < 2;
+};
+
+export const isStreakOnFire = (streak?: { count: number; lastMessageDate?: string | Date | null; isBothMessaged?: boolean; senders?: string[] }) => {
+  if (!isStreakActive(streak)) return false;
+  return Boolean(streak?.isBothMessaged || (streak?.senders && streak.senders.length >= 2));
+};
+
+export const getOfflineMinutes = (dateStrOrDate?: string | Date | null): number | null => {
+  if (!dateStrOrDate) return null;
+  const date = new Date(dateStrOrDate);
+  if (isNaN(date.getTime())) return null;
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  if (diffMs < 0) return 0;
+  const diffMins = Math.floor(diffMs / (1000 * 60));
+  return diffMins;
+};
+
+export const formatLastActive = (dateStrOrDate?: string | Date | null, isOnline?: boolean): string => {
+  if (isOnline) return "Đang hoạt động";
+  if (!dateStrOrDate) return "Offline";
+  const date = new Date(dateStrOrDate);
+  if (isNaN(date.getTime())) return "Offline";
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffMins = Math.floor(diffMs / (1000 * 60));
+  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+  if (diffMins < 1) return "Vừa mới truy cập";
+  if (diffMins < 60) return `Online ${diffMins} phút trước`;
+  if (diffHours < 24) return `Hoạt động ${diffHours} giờ trước`;
+  if (diffDays < 7) return `Hoạt động ${diffDays} ngày trước`;
+  return "Không hoạt động gần đây";
 };

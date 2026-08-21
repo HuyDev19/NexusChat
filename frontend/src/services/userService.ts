@@ -75,4 +75,18 @@ export const userService = {
     const res = await api.delete("/users/me", { data: { otp } });
     return res.data;
   },
+  addProfilePhoto: async (formData: FormData) => {
+    const res = await api.post("/users/photos", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+    return res.data;
+  },
+  deleteProfilePhoto: async (photoId: string) => {
+    const res = await api.delete(`/users/photos/${photoId}`);
+    return res.data;
+  },
+  reactProfilePhoto: async (userId: string, photoId: string, emoji: string) => {
+    const res = await api.post(`/users/${userId}/photos/${photoId}/react`, { emoji });
+    return res.data;
+  },
 };

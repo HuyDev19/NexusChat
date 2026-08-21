@@ -2,7 +2,7 @@ import { useAuthStore } from "@/stores/useAuthStore";
 import type { Conversation } from "@/types/chat";
 import { useState, useRef, useEffect } from "react";
 import { Button } from "../ui/button";
-import { ImagePlus, Send, Mic, Square, Loader2, BarChart2 } from "lucide-react";
+import { ImagePlus, Send, Mic, Square, Loader2, BarChart2, Plus } from "lucide-react";
 import { Input } from "../ui/input";
 import EmojiPicker from "./EmojiPicker";
 import CreatePollModal from "./CreatePollModal";
@@ -16,6 +16,13 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Timer, EyeOff, Ban, X, Reply } from "lucide-react";
+import { Dialog, DialogContent } from "../ui/dialog";
+
+interface StagedImage {
+  id: string;
+  file: File;
+  previewUrl: string;
+}
 
 const MessageInput = ({ selectedConvo }: { selectedConvo: Conversation }) => {
   const { user } = useAuthStore();
@@ -31,6 +38,9 @@ const MessageInput = ({ selectedConvo }: { selectedConvo: Conversation }) => {
   }
   
   const [value, setValue] = useState("");
+  const [stagedImages, setStagedImages] = useState<StagedImage[]>([]);
+  const [previewingImageUrl, setPreviewingImageUrl] = useState<string | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
 
   useEffect(() => {
     const draft = useChatStore.getState().drafts[selectedConvo._id] || "";
@@ -68,25 +78,117 @@ const MessageInput = ({ selectedConvo }: { selectedConvo: Conversation }) => {
       if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
         mediaRecorderRef.current.stop();
       }
+      stagedImages.forEach(img => URL.revokeObjectURL(img.previewUrl));
     };
   }, []);
 
   if (!user) return null;
 
-  const sendMessage = async (audioBlob?: Blob, imageFile?: File) => {
-    if (!value.trim() && !audioBlob && !imageFile) return;
-    const currValue = value.trim();
-    const isMedia = Boolean(audioBlob || imageFile);
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
 
-    // Xóa text ngay và giữ con trỏ chuột nháy liên tục trong ô input
-    if (!isMedia) {
-      setValue("");
-      setDraft(selectedConvo._id, "");
+    const newItems: StagedImage[] = files.map(file => ({
+      id: Math.random().toString(36).substring(2, 9) + Date.now(),
+      file,
+      previewUrl: URL.createObjectURL(file)
+    }));
+
+    setStagedImages(prev => [...prev, ...newItems]);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
     }
+  };
+
+  const removeStagedImage = (id: string) => {
+    setStagedImages(prev => {
+      const target = prev.find(img => img.id === id);
+      if (target) URL.revokeObjectURL(target.previewUrl);
+      return prev.filter(img => img.id !== id);
+    });
+  };
+
+  const clearAllStagedImages = () => {
+    stagedImages.forEach(img => URL.revokeObjectURL(img.previewUrl));
+    setStagedImages([]);
+  };
+
+  const handlePaste = (e: React.ClipboardEvent) => {
+    const files: File[] = [];
+
+    if (e.clipboardData?.files && e.clipboardData.files.length > 0) {
+      for (let i = 0; i < e.clipboardData.files.length; i++) {
+        const f = e.clipboardData.files[i];
+        if (f.type.startsWith("image/")) files.push(f);
+      }
+    } else if (e.clipboardData?.items) {
+      for (let i = 0; i < e.clipboardData.items.length; i++) {
+        const item = e.clipboardData.items[i];
+        if (item.type.startsWith("image/")) {
+          const f = item.getAsFile();
+          if (f) files.push(f);
+        }
+      }
+    }
+
+    if (files.length > 0) {
+      e.preventDefault();
+      e.stopPropagation();
+      const newItems: StagedImage[] = files.map(file => ({
+        id: Math.random().toString(36).substring(2, 9) + Date.now() + Math.random(),
+        file,
+        previewUrl: URL.createObjectURL(file)
+      }));
+      setStagedImages(prev => [...prev, ...newItems]);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+
+    const files = Array.from(e.dataTransfer.files || []).filter(f => f.type.startsWith("image/"));
+    if (!files.length) return;
+
+    const newItems: StagedImage[] = files.map(file => ({
+      id: Math.random().toString(36).substring(2, 9) + Date.now(),
+      file,
+      previewUrl: URL.createObjectURL(file)
+    }));
+
+    setStagedImages(prev => [...prev, ...newItems]);
+  };
+
+  const sendMessage = async (audioBlob?: Blob) => {
+    const currImages = [...stagedImages];
+    const hasImages = currImages.length > 0;
+
+    if (!value.trim() && !audioBlob && !hasImages) return;
+    const currValue = value.trim();
+
+    // Clear text and staged images immediately for snappy UI
+    setValue("");
+    setDraft(selectedConvo._id, "");
+    setStagedImages([]);
     inputRef.current?.focus();
 
     const participantIds = selectedConvo.participants.map(p => p._id);
     emitTypingEnd(selectedConvo._id, participantIds);
+
+    const isMedia = Boolean(audioBlob || hasImages);
 
     try {
       if (isMedia) {
@@ -94,14 +196,16 @@ const MessageInput = ({ selectedConvo }: { selectedConvo: Conversation }) => {
       }
 
       let audioUrl = undefined;
-      let imgUrl = undefined;
-
       if (audioBlob) {
         audioUrl = await uploadAudio(audioBlob);
       }
 
-      if (imageFile) {
-        imgUrl = await uploadImage(imageFile);
+      let uploadedImgUrls: string[] = [];
+      if (hasImages) {
+        for (const item of currImages) {
+          const imgUrl = await uploadImage(item.file);
+          if (imgUrl) uploadedImgUrls.push(imgUrl);
+        }
       }
 
       const parseMentions = (text: string) => {
@@ -133,21 +237,40 @@ const MessageInput = ({ selectedConvo }: { selectedConvo: Conversation }) => {
 
       const mentions = parseMentions(currValue);
 
-      if (selectedConvo.type === "direct") {
-        const participants = selectedConvo.participants || [];
-        const otherUser = participants.filter((p) => p._id !== user._id)[0];
-        await sendDirectMessage(otherUser._id, isMedia ? "" : currValue, imgUrl, audioUrl, expiresIn, isViewOnce, mentions, replyingToMessage?._id);
+      if (uploadedImgUrls.length > 0) {
+        // Gửi ảnh đầu tiên kèm nội dung text (nếu có)
+        const firstImg = uploadedImgUrls[0];
+        if (selectedConvo.type === "direct") {
+          const participants = selectedConvo.participants || [];
+          const otherUser = participants.filter((p) => p._id !== user._id)[0];
+          await sendDirectMessage(otherUser._id, currValue, firstImg, audioUrl, expiresIn, isViewOnce, mentions, replyingToMessage?._id);
+          // Nếu có thêm ảnh, gửi tiếp từng ảnh
+          for (let i = 1; i < uploadedImgUrls.length; i++) {
+            await sendDirectMessage(otherUser._id, "", uploadedImgUrls[i], undefined, expiresIn, isViewOnce, undefined, undefined);
+          }
+        } else {
+          await sendGroupMessage(selectedConvo._id, currValue, firstImg, audioUrl, expiresIn, isViewOnce, undefined, mentions, replyingToMessage?._id);
+          for (let i = 1; i < uploadedImgUrls.length; i++) {
+            await sendGroupMessage(selectedConvo._id, "", uploadedImgUrls[i], undefined, expiresIn, isViewOnce, undefined, undefined);
+          }
+        }
       } else {
-        await sendGroupMessage(selectedConvo._id, isMedia ? "" : currValue, imgUrl, audioUrl, expiresIn, isViewOnce, undefined, mentions, replyingToMessage?._id);
+        // Gửi tin nhắn text hoặc audio bình thường
+        if (selectedConvo.type === "direct") {
+          const participants = selectedConvo.participants || [];
+          const otherUser = participants.filter((p) => p._id !== user._id)[0];
+          await sendDirectMessage(otherUser._id, currValue, undefined, audioUrl, expiresIn, isViewOnce, mentions, replyingToMessage?._id);
+        } else {
+          await sendGroupMessage(selectedConvo._id, currValue, undefined, audioUrl, expiresIn, isViewOnce, undefined, mentions, replyingToMessage?._id);
+        }
       }
+
       if (replyingToMessage) setReplyingToMessage(null);
     } catch (error: any) {
       console.error(error);
       toast.error(error.response?.data?.message || "Lỗi xảy ra khi gửi tin nhắn. Bạn hãy thử lại!");
     } finally {
-      if (isMedia) {
-        setIsSendingMedia(false);
-      }
+      setIsSendingMedia(false);
       setIsViewOnce(false);
       inputRef.current?.focus();
     }
@@ -164,16 +287,6 @@ const MessageInput = ({ selectedConvo }: { selectedConvo: Conversation }) => {
     } finally {
       setIsSendingMedia(false);
       inputRef.current?.focus();
-    }
-  };
-
-  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    sendMessage(undefined, file);
-    // reset input
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
     }
   };
 
@@ -336,8 +449,21 @@ const MessageInput = ({ selectedConvo }: { selectedConvo: Conversation }) => {
     );
   }
 
+  const hasDraftOrMedia = Boolean(value.trim() || stagedImages.length > 0);
+
   return (
-    <div className="flex flex-col bg-background">
+    <div 
+      className="flex flex-col bg-background relative"
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+    >
+      {isDragging && (
+        <div className="absolute inset-0 bg-primary/10 border-2 border-dashed border-primary z-50 rounded-xl flex items-center justify-center pointer-events-none backdrop-blur-xs">
+          <span className="text-sm font-semibold text-primary">Thả ảnh vào đây để đính kèm</span>
+        </div>
+      )}
+
       {replyingToMessage && (
         <div className="flex items-center justify-between px-4 py-2 bg-muted/30 border-t border-b">
           <div className="flex items-center gap-2 overflow-hidden">
@@ -356,185 +482,253 @@ const MessageInput = ({ selectedConvo }: { selectedConvo: Conversation }) => {
           </Button>
         </div>
       )}
+
+      {/* Staged Images Preview matching composer layout */}
+      {stagedImages.length > 0 && (
+        <div className="px-4 pb-3 pt-2 border-t border-border/40 bg-muted/20">
+          <div className="flex items-center justify-between py-1 text-xs">
+            <span className="font-semibold text-foreground">{stagedImages.length} ảnh</span>
+            <button
+              type="button"
+              onClick={clearAllStagedImages}
+              className="text-xs text-muted-foreground hover:text-foreground font-medium transition-colors cursor-pointer"
+            >
+              Xoá tất cả
+            </button>
+          </div>
+
+          <div className="flex items-center gap-3 overflow-x-auto py-2 beautiful-scrollbar">
+            {stagedImages.map((img) => (
+              <div 
+                key={img.id} 
+                onClick={() => setPreviewingImageUrl(img.previewUrl)}
+                className="relative group size-16 sm:size-20 rounded-xl overflow-hidden border border-border/60 bg-background shrink-0 shadow-sm cursor-pointer hover:opacity-90 hover:scale-[1.03] transition-all"
+                title="Bấm để xem ảnh lớn"
+              >
+                <img src={img.previewUrl} alt="Preview" className="w-full h-full object-cover" />
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    removeStagedImage(img.id);
+                  }}
+                  className="absolute top-1 right-1 size-5 bg-black/70 hover:bg-black text-white rounded-full flex items-center justify-center transition-colors shadow-md cursor-pointer z-10"
+                  title="Xoá ảnh này"
+                >
+                  <X className="size-3" />
+                </button>
+              </div>
+            ))}
+
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="size-16 sm:size-20 rounded-xl border-2 border-dashed border-muted-foreground/30 hover:border-primary/60 hover:bg-primary/5 flex items-center justify-center text-muted-foreground hover:text-primary transition-all shrink-0 cursor-pointer"
+              title="Thêm ảnh"
+            >
+              <Plus className="size-6" />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Input bar */}
       <div className="flex items-center gap-2 p-3 min-h-[56px]">
         {!isRecording ? (
-        <div className="flex items-center gap-1">
-          <input
-            type="file"
-            accept="image/*"
-            className="hidden"
-            ref={fileInputRef}
-            onChange={handleImageSelect}
-          />
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => fileInputRef.current?.click()}
-            className="hover:bg-primary/10 transition-smooth shrink-0"
-            title="Gửi hình ảnh"
-            disabled={isSendingMedia}
-          >
-            <ImagePlus className="size-5" />
-          </Button>
-
-          <Button
-            variant={isViewOnce ? "default" : "ghost"}
-            size="icon"
-            onClick={() => setIsViewOnce(!isViewOnce)}
-            className="hover:bg-primary/10 transition-smooth shrink-0"
-            title="Chế độ xem một lần"
-          >
-            {isViewOnce ? <EyeOff className="size-4 text-white" /> : <EyeOff className="size-4" />}
-          </Button>
-
-          {selectedConvo.type === "group" && (
+          <div className="flex items-center gap-1">
+            <input
+              type="file"
+              accept="image/*"
+              multiple
+              className="hidden"
+              ref={fileInputRef}
+              onChange={handleImageSelect}
+            />
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => setShowPollModal(true)}
+              onClick={() => fileInputRef.current?.click()}
               className="hover:bg-primary/10 transition-smooth shrink-0"
-              title="Tạo bình chọn"
+              title="Gửi hình ảnh"
+              disabled={isSendingMedia}
             >
-              <BarChart2 className="size-5" />
+              <ImagePlus className="size-5" />
             </Button>
-          )}
-        </div>
-      ) : (
-        <Button
-          variant="destructive"
-          size="icon"
-          className="shrink-0 animate-pulse"
-          onClick={stopRecording}
-        >
-          <Square className="size-4 fill-current" />
-        </Button>
-      )}
 
-      <div className="flex-1 relative flex items-center">
-        {isRecording ? (
-          <div className="flex-1 h-9 flex items-center justify-center bg-red-50 text-red-500 rounded-md border border-red-200">
-            <span className="animate-pulse mr-2 h-2 w-2 bg-red-500 rounded-full"></span>
-            <span className="text-sm font-medium">
-              Đang ghi âm... {Math.floor(recordingTime / 60)}:{(recordingTime % 60).toString().padStart(2, "0")}
-            </span>
-          </div>
-        ) : (
-          <>
-            {mentionQuery !== null && filteredParticipants.length > 0 && (
-              <div className="absolute bottom-full left-0 mb-2 w-64 bg-background border border-border/50 rounded-xl shadow-lg z-50 overflow-hidden">
-                <div className="py-1">
-                  {filteredParticipants.map((p, index) => (
-                    <div
-                      key={p._id}
-                      onClick={() => insertMention(p.isAllOption ? "All" : (selectedConvo.nicknames?.[p._id] || p.displayName))}
-                      className={`flex items-center gap-2 px-3 py-2 cursor-pointer transition-colors ${index === mentionIndex ? "bg-primary/10" : "hover:bg-muted/50"
-                        }`}
-                      onMouseEnter={() => setMentionIndex(index)}
-                    >
-                      <div className="w-6 h-6 rounded-full bg-primary/20 shrink-0 overflow-hidden flex items-center justify-center">
-                        {p.avatarUrl ? (
-                          <img src={p.avatarUrl} alt={p.displayName} className="w-full h-full object-cover" />
-                        ) : p.isAllOption ? (
-                          <span className="text-[10px] font-semibold text-primary">@</span>
-                        ) : (
-                          <span className="text-[10px] font-semibold text-primary">
-                            {p.displayName ? p.displayName.charAt(0) : "?"}
-                          </span>
-                        )}
-                      </div>
-                      <div className="flex flex-col flex-1 overflow-hidden">
-                        <span className="text-sm font-semibold truncate leading-tight">
-                          {p.isAllOption ? p.displayName : (selectedConvo.nicknames?.[p._id] || p.displayName || "Unknown User")}
-                        </span>
-                        <span className="text-xs text-muted-foreground truncate leading-tight">
-                          {p.isAllOption ? "Nhắc tất cả mọi người trong nhóm" : `Tên gốc: ${p.displayName || "Unknown"}`}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-            <Input
-              ref={inputRef}
-              onKeyDown={handleKeyPress}
-              value={value}
-              onChange={handleInputChange}
-              placeholder="Soạn tin nhắn..."
-              className="pr-20 h-9 bg-white dark:bg-background border-border/50 focus:border-primary/50 transition-smooth resize-none"
-            />
-            <div className="absolute right-2 top-1/2 transform -translate-y-1/2 flex items-center gap-1">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className={`size-8 hover:bg-primary/10 transition-smooth ${expiresIn ? "text-red-500" : ""}`}
-                    title="Tin nhắn tự hủy"
-                  >
-                    <Timer className="size-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => { setExpiresIn(undefined); inputRef.current?.focus(); }}>Tắt</DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => { setExpiresIn(300); inputRef.current?.focus(); }}>5 phút</DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => { setExpiresIn(3600); inputRef.current?.focus(); }}>1 giờ</DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => { setExpiresIn(86400); inputRef.current?.focus(); }}>24 giờ</DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+            <Button
+              variant={isViewOnce ? "default" : "ghost"}
+              size="icon"
+              onClick={() => setIsViewOnce(!isViewOnce)}
+              className="hover:bg-primary/10 transition-smooth shrink-0"
+              title="Chế độ xem một lần"
+            >
+              {isViewOnce ? <EyeOff className="size-4 text-white" /> : <EyeOff className="size-4" />}
+            </Button>
 
+            {selectedConvo.type === "group" && (
               <Button
-                asChild
                 variant="ghost"
                 size="icon"
-                className="size-8 hover:bg-primary/10 transition-smooth"
+                onClick={() => setShowPollModal(true)}
+                className="hover:bg-primary/10 transition-smooth shrink-0"
+                title="Tạo bình chọn"
               >
-                <div>
-                  <EmojiPicker
-                    onChange={(emoji: string) => {
-                      setValue((prev) => {
-                        const newVal = `${prev}${emoji}`;
-                        setDraft(selectedConvo._id, newVal);
-                        return newVal;
-                      });
-                      setTimeout(() => inputRef.current?.focus(), 10);
-                    }}
-                  />
-                </div>
+                <BarChart2 className="size-5" />
               </Button>
-            </div>
-          </>
+            )}
+          </div>
+        ) : (
+          <Button
+            variant="destructive"
+            size="icon"
+            className="shrink-0 animate-pulse"
+            onClick={stopRecording}
+          >
+            <Square className="size-4 fill-current" />
+          </Button>
         )}
+
+        <div className="flex-1 relative flex items-center">
+          {isRecording ? (
+            <div className="flex-1 h-9 flex items-center justify-center bg-red-50 text-red-500 rounded-md border border-red-200">
+              <span className="animate-pulse mr-2 h-2 w-2 bg-red-500 rounded-full"></span>
+              <span className="text-sm font-medium">
+                Đang ghi âm... {Math.floor(recordingTime / 60)}:{(recordingTime % 60).toString().padStart(2, "0")}
+              </span>
+            </div>
+          ) : (
+            <>
+              {mentionQuery !== null && filteredParticipants.length > 0 && (
+                <div className="absolute bottom-full left-0 mb-2 w-64 bg-background border border-border/50 rounded-xl shadow-lg z-50 overflow-hidden">
+                  <div className="py-1">
+                    {filteredParticipants.map((p, index) => (
+                      <div
+                        key={p._id}
+                        onClick={() => insertMention(p.isAllOption ? "All" : (selectedConvo.nicknames?.[p._id] || p.displayName))}
+                        className={`flex items-center gap-2 px-3 py-2 cursor-pointer transition-colors ${index === mentionIndex ? "bg-primary/10" : "hover:bg-muted/50"
+                          }`}
+                        onMouseEnter={() => setMentionIndex(index)}
+                      >
+                        <div className="w-6 h-6 rounded-full bg-primary/20 shrink-0 overflow-hidden flex items-center justify-center">
+                          {p.avatarUrl ? (
+                            <img src={p.avatarUrl} alt={p.displayName} className="w-full h-full object-cover" />
+                          ) : p.isAllOption ? (
+                            <span className="text-[10px] font-semibold text-primary">@</span>
+                          ) : (
+                            <span className="text-[10px] font-semibold text-primary">
+                              {p.displayName ? p.displayName.charAt(0) : "?"}
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex flex-col flex-1 overflow-hidden">
+                          <span className="text-sm font-semibold truncate leading-tight">
+                            {p.isAllOption ? p.displayName : (selectedConvo.nicknames?.[p._id] || p.displayName || "Unknown User")}
+                          </span>
+                          <span className="text-xs text-muted-foreground truncate leading-tight">
+                            {p.isAllOption ? "Nhắc tất cả mọi người trong nhóm" : `Tên gốc: ${p.displayName || "Unknown"}`}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              <Input
+                ref={inputRef}
+                onKeyDown={handleKeyPress}
+                onPaste={handlePaste}
+                value={value}
+                onChange={handleInputChange}
+                placeholder="Soạn tin nhắn..."
+                className="pr-20 h-9 bg-white dark:bg-background border-border/50 focus:border-primary/50 transition-smooth resize-none"
+              />
+              <div className="absolute right-2 top-1/2 transform -translate-y-1/2 flex items-center gap-1">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className={`size-8 hover:bg-primary/10 transition-smooth ${expiresIn ? "text-red-500" : ""}`}
+                      title="Tin nhắn tự hủy"
+                    >
+                      <Timer className="size-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => { setExpiresIn(undefined); inputRef.current?.focus(); }}>Tắt</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => { setExpiresIn(300); inputRef.current?.focus(); }}>5 phút</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => { setExpiresIn(3600); inputRef.current?.focus(); }}>1 giờ</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => { setExpiresIn(86400); inputRef.current?.focus(); }}>24 giờ</DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+
+                <Button
+                  asChild
+                  variant="ghost"
+                  size="icon"
+                  className="size-8 hover:bg-primary/10 transition-smooth"
+                >
+                  <div>
+                    <EmojiPicker
+                      onChange={(emoji: string) => {
+                        setValue((prev) => {
+                          const newVal = `${prev}${emoji}`;
+                          setDraft(selectedConvo._id, newVal);
+                          return newVal;
+                        });
+                        setTimeout(() => inputRef.current?.focus(), 10);
+                      }}
+                    />
+                  </div>
+                </Button>
+              </div>
+            </>
+          )}
+        </div>
+
+        {!hasDraftOrMedia && !isRecording ? (
+          <Button
+            onClick={startRecording}
+            variant="ghost"
+            className="hover:bg-primary/10 transition-smooth shrink-0"
+            size="icon"
+            disabled={isSendingMedia}
+          >
+            {isSendingMedia ? <Loader2 className="size-5 animate-spin" /> : <Mic className="size-5" />}
+          </Button>
+        ) : (
+          <Button
+            type="button"
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => sendMessage()}
+            className="bg-gradient-chat hover:shadow-glow transition-smooth hover:scale-105 shrink-0"
+            disabled={isRecording || isSendingMedia || !hasDraftOrMedia}
+          >
+            {isSendingMedia ? <Loader2 className="size-4 animate-spin text-white" /> : <Send className="size-4 text-white" />}
+          </Button>
+        )}
+
+        <CreatePollModal
+          open={showPollModal}
+          onOpenChange={setShowPollModal}
+          onCreatePoll={handleCreatePoll}
+        />
       </div>
 
-      {!value.trim() && !isRecording ? (
-        <Button
-          onClick={startRecording}
-          variant="ghost"
-          className="hover:bg-primary/10 transition-smooth shrink-0"
-          size="icon"
-          disabled={isSendingMedia}
-        >
-          {isSendingMedia ? <Loader2 className="size-5 animate-spin" /> : <Mic className="size-5" />}
-        </Button>
-      ) : (
-        <Button
-          type="button"
-          onMouseDown={(e) => e.preventDefault()}
-          onClick={() => sendMessage()}
-          className="bg-gradient-chat hover:shadow-glow transition-smooth hover:scale-105 shrink-0"
-          disabled={isRecording || isSendingMedia || !value.trim()}
-        >
-          {isSendingMedia ? <Loader2 className="size-4 animate-spin text-white" /> : <Send className="size-4 text-white" />}
-        </Button>
-      )}
-
-      <CreatePollModal
-        open={showPollModal}
-        onOpenChange={setShowPollModal}
-        onCreatePoll={handleCreatePoll}
-      />
-      </div>
+      {/* Lightbox Modal for Staged Image */}
+      <Dialog open={Boolean(previewingImageUrl)} onOpenChange={(open) => !open && setPreviewingImageUrl(null)}>
+        <DialogContent className="max-w-3xl p-3 bg-background/95 backdrop-blur-md border border-border/60 shadow-2xl flex flex-col items-center justify-center rounded-2xl overflow-hidden">
+          <div className="relative w-full max-h-[80vh] flex items-center justify-center">
+            {previewingImageUrl && (
+              <img
+                src={previewingImageUrl}
+                alt="Preview staged"
+                className="max-w-full max-h-[75vh] object-contain rounded-xl shadow-md"
+              />
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

@@ -10,7 +10,7 @@ import { toast } from "sonner";
 interface IUserAvatarProps {
   type: "sidebar" | "chat" | "profile";
   name: string;
-  avatarUrl?: string;
+  avatarUrl?: string | null;
   className?: string;
   note?: string;
   userId?: string;
@@ -41,28 +41,26 @@ const UserAvatar = ({ type, name, avatarUrl, className, note, userId }: IUserAva
     }
   };
 
-  if (!name) {
-    name = "Nexus";
-  }
+  const displayName = name || "Nexus";
 
   return (
     <div className="relative inline-block">
       <Avatar
         className={cn(
-        className ?? "",
-        type === "sidebar" && "size-12 text-base",
-        type === "chat" && "size-8 text-sm",
-        type === "profile" && "size-24 text-3xl shadow-md"
-      )}
-    >
-      <AvatarImage
-        src={avatarUrl}
-        alt={name}
-      />
-      <AvatarFallback className={`${bgColor} text-white font-semibold`}>
-        {name.charAt(0)}
-      </AvatarFallback>
-    </Avatar>
+          className ?? "",
+          type === "sidebar" && "size-12 text-base",
+          type === "chat" && "size-8 text-sm",
+          type === "profile" && "size-24 text-3xl shadow-md"
+        )}
+      >
+        <AvatarImage
+          src={avatarUrl || undefined}
+          alt={displayName}
+        />
+        <AvatarFallback className={`${bgColor} text-white font-semibold`}>
+          {displayName.charAt(0)}
+        </AvatarFallback>
+      </Avatar>
 
     {note && (
       <Popover open={open} onOpenChange={setOpen}>
@@ -80,8 +78,8 @@ const UserAvatar = ({ type, name, avatarUrl, className, note, userId }: IUserAva
           <div className="flex flex-col gap-3">
             <div className="flex items-start gap-2">
               <Avatar className="size-8 shrink-0">
-                <AvatarImage src={avatarUrl} alt={name} />
-                <AvatarFallback className="text-xs bg-primary text-primary-foreground">{name.charAt(0)}</AvatarFallback>
+                <AvatarImage src={avatarUrl || undefined} alt={displayName} />
+                <AvatarFallback className="text-xs bg-primary text-primary-foreground">{displayName.charAt(0)}</AvatarFallback>
               </Avatar>
               <div className="flex-1 bg-muted/60 rounded-xl p-2.5 text-sm text-foreground break-words whitespace-pre-wrap leading-snug">
                 {note}

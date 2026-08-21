@@ -6,12 +6,15 @@ import GroupChatCard from "./GroupChatCard";
 import { removeVietnameseTones, cn } from "@/lib/utils";
 import { MessageSquare, Users, UserCheck } from "lucide-react";
 
+import { useFriendStore } from "@/stores/useFriendStore";
+
 type FilterTab = "all" | "direct" | "group";
 
 const ConversationList = () => {
   const [activeTab, setActiveTab] = useState<FilterTab>("all");
   const { conversations, searchQuery, archivedConversations, pinnedConversations } = useChatStore();
   const { user } = useAuthStore();
+  const { friends } = useFriendStore();
 
   if (!conversations || !user) return null;
 
@@ -21,7 +24,13 @@ const ConversationList = () => {
     if (archivedConversations?.includes(convo._id)) return false;
 
     // Lọc theo Tab (All, Bạn bè, Nhóm)
-    if (activeTab === "direct" && convo.type !== "direct") return false;
+    if (activeTab === "direct") {
+      if (convo.type !== "direct") return false;
+      const otherUser = (convo.participants || []).find((p) => p._id !== user._id);
+      if (otherUser && !friends.some((f) => f._id === otherUser._id)) {
+        return false;
+      }
+    }
     if (activeTab === "group" && convo.type !== "group") return false;
 
     // Lọc theo Từ khóa tìm kiếm

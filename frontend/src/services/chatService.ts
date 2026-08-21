@@ -35,9 +35,9 @@ export const chatService = {
   async sendDirectMessage(
     recipientId: string,
     content: string = "",
-    imgUrl?: string,
+    imgUrl?: string | null,
     conversationId?: string,
-    audioUrl?: string,
+    audioUrl?: string | null,
     expiresIn?: number,
     isViewOnce?: boolean,
     mentions?: string[],
@@ -57,14 +57,14 @@ export const chatService = {
       isForwarded,
     });
 
-    return res.data.message;
+    return res.data;
   },
 
   async sendGroupMessage(
     conversationId: string,
     content: string = "",
-    imgUrl?: string,
-    audioUrl?: string,
+    imgUrl?: string | null,
+    audioUrl?: string | null,
     expiresIn?: number,
     isViewOnce?: boolean,
     poll?: any,
@@ -84,7 +84,7 @@ export const chatService = {
       replyTo,
       isForwarded,
     });
-    return res.data.message;
+    return res.data;
   },
 
   async markAsSeen(conversationId: string) {

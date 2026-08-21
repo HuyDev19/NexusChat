@@ -106,11 +106,14 @@ const ChatCard = ({
                   {name}
                   {isPinned && <Pin className="w-3 h-3 text-purple-400 fill-purple-400 shrink-0" />}
                 </span>
-                {timestamp && (
-                  <span className="text-xs text-muted-foreground shrink-0 ml-2">
-                    {formatOnlineTime(timestamp)}
-                  </span>
-                )}
+                <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                  {rightSection}
+                  {timestamp && (
+                    <span className="text-xs text-muted-foreground">
+                      {formatOnlineTime(timestamp)}
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
 

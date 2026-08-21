@@ -9,6 +9,8 @@ export interface Participant {
     expiresAt: string | null;
   };
   presenceStatus?: 'online' | 'offline' | 'busy';
+  lastActiveAt?: string;
+  updatedAt?: string;
   joinedAt: string;
   role?: 'leader' | 'member';
 }
@@ -50,6 +52,8 @@ export interface Conversation {
   streak?: {
     count: number;
     lastMessageDate: string;
+    senders?: string[];
+    isBothMessaged?: boolean;
   };
   nicknames?: Record<string, string>;
   createdAt: string;

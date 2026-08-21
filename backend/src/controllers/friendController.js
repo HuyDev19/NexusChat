@@ -1,6 +1,8 @@
+import mongoose from "mongoose";
 import Friend from "../models/Friend.js";
 import User from "../models/User.js";
 import FriendRequest from "../models/FriendRequest.js";
+import Conversation from "../models/Conversation.js";
 
 
 // Gửi yêu cầu kết bạn
@@ -122,10 +124,10 @@ export const declineFriendRequest = async (req, res) => {
       return res.status(404).json({ message: "Không tìm thấy lời mời kết bạn" });
     }
 
-    if (request.to.toString() !== userId.toString()) {
+    if (request.to.toString() !== userId.toString() && request.from.toString() !== userId.toString()) {
       return res
         .status(403)
-        .json({ message: "Bạn không có quyền từ chối lời mời này" });
+        .json({ message: "Bạn không có quyền hủy lời mời này" });
     }
 
     await FriendRequest.findByIdAndDelete(requestId);
@@ -153,8 +155,8 @@ export const getAllFriends = async (req, res) => {
         },
       ],
     })
-      .populate("userA", "_id displayName avatarUrl coverUrl note presenceStatus")
-      .populate("userB", "_id displayName avatarUrl coverUrl note presenceStatus")
+      .populate("userA", "_id displayName avatarUrl coverUrl note presenceStatus lastActiveAt updatedAt")
+      .populate("userB", "_id displayName avatarUrl coverUrl note presenceStatus lastActiveAt updatedAt")
       .lean();
 
     if (!friendships.length) {
@@ -178,7 +180,7 @@ export const getFriendRequests = async (req, res) => {
   try {
     const userId = req.user._id;
 
-    const populateFields = "_id displayName avatarUrl coverUrl note username presenceStatus";
+    const populateFields = "_id displayName avatarUrl coverUrl note username presenceStatus lastActiveAt updatedAt";
 
     const [sent, received] = await Promise.all([
       FriendRequest.find({ from: userId }).populate("to", populateFields),
@@ -188,6 +190,65 @@ export const getFriendRequests = async (req, res) => {
     res.status(200).json({ sent, received });
   } catch (error) {
     console.error("Lỗi khi lấy danh sách yêu cầu kết bạn", error);
+    return res.status(500).json({ message: "Lỗi hệ thống" });
+  }
+};
+
+// Xóa bạn bè (Hủy kết bạn)
+export const removeFriend = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const { friendId } = req.params;
+
+    if (!friendId) {
+      return res.status(400).json({ message: "Thiếu thông tin người bạn cần xóa" });
+    }
+
+    let userA = userId.toString();
+    let userB = friendId.toString();
+    if (userA > userB) {
+      [userA, userB] = [userB, userA];
+    }
+
+    const deleted = await Friend.findOneAndDelete({ userA, userB });
+    if (!deleted) {
+      return res.status(404).json({ message: "Không tìm thấy quan hệ bạn bè" });
+    }
+
+    // Reset chuỗi tin nhắn khi xóa bạn bè
+    try {
+      const directConversation = await Conversation.findOne({
+        type: "direct",
+        "participants.userId": { $all: [userId, new mongoose.Types.ObjectId(friendId)] }
+      });
+
+      if (directConversation) {
+        directConversation.streak = {
+          count: 0,
+          lastMessageDate: null,
+          senders: [],
+          isBothMessaged: false,
+        };
+        if (typeof directConversation.markModified === "function") {
+          directConversation.markModified("streak");
+        }
+        await directConversation.save();
+
+        const io = req.app.get("io");
+        if (io) {
+          io.to(`user:${userId}`).to(`user:${friendId}`).emit("conversation:streak-reset", {
+            conversationId: directConversation._id,
+            streak: directConversation.streak,
+          });
+        }
+      }
+    } catch (streakErr) {
+      console.error("Lỗi khi reset streak:", streakErr);
+    }
+
+    return res.status(200).json({ message: "Đã xóa bạn bè thành công" });
+  } catch (error) {
+    console.error("Lỗi khi xóa bạn bè", error);
     return res.status(500).json({ message: "Lỗi hệ thống" });
   }
 };

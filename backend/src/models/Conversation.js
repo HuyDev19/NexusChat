@@ -113,7 +113,9 @@ const conversationSchema = new mongoose.Schema(
     },
     streak: {
       count: { type: Number, default: 0 },
-      lastMessageDate: { type: Date, default: null }
+      lastMessageDate: { type: Date, default: null },
+      senders: { type: [String], default: [] },
+      isBothMessaged: { type: Boolean, default: false }
     },
     wallpaper: {
       type: String,

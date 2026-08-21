@@ -145,7 +145,7 @@ export const useChatStore = create<ChatState>()(
         try {
           const { activeConversationId } = get();
           const convoIdToUse = targetConversationId || activeConversationId || undefined;
-          const sentMessage = await chatService.sendDirectMessage(
+          const data: any = await chatService.sendDirectMessage(
             recipientId,
             content,
             imgUrl || undefined,
@@ -158,6 +158,8 @@ export const useChatStore = create<ChatState>()(
             isForwarded
           );
 
+          const sentMessage = data?.message || data;
+          const updatedConvo = data?.conversation;
           const conversationId = sentMessage.conversationId || convoIdToUse;
 
           if (conversationId) {
@@ -178,6 +180,7 @@ export const useChatStore = create<ChatState>()(
                   c._id === conversationId
                     ? {
                         ...c,
+                        ...(updatedConvo ? { streak: updatedConvo.streak } : {}),
                         lastMessage: {
                           _id: sentMessage._id,
                           content: sentMessage.content ?? "",
@@ -215,11 +218,11 @@ export const useChatStore = create<ChatState>()(
         isForwarded
       ) => {
         try {
-          const sentMessage = await chatService.sendGroupMessage(
+          const data: any = await chatService.sendGroupMessage(
             conversationId,
             content,
-            imgUrl,
-            audioUrl,
+            imgUrl || undefined,
+            audioUrl || undefined,
             expiresIn,
             isViewOnce,
             poll,
@@ -227,6 +230,8 @@ export const useChatStore = create<ChatState>()(
             replyTo,
             isForwarded
           );
+
+          const sentMessage = data?.message || data;
 
           set((state) => {
             const prevItems = state.messages[conversationId]?.items ?? [];
@@ -250,9 +255,9 @@ export const useChatStore = create<ChatState>()(
                         content: sentMessage.content ?? "",
                         createdAt: sentMessage.createdAt,
                         sender: {
-                          _id: sentMessage.senderId,
-                          displayName: "",
-                          avatarUrl: null,
+                          _id: sentMessage.senderId || (typeof sentMessage.sender === 'object' ? sentMessage.sender?._id : sentMessage.sender) || "",
+                          displayName: (typeof sentMessage.sender === 'object' ? sentMessage.sender?.displayName : "") || "",
+                          avatarUrl: (typeof sentMessage.sender === 'object' ? sentMessage.sender?.avatarUrl : null) || null,
                         },
                       },
                       lastMessageAt: sentMessage.createdAt,
@@ -260,6 +265,7 @@ export const useChatStore = create<ChatState>()(
                     }
                   : c
               ),
+              replyingToMessage: null,
             };
           });
         } catch (error) {
@@ -433,11 +439,14 @@ export const useChatStore = create<ChatState>()(
             memberIds
           );
 
-          get().addConvo(conversation);
+          if (conversation) {
+            get().addConvo(conversation);
 
-          useSocketStore
-            .getState()
-            .socket?.emit("join-conversation", conversation._id);
+            useSocketStore
+              .getState()
+              .socket?.emit("join-conversation", conversation._id);
+          }
+          return conversation;
         } catch (error) {
           console.error("Lỗi xảy ra khi gọi createConversation trong store", error);
         } finally {

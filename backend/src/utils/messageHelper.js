@@ -1,4 +1,33 @@
-export const updateConversationAfterCreateMessage = (
+import Message from "../models/Message.js";
+
+export const getDayDifference = (d1, d2) => {
+  if (!d1 || !d2) return 0;
+  const date1 = new Date(d1);
+  const date2 = new Date(d2);
+  const u1 = Date.UTC(date1.getFullYear(), date1.getMonth(), date1.getDate());
+  const u2 = Date.UTC(date2.getFullYear(), date2.getMonth(), date2.getDate());
+  return Math.floor((u2 - u1) / (1000 * 60 * 60 * 24));
+};
+
+export const getEffectiveStreak = (streak) => {
+  if (!streak || !streak.lastMessageDate || !streak.count) {
+    return { count: 0, lastMessageDate: null, senders: [], isBothMessaged: false };
+  }
+  const now = new Date();
+  const dayDiff = getDayDifference(streak.lastMessageDate, now);
+  // Nếu đã qua 2 ngày không nhắn (bỏ lỡ cả ngày hôm qua) -> Chuỗi bị đứt
+  if (dayDiff >= 2) {
+    return { count: 0, lastMessageDate: streak.lastMessageDate, senders: [], isBothMessaged: false };
+  }
+  return {
+    count: streak.count,
+    lastMessageDate: streak.lastMessageDate,
+    senders: Array.isArray(streak.senders) ? streak.senders : [],
+    isBothMessaged: Boolean(streak.isBothMessaged || (streak.senders && streak.senders.length >= 2)),
+  };
+};
+
+export const updateConversationAfterCreateMessage = async (
   conversation,
   message,
   senderId
@@ -14,36 +43,68 @@ export const updateConversationAfterCreateMessage = (
     },
   });
 
-
   // Cập nhật số lượng tin nhắn chưa đọc cho mỗi thành viên
   conversation.participants.forEach((p) => {
-    const memberId = p.userId.toString();
-    const isSender = memberId === senderId.toString();// người gửi không tăng số tin nhắn chưa đọc
-    const prevCount = conversation.unreadCounts.get(memberId) || 0;
-    conversation.unreadCounts.set(memberId, isSender ? 0 : prevCount + 1);// nếu là người gửi thì để 0, không phải người gửi thì tăng lên 1
+    const memberId = (p.userId?._id || p.userId || p._id).toString();
+    const isSender = memberId === senderId.toString(); // người gửi không tăng số tin nhắn chưa đọc
+    const prevCount = conversation.unreadCounts?.get ? conversation.unreadCounts.get(memberId) : (conversation.unreadCounts?.[memberId] || 0);
+    if (conversation.unreadCounts?.set) {
+      conversation.unreadCounts.set(memberId, isSender ? 0 : (prevCount || 0) + 1);
+    }
   });
 
   // Cập nhật chuỗi (Streak) cho cuộc trò chuyện 1-1
   if (conversation.type === "direct") {
     const now = new Date();
-    const lastDate = conversation.streak?.lastMessageDate;
+    const currentStreak = conversation.streak ? (conversation.streak.toObject ? conversation.streak.toObject() : conversation.streak) : { count: 0, lastMessageDate: null, senders: [], isBothMessaged: false };
+    const lastDate = currentStreak.lastMessageDate;
+    const senderIdStr = senderId.toString();
 
+    // Lấy tin nhắn trong vòng 24h để xác định cả 2 đã nhắn lại với nhau chưa
+    const recentMessages = await Message.find({
+      conversationId: conversation._id,
+      createdAt: { $gte: new Date(now.getTime() - 24 * 60 * 60 * 1000) }
+    }).select("senderId").limit(30);
+
+    const activeSenders = new Set(recentMessages.map(m => m.senderId.toString()));
+    activeSenders.add(senderIdStr);
+
+    const participantIds = (conversation.participants || []).map(p => (p.userId?._id || p.userId || p._id).toString());
+    const isBoth = participantIds.length >= 2 && participantIds.every(id => activeSenders.has(id));
+
+    let count = currentStreak.count || 1;
     if (!lastDate) {
-      conversation.streak = { count: 1, lastMessageDate: now };
+      count = isBoth ? 2 : 1;
     } else {
-      const diffTime = Math.abs(now.getTime() - lastDate.getTime());
-      const diffHours = diffTime / (1000 * 60 * 60);
-
-      if (diffHours > 48) {
-        // Quá 48h -> Đứt chuỗi, reset về 1
-        conversation.streak = { count: 1, lastMessageDate: now };
-      } else if (diffHours > 24) {
-        // Qua ngày mới (hơn 24h và dưới 48h) -> Tăng chuỗi
-        conversation.streak = { count: (conversation.streak.count || 0) + 1, lastMessageDate: now };
+      const dayDiff = getDayDifference(lastDate, now);
+      if (dayDiff >= 2) {
+        // Đứt chuỗi -> Bắt đầu chuỗi mới
+        count = isBoth ? 2 : 1;
+      } else if (dayDiff === 1) {
+        // Sang ngày kế tiếp: nếu hôm nay cả 2 đã nhắn -> Tăng tiếp chuỗi!
+        if (isBoth) {
+          count = (currentStreak.count || 1) + 1;
+        } else {
+          count = currentStreak.count || 1;
+        }
       } else {
-        // Cùng ngày (dưới 24h) -> Giữ nguyên chuỗi, chỉ cập nhật thời gian
-        conversation.streak.lastMessageDate = now;
+        // Cùng ngày (dayDiff === 0)
+        if (isBoth && !currentStreak.isBothMessaged) {
+          count = Math.max((currentStreak.count || 1) + 1, 2);
+        } else {
+          count = Math.max(currentStreak.count || 1, 1);
+        }
       }
+    }
+
+    conversation.streak = {
+      count: count,
+      lastMessageDate: now,
+      senders: Array.from(activeSenders),
+      isBothMessaged: isBoth,
+    };
+    if (typeof conversation.markModified === "function") {
+      conversation.markModified("streak");
     }
   }
 };

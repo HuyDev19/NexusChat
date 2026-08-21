@@ -13,9 +13,17 @@ export interface User {
   bio?: string;
   phone?: string;
   presenceStatus?: 'online' | 'offline' | 'busy';
+  lastActiveAt?: string;
   lockedConversations?: { conversationId: string; pin: string }[];
   blockedUsers?: string[];
-  readReceipts?: boolean;
+  photos?: {
+    _id: string;
+    url: string;
+    publicId?: string;
+    caption?: string;
+    createdAt: string;
+    reactions?: { userId: string; emoji: string }[];
+  }[];
   createdAt?: string;
   updatedAt?: string;
 }
@@ -30,6 +38,8 @@ export interface Friend {
     expiresAt: string | null;
   };
   presenceStatus?: 'online' | 'offline' | 'busy';
+  lastActiveAt?: string;
+  updatedAt?: string;
 }
 
 export interface FriendRequest {

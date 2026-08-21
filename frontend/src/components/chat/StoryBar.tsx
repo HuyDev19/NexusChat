@@ -6,6 +6,7 @@ import { useChatStore } from "@/stores/useChatStore";
 import { useUserStore } from "@/stores/useUserStore";
 import { useProfileStore } from "@/stores/useProfileStore";
 import UserAvatar from "./UserAvatar";
+import StatusBadge from "./StatusBadge";
 import {
   Dialog,
   DialogContent,
@@ -22,7 +23,7 @@ import { cn, isNoteExpired } from "@/lib/utils";
 const StoryBar = () => {
   const { user } = useAuthStore();
   const { friends, getFriends } = useFriendStore();
-  const { onlineUsers } = useSocketStore();
+  const { onlineUsers, lastActiveMap } = useSocketStore();
   const { conversations, setActiveConversation, createConversation } = useChatStore();
   const { updateNote } = useUserStore();
   const { openProfile } = useProfileStore();
@@ -166,6 +167,7 @@ const StoryBar = () => {
           {sortedFriends.map((friend) => {
             const hasNote = !isNoteExpired(friend.note);
             const isOnline = onlineUsers.includes(friend._id);
+            const isBusy = isOnline && friend.presenceStatus === "busy";
             const shortName = friend.displayName.split(" ").pop() || friend.displayName;
 
             return (
@@ -205,10 +207,12 @@ const StoryBar = () => {
                     </div>
                   </div>
 
-                  {/* Online Dot */}
-                  {isOnline && (
-                    <div className="absolute bottom-0 right-0 w-3.5 h-3.5 rounded-full bg-emerald-500 border-2 border-background shadow-xs" />
-                  )}
+                  {/* Status Badge */}
+                  <StatusBadge
+                    status={isBusy ? "busy" : isOnline ? "online" : "offline"}
+                    lastActiveAt={lastActiveMap?.[friend._id] || friend.lastActiveAt}
+                    showMinutesBadge={true}
+                  />
                 </div>
 
                 {/* Friend Name */}

@@ -56,7 +56,7 @@ export const getUserProfile = async (req, res) => {
       return res.status(400).json({ message: "Thiếu ID người dùng" });
     }
 
-    const user = await User.findById(id).select("_id displayName avatarUrl coverUrl note bio presenceStatus createdAt");
+    const user = await User.findById(id).select("_id username displayName email avatarUrl coverUrl note bio phone gender dob presenceStatus lastActiveAt createdAt photos");
 
     if (!user) {
       return res.status(404).json({ message: "Không tìm thấy người dùng" });
@@ -469,3 +469,146 @@ export const toggleReadReceipts = async (req, res) => {
     return res.status(500).json({ message: "Lỗi hệ thống" });
   }
 };
+
+export const addProfilePhoto = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const file = req.file;
+    const { caption } = req.body;
+
+    if (!file) {
+      return res.status(400).json({ message: "Vui lòng chọn hình ảnh để tải lên" });
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: "Không tìm thấy người dùng" });
+    }
+
+    // Upload to cloudinary
+    const b64 = Buffer.from(file.buffer).toString("base64");
+    const dataURI = "data:" + file.mimetype + ";base64," + b64;
+
+    const result = await cloudinary.uploader.upload(dataURI, {
+      folder: "nexuschat_profile_photos",
+      transformation: [{ width: 1200, crop: "limit" }],
+    });
+
+    const newPhoto = {
+      url: result.secure_url,
+      publicId: result.public_id,
+      caption: caption || "",
+      createdAt: new Date(),
+      reactions: []
+    };
+
+    if (!user.photos) user.photos = [];
+    user.photos.unshift(newPhoto);
+    await user.save();
+
+    req.app.get("io").emit("user:photo-added", { userId: user._id, photo: newPhoto });
+
+    return res.status(201).json({ message: "Đã thêm ảnh thành công", photo: newPhoto, photos: user.photos });
+  } catch (error) {
+    console.error("Lỗi khi thêm ảnh hồ sơ:", error);
+    return res.status(500).json({ message: "Lỗi hệ thống khi tải ảnh" });
+  }
+};
+
+export const deleteProfilePhoto = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const { photoId } = req.params;
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: "Không tìm thấy người dùng" });
+    }
+
+    const photoIndex = (user.photos || []).findIndex((p) => p._id.toString() === photoId);
+    if (photoIndex === -1) {
+      return res.status(404).json({ message: "Không tìm thấy ảnh" });
+    }
+
+    const photo = user.photos[photoIndex];
+    if (photo.publicId) {
+      try {
+        await cloudinary.uploader.destroy(photo.publicId);
+      } catch (err) {
+        console.error("Lỗi xóa ảnh Cloudinary:", err);
+      }
+    }
+
+    user.photos.splice(photoIndex, 1);
+    await user.save();
+
+    req.app.get("io").emit("user:photo-deleted", { userId: user._id, photoId });
+
+    return res.status(200).json({ message: "Đã xóa ảnh thành công", photos: user.photos });
+  } catch (error) {
+    console.error("Lỗi khi xóa ảnh hồ sơ:", error);
+    return res.status(500).json({ message: "Lỗi hệ thống khi xóa ảnh" });
+  }
+};
+
+export const reactProfilePhoto = async (req, res) => {
+  try {
+    const currentUserId = req.user._id;
+    const { userId, photoId } = req.params;
+    const { emoji } = req.body;
+
+    if (!emoji) {
+      return res.status(400).json({ message: "Thiếu biểu cảm emoji" });
+    }
+
+    const targetUser = await User.findById(userId);
+    if (!targetUser) {
+      return res.status(404).json({ message: "Không tìm thấy người dùng" });
+    }
+
+    const photo = (targetUser.photos || []).find((p) => p._id.toString() === photoId);
+    if (!photo) {
+      return res.status(404).json({ message: "Không tìm thấy ảnh" });
+    }
+
+    if (!photo.reactions) photo.reactions = [];
+
+    const existingReactionIndex = photo.reactions.findIndex(
+      (r) => r.userId.toString() === currentUserId.toString()
+    );
+
+    if (existingReactionIndex > -1) {
+      if (photo.reactions[existingReactionIndex].emoji === emoji) {
+        // Remove reaction (toggle off)
+        photo.reactions.splice(existingReactionIndex, 1);
+      } else {
+        // Change emoji
+        photo.reactions[existingReactionIndex].emoji = emoji;
+      }
+    } else {
+      photo.reactions.push({
+        userId: currentUserId,
+        emoji,
+      });
+    }
+
+    targetUser.markModified("photos");
+    await targetUser.save();
+
+    req.app.get("io").emit("user:photo-reacted", {
+      userId: targetUser._id,
+      photoId,
+      reactions: photo.reactions
+    });
+
+    return res.status(200).json({
+      message: "Cập nhật cảm xúc thành công",
+      reactions: photo.reactions,
+      photos: targetUser.photos
+    });
+  } catch (error) {
+    console.error("Lỗi khi tương tác cảm xúc ảnh:", error);
+    return res.status(500).json({ message: "Lỗi hệ thống khi tương tác ảnh" });
+  }
+};
+

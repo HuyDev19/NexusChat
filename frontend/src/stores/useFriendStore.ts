@@ -75,6 +75,19 @@ export const useFriendStore = create<FriendState>((set, get) => ({
       set({ loading: false });
     }
   },
+  cancelRequest: async (requestId) => {
+    try {
+      set({ loading: true });
+      await friendService.declineRequest(requestId);
+      set((state) => ({
+        sentList: state.sentList.filter((r) => r._id !== requestId),
+      }));
+    } catch (error) {
+      console.error("Lỗi xảy ra khi cancelRequest", error);
+    } finally {
+      set({ loading: false });
+    }
+  },
   getFriends: async () => {
     try {
       set({ loading: true });
@@ -83,6 +96,33 @@ export const useFriendStore = create<FriendState>((set, get) => ({
     } catch (error) {
       console.error("Lỗi xảy ra khi load friends", error);
       set({ friends: [] });
+    } finally {
+      set({ loading: false });
+    }
+  },
+  removeFriend: async (friendId) => {
+    try {
+      set({ loading: true });
+      await friendService.removeFriend(friendId);
+      set((state) => ({
+        friends: state.friends.filter((f) => f._id !== friendId),
+      }));
+
+      import("./useChatStore").then((mod) => {
+        const store = mod.useChatStore.getState();
+        const convo = store.conversations.find((c) =>
+          c.type === "direct" && c.participants?.some((p) => p._id === friendId)
+        );
+        if (convo) {
+          store.updateConversation({
+            _id: convo._id,
+            streak: { count: 0, lastMessageDate: null, senders: [], isBothMessaged: false },
+          });
+        }
+      });
+    } catch (error) {
+      console.error("Lỗi xảy ra khi xóa bạn bè", error);
+      throw error;
     } finally {
       set({ loading: false });
     }

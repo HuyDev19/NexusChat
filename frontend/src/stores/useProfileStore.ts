@@ -9,6 +9,7 @@ interface UserProfile {
   bio?: string;
   phone?: string;
   presenceStatus?: "online" | "offline" | "busy";
+  lastActiveAt?: string;
   createdAt?: string;
   note?: {
     content: string;

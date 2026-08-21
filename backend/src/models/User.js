@@ -54,6 +54,10 @@ const userSchema = new mongoose.Schema(
       enum: ['online', 'offline', 'busy'],
       default: 'online',
     },
+    lastActiveAt: {
+      type: Date,
+      default: null,
+    },
     lockedConversations: [
       {
         conversationId: {
@@ -74,7 +78,21 @@ const userSchema = new mongoose.Schema(
     readReceipts: {
       type: Boolean,
       default: true,
-    }
+    },
+    photos: [
+      {
+        url: { type: String, required: true },
+        publicId: { type: String },
+        caption: { type: String, default: "" },
+        createdAt: { type: Date, default: Date.now },
+        reactions: [
+          {
+            userId: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+            emoji: { type: String, required: true }
+          }
+        ]
+      }
+    ]
   },
   {
     timestamps: true,

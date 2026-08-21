@@ -17,6 +17,9 @@ import {
   deleteAccountWithOtp,
   getBlockedUsers,
   toggleReadReceipts,
+  addProfilePhoto,
+  deleteProfilePhoto,
+  reactProfilePhoto,
 } from "../controllers/userController.js";
 import { protectedRoute } from "../middlewares/authMiddleware.js";
 import upload from "../middlewares/multerMiddleware.js";
@@ -36,6 +39,11 @@ router.post("/uploadAvatar", upload.single("file"), uploadAvatar);
 router.delete("/avatar", protectedRoute, removeAvatar);
 router.post("/uploadCover", upload.single("file"), uploadCover);
 router.put("/note", protectedRoute, updateNote);
+
+// Profile Photos & Reactions
+router.post("/photos", protectedRoute, upload.single("file"), addProfilePhoto);
+router.delete("/photos/:photoId", protectedRoute, deleteProfilePhoto);
+router.post("/:userId/photos/:photoId/react", protectedRoute, reactProfilePhoto);
 
 router.post("/lock-conversation/:conversationId", protectedRoute, lockConversation);
 router.post("/verify-lock/:conversationId", protectedRoute, verifyLock);

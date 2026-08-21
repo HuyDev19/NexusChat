@@ -52,7 +52,7 @@ export const sendDirectMessage = async (req, res) => {
       isForwarded,
     });
 
-    updateConversationAfterCreateMessage(conversation, message, senderId);
+    await updateConversationAfterCreateMessage(conversation, message, senderId);
     
     await conversation.save();
 
@@ -73,7 +73,7 @@ export const sendDirectMessage = async (req, res) => {
       handleAIResponse(conversation._id, io, senderId);
     }
 
-    return res.status(201).json({ message });
+    return res.status(201).json({ message, conversation });
   } catch (error) {
     console.error("Lỗi xảy ra khi gửi tin nhắn trực tiếp", error);
     return res.status(500).json({ message: "Lỗi hệ thống" });
@@ -104,7 +104,7 @@ export const sendGroupMessage = async (req, res) => {
       isForwarded,
     });
 
-    updateConversationAfterCreateMessage(conversation, message, senderId);
+    await updateConversationAfterCreateMessage(conversation, message, senderId);
 
     await conversation.save();
 
@@ -125,7 +125,7 @@ export const sendGroupMessage = async (req, res) => {
       handleAIResponse(conversation._id, io, senderId);
     }
 
-    return res.status(201).json({ message });
+    return res.status(201).json({ message, conversation });
   } catch (error) {
     console.error("Lỗi xảy ra khi gửi tin nhắn nhóm", error);
     return res.status(500).json({ message: "Lỗi hệ thống" });

@@ -221,12 +221,19 @@ export const signIn = async (req, res) => {
       return res.status(400).json({ message: "Thiếu username hoặc password." });
     }
 
-    const user = await User.findOne({ username });
+    const clean = username.trim();
+    const user = await User.findOne({
+      $or: [
+        { username: clean.toLowerCase() },
+        { username: clean },
+        { email: clean.toLowerCase() },
+      ],
+    });
 
     if (!user) {
       return res
         .status(401)
-        .json({ message: "username hoặc password không chính xác" });
+        .json({ message: "Tên đăng nhập hoặc mật khẩu không chính xác" });
     }
 
     const passwordCorrect = await bcrypt.compare(password, user.hashedPassword);
@@ -234,7 +241,7 @@ export const signIn = async (req, res) => {
     if (!passwordCorrect) {
       return res
         .status(401)
-        .json({ message: "username hoặc password không chính xác" });
+        .json({ message: "Tên đăng nhập hoặc mật khẩu không chính xác" });
     }
 
     const accessToken = jwt.sign(
@@ -259,6 +266,9 @@ export const signIn = async (req, res) => {
       maxAge: REFRESH_TOKEN_TTL,
     });
 
+    // Cập nhật lastActiveAt an toàn
+    User.findByIdAndUpdate(user._id, { lastActiveAt: new Date() }).catch(() => {});
+
     return res
       .status(200)
       .json({ message: `User ${user.displayName} đã logged in!`, accessToken });
@@ -273,7 +283,11 @@ export const signOut = async (req, res) => {
     const token = req.cookies?.refreshToken;
 
     if (token) {
-      await Session.deleteOne({ refreshToken: token });
+      const session = await Session.findOne({ refreshToken: token });
+      if (session) {
+        await User.findByIdAndUpdate(session.userId, { lastActiveAt: new Date() });
+        await Session.deleteOne({ refreshToken: token });
+      }
       res.clearCookie("refreshToken");
     }
 

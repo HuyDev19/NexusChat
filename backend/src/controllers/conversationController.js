@@ -2,6 +2,7 @@ import mongoose from "mongoose";
 import Conversation from "../models/Conversation.js";
 import Message from "../models/Message.js";
 import cloudinary from "../libs/cloudinary.js";
+import { getEffectiveStreak } from "../utils/messageHelper.js";
 
 export const createConversation = async (req, res) => {
   try {
@@ -112,7 +113,7 @@ export const getConversations = async (req, res) => {
       .sort({ lastMessageAt: -1, updatedAt: -1 })
       .populate({
         path: "participants.userId",
-        select: "displayName avatarUrl coverUrl note presenceStatus",
+        select: "displayName avatarUrl coverUrl note presenceStatus lastActiveAt updatedAt",
       })
       .populate({
         path: "lastMessage.senderId",
@@ -131,12 +132,14 @@ export const getConversations = async (req, res) => {
         coverUrl: p.userId?.coverUrl ?? null,
         note: p.userId?.note,
         presenceStatus: p.userId?.presenceStatus ?? 'online',
+        lastActiveAt: p.userId?.lastActiveAt || p.userId?.updatedAt || null,
         joinedAt: p.joinedAt,
         role: p.role,
       }));
 
       return {
         ...convo.toObject(),
+        streak: getEffectiveStreak(convo.streak),
         unreadCounts: convo.unreadCounts || {},
         participants,
       };

@@ -115,7 +115,7 @@ export interface ChatState {
     type: "group" | "direct",
     name: string,
     memberIds: string[]
-  ) => Promise<void>;
+  ) => Promise<any>;
   updateParticipantData: (user: Partial<User> & { _id: string }) => void;
   uploadAudio: (file: Blob) => Promise<string>;
   uploadImage: (file: File) => Promise<string>;
@@ -142,6 +142,7 @@ export interface ChatState {
 export interface SocketState {
   socket: Socket | null;
   onlineUsers: string[];
+  lastActiveMap: Record<string, string>;
   connectSocket: () => void;
   disconnectSocket: () => void;
   emitTypingStart: (conversationId: string, participantIds: string[]) => void;
@@ -158,7 +159,9 @@ export interface FriendState {
   getAllFriendRequests: () => Promise<void>;
   acceptRequest: (requestId: string) => Promise<void>;
   declineRequest: (requestId: string) => Promise<void>;
+  cancelRequest: (requestId: string) => Promise<void>;
   getFriends: () => Promise<void>;
+  removeFriend: (friendId: string) => Promise<void>;
   updateFriendData: (user: Partial<User> & { _id: string }) => void;
 }
 

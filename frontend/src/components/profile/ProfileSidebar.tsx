@@ -1,8 +1,15 @@
 import { useProfileStore } from "@/stores/useProfileStore";
 import { useChatStore } from "@/stores/useChatStore";
 import { useAuthStore } from "@/stores/useAuthStore";
-import { X, Calendar, Phone, Image as ImageIcon, CaseSensitive, Ban, Settings, FileText, Film, File, ChevronRight } from "lucide-react";
+import { useFriendStore } from "@/stores/useFriendStore";
+import { useSocketStore } from "@/stores/useSocketStore";
+import { useAccountInfoModalStore } from "@/stores/useAccountInfoModalStore";
+import { 
+  X, Calendar, Phone, Image as ImageIcon, CaseSensitive, Ban, Settings, 
+  FileText, File, ChevronRight, UserMinus, Search, Pin 
+} from "lucide-react";
 import UserAvatar from "../chat/UserAvatar";
+import StatusBadge from "../chat/StatusBadge";
 import GroupChatAvatar from "../chat/GroupChatAvatar";
 import { useState } from "react";
 import { cn, isNoteExpired } from "@/lib/utils";
@@ -10,15 +17,18 @@ import WallpaperModal from "../chat/WallpaperModal";
 import NicknameModal from "../chat/NicknameModal";
 import GroupSettingsModal from "../chat/GroupSettingsModal";
 import RenameGroupModal from "../chat/RenameGroupModal";
-import { Edit3, Search, Pin } from "lucide-react";
 import SharedMediaModal from "./SharedMediaModal";
 import SearchMessagesModal from "../chat/SearchMessagesModal";
 import PinnedMessagesModal from "../chat/PinnedMessagesModal";
+import { toast } from "sonner";
 
 const ProfileSidebar = () => {
   const { isOpen, profileData, loading, mode, closeProfile } = useProfileStore();
   const { conversations, activeConversationId } = useChatStore();
   const { user, blockUser, unblockUser } = useAuthStore();
+  const { friends, removeFriend } = useFriendStore();
+  const { onlineUsers, lastActiveMap } = useSocketStore();
+  const { openAccountModal } = useAccountInfoModalStore();
 
   const [showWallpaperModal, setShowWallpaperModal] = useState(false);
   const [showNicknameModal, setShowNicknameModal] = useState(false);
@@ -46,20 +56,31 @@ const ProfileSidebar = () => {
   const isDirect = chat?.type === "direct";
   const isGroup = chat?.type === "group";
 
-  // For direct chats (legacy variable for mode === "chat")
-  let otherUser: any = null;
-  if (isDirect) {
-    otherUser = activeOtherUser;
-  }
+  // Target user for actions
+  const targetUser = mode === "chat" && isDirect ? activeOtherUser : (mode === "user" ? profileData : null);
+  const isTargetFriend = targetUser ? friends.some(f => f._id === targetUser._id) : false;
+  const otherUser = targetUser;
 
-  const isBlocked = otherUser && user?.blockedUsers?.includes(otherUser._id);
+  const isBlocked = targetUser && user?.blockedUsers?.includes(targetUser._id);
 
   const handleBlockUser = async () => {
-    if (!otherUser) return;
+    if (!targetUser) return;
     if (isBlocked) {
-      await unblockUser(otherUser._id);
+      await unblockUser(targetUser._id);
     } else {
-      await blockUser(otherUser._id);
+      await blockUser(targetUser._id);
+    }
+  };
+
+  const handleUnfriend = async () => {
+    if (!targetUser) return;
+    if (window.confirm(`Bạn có chắc chắn muốn xóa bạn với ${targetUser.displayName || "người này"} không?`)) {
+      try {
+        await removeFriend(targetUser._id);
+        toast.success("Đã xóa bạn bè thành công");
+      } catch (err: any) {
+        toast.error(err.response?.data?.message || "Lỗi khi xóa bạn bè");
+      }
     }
   };
 
@@ -131,11 +152,16 @@ const ProfileSidebar = () => {
 
       {/* Body */}
       <div className="flex-1 overflow-y-auto beautiful-scrollbar flex flex-col relative">
-        {(mode === "user" && (loading || !profileData)) || (mode === "chat" && isDirect && loading) ? (
+        {loading ? (
           <div className="flex flex-col items-center justify-center h-full w-full space-y-4 p-4">
             <div className="size-24 rounded-full bg-muted animate-pulse"></div>
             <div className="h-6 w-32 bg-muted animate-pulse rounded"></div>
             <div className="h-4 w-48 bg-muted animate-pulse rounded mt-4"></div>
+          </div>
+        ) : mode === "user" && !profileData ? (
+          <div className="flex flex-col items-center justify-center h-full w-full p-6 text-center text-muted-foreground space-y-2">
+            <p className="text-sm font-medium">Không thể tải thông tin trang cá nhân</p>
+            <p className="text-xs">Người dùng này có thể không tồn tại hoặc đã bị xóa.</p>
           </div>
         ) : (
           <>
@@ -161,15 +187,11 @@ const ProfileSidebar = () => {
                 className={cn(
                   "relative z-10 transition-transform duration-200", 
                   mode === "chat" && isGroup ? "mt-8 mb-4" : "-mt-12 mb-3",
-                  isActiveDirect && "cursor-pointer hover:scale-105 hover:brightness-110"
+                  otherUser && "cursor-pointer hover:scale-105 hover:brightness-110"
                 )}
                 onClick={() => {
-                  if (isActiveDirect && activeOtherUser) {
-                    if (mode === "chat") {
-                      useProfileStore.getState().openProfile(activeOtherUser._id);
-                    } else {
-                      useProfileStore.getState().openChatDetails(activeOtherUser._id);
-                    }
+                  if (otherUser?._id) {
+                    openAccountModal(otherUser._id);
                   }
                 }}
               >
@@ -182,30 +204,33 @@ const ProfileSidebar = () => {
                   />
                 ) : (
                   <>
-                  <UserAvatar
-                    type="profile"
-                    name={mode === "chat" && isDirect ? (chat?.nicknames?.[otherUser?._id] || otherUser?.displayName) : profileData?.displayName}
-                    avatarUrl={mode === "chat" && isDirect ? otherUser?.avatarUrl : profileData?.avatarUrl}
-                    className="ring-4 ring-card bg-card"
-                    note={mode === "chat" && isDirect ? (isNoteExpired(otherUser?.note) ? undefined : otherUser?.note?.content) : (isNoteExpired(profileData?.note) ? undefined : profileData?.note?.content)}
-                    userId={mode === "chat" && isDirect ? otherUser?._id : profileData?._id}
-                  />
-                  <div
-                    className={`absolute bottom-1 right-1 size-5 rounded-full border-4 border-card ${
-                      (mode === "chat" && isDirect ? otherUser?.presenceStatus : profileData?.presenceStatus) === "online"
-                        ? "bg-green-500"
-                        : (mode === "chat" && isDirect ? otherUser?.presenceStatus : profileData?.presenceStatus) === "busy"
-                        ? "bg-red-500"
-                        : "bg-gray-400"
-                    }`}
-                    title={
-                      (mode === "chat" && isDirect ? otherUser?.presenceStatus : profileData?.presenceStatus) === "online"
-                        ? "Đang hoạt động"
-                        : (mode === "chat" && isDirect ? otherUser?.presenceStatus : profileData?.presenceStatus) === "busy"
-                        ? "Đang bận"
-                        : "Ngoại tuyến"
-                    }
-                  ></div>
+                  {(() => {
+                    const otherUserName = (otherUser?._id && chat?.nicknames && otherUser._id in chat.nicknames) ? chat.nicknames[otherUser._id] : (otherUser?.displayName || "");
+                    const profileName = profileData?.displayName || "";
+                    const currentName = mode === "chat" && isDirect ? otherUserName : profileName;
+                    const rawNote = mode === "chat" && isDirect ? otherUser?.note : profileData?.note;
+                    const noteText = isNoteExpired(rawNote) ? undefined : (typeof rawNote === "string" ? rawNote : rawNote?.content);
+                    const targetId = mode === "chat" && isDirect ? otherUser?._id : profileData?._id;
+                    const targetRawStatus = mode === "chat" && isDirect ? otherUser?.presenceStatus : profileData?.presenceStatus;
+                    const isTargetOnline = targetId ? onlineUsers.includes(targetId) : false;
+                    const targetStatus = !isTargetOnline ? "offline" : (targetRawStatus === "busy" ? "busy" : "online");
+
+                    return (
+                      <>
+                        <UserAvatar
+                          type="profile"
+                          name={currentName || "User"}
+                          avatarUrl={(mode === "chat" && isDirect ? otherUser?.avatarUrl : profileData?.avatarUrl) ?? undefined}
+                          className="ring-4 ring-card bg-card"
+                          note={noteText}
+                          userId={targetId}
+                        />
+                        <StatusBadge
+                          status={targetStatus}
+                        />
+                      </>
+                    );
+                  })()}
                 </>
               )}
             </div>
@@ -214,28 +239,22 @@ const ProfileSidebar = () => {
             <h3 
               className={cn(
                 "text-xl font-bold text-center text-foreground",
-                isActiveDirect && "cursor-pointer hover:text-purple-400 transition-colors"
+                otherUser && "cursor-pointer hover:text-purple-400 transition-colors"
               )}
               onClick={() => {
-                if (isActiveDirect && activeOtherUser) {
-                  if (mode === "chat") {
-                    useProfileStore.getState().openProfile(activeOtherUser._id);
-                  } else {
-                    useProfileStore.getState().openChatDetails(activeOtherUser._id);
-                  }
+                if (otherUser?._id) {
+                  openAccountModal(otherUser._id);
                 }
               }}
             >
               {mode === "chat" && isGroup 
-                ? chat?.group?.name 
-                : mode === "chat" && isDirect 
-                  ? (chat?.nicknames?.[otherUser?._id] || otherUser?.displayName) 
-                  : profileData?.displayName}
+                ? (chat?.group?.name || "Nhóm") 
+                : (mode === "chat" && isDirect ? ((otherUser?._id && chat?.nicknames && otherUser._id in chat.nicknames) ? chat.nicknames[otherUser._id] : (otherUser?.displayName || "User")) : (profileData?.displayName || "User"))}
             </h3>
             
             {mode === "chat" && isGroup && (
               <p className="text-sm text-muted-foreground mt-1">
-                {chat?.participants?.length} thành viên
+                {chat?.participants?.length || 0} thành viên
               </p>
             )}
 
@@ -268,11 +287,20 @@ const ProfileSidebar = () => {
                   <div>
                     <p className="text-xs text-muted-foreground">Tham gia từ</p>
                     <p className="font-medium text-foreground">
-                      {new Date(profileData.createdAt).toLocaleDateString("vi-VN", {
-                        day: "2-digit",
-                        month: "2-digit",
-                        year: "numeric",
-                      })}
+                      {(() => {
+                        try {
+                          const d = new Date(profileData.createdAt);
+                          return !isNaN(d.getTime())
+                            ? d.toLocaleDateString("vi-VN", {
+                                day: "2-digit",
+                                month: "2-digit",
+                                year: "numeric",
+                              })
+                            : "Chưa cập nhật";
+                        } catch (e) {
+                          return "Chưa cập nhật";
+                        }
+                      })()}
                     </p>
                   </div>
                 </div>
@@ -300,14 +328,46 @@ const ProfileSidebar = () => {
                   )}
 
                   {isDirect && (
+                    <>
+                      {isTargetFriend && (
+                        <ActionRow 
+                          icon={UserMinus} 
+                          label="Xóa bạn" 
+                          onClick={handleUnfriend} 
+                          danger
+                        />
+                      )}
+                      <ActionRow 
+                        icon={Ban} 
+                        label={isBlocked ? "Bỏ chặn người dùng" : "Chặn người dùng"} 
+                        onClick={handleBlockUser} 
+                        danger={!isBlocked}
+                        success={isBlocked}
+                      />
+                    </>
+                  )}
+                </div>
+              )}
+
+              {/* Actions for User Profile Mode */}
+              {mode === "user" && profileData && profileData._id !== user?._id && (
+                <div className="pt-4 border-t border-border mt-4 w-full">
+                  <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-2">Tùy chọn</h4>
+                  {isTargetFriend && (
                     <ActionRow 
-                      icon={Ban} 
-                      label={isBlocked ? "Bỏ chặn người dùng" : "Chặn người dùng"} 
-                      onClick={handleBlockUser} 
-                      danger={!isBlocked}
-                      success={isBlocked}
+                      icon={UserMinus} 
+                      label="Xóa bạn" 
+                      onClick={handleUnfriend} 
+                      danger
                     />
                   )}
+                  <ActionRow 
+                    icon={Ban} 
+                    label={isBlocked ? "Bỏ chặn người dùng" : "Chặn người dùng"} 
+                    onClick={handleBlockUser} 
+                    danger={!isBlocked}
+                    success={isBlocked}
+                  />
                 </div>
               )}
 

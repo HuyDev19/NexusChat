@@ -1,14 +1,14 @@
 import { cn, formatMessageTime } from "@/lib/utils";
 import type { Conversation, Message, Participant } from "@/types/chat";
 import UserAvatar from "./UserAvatar";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
 import { Card } from "../ui/card";
 import { Badge } from "../ui/badge";
-import { Play, Pause, Pin, Smile, FastForward, PinOff, Timer, EyeOff, Eye, Undo2, MoreHorizontal, Reply, Forward } from "lucide-react";
-import { useState, useRef, useEffect, Fragment } from "react";
+import { Play, Pause, Pin, PinOff, Timer, EyeOff, Eye, Undo2, MoreHorizontal, Reply, Forward } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
 import { useChatStore } from "@/stores/useChatStore";
 import { useAuthStore } from "@/stores/useAuthStore";
+import { useProfileStore } from "@/stores/useProfileStore";
+import { useAccountInfoModalStore } from "@/stores/useAccountInfoModalStore";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -20,58 +20,63 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 
 const EMOJI_LIST = ["👍", "❤️", "😂", "😮", "🔥"];
 
-const FormattedText = ({ content, participants, nicknames }: { content: string; participants: Participant[], nicknames?: Record<string, string> }) => {
+const FormattedText = ({
+  content,
+  participants,
+  nicknames,
+}: {
+  content?: string | null;
+  participants: Participant[];
+  nicknames?: Record<string, string>;
+}) => {
   if (!content) return null;
-  
-  const names = participants.map(p => nicknames?.[p._id] || p.displayName).filter(Boolean);
-  names.push("All", "Mọi người");
-  
-  names.sort((a,b) => b.length - a.length); // match longest first
-  const escapedNames = names.map(n => n.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&'));
-  
-  const mentionRegexSource = names.length > 0 ? `(@(?:${escapedNames.join('|')}))` : `(@_NEVER_MATCH_)`;
-  const mentionRegex = new RegExp(mentionRegexSource, 'g');
 
-  const processedContent = content.replace(mentionRegex, (match, name) => {
-    const pureName = name.slice(1);
-    return `[${name}](mention:${encodeURIComponent(pureName)})`;
-  });
+  const names = participants.map((p) => nicknames?.[p._id] || p.displayName).filter(Boolean);
+  names.push("All", "Mọi người");
+  names.sort((a, b) => b.length - a.length);
+  const escapedNames = names.map((n) => n.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+
+  const mentionPattern = names.length > 0 ? `@(?:${escapedNames.join("|")})` : `@_NEVER_MATCH_`;
+  const urlPattern = `https?:\\/\\/[^\\s]+`;
+  const combinedRegex = new RegExp(`(${mentionPattern}|${urlPattern})`, "g");
+
+  const parts = content.split(combinedRegex);
 
   return (
     <div className="text-sm leading-relaxed break-words whitespace-pre-wrap">
-      <ReactMarkdown
-        remarkPlugins={[remarkGfm]}
-        components={{
-          a: ({ node, href, children, ...props }) => {
-            if (href?.startsWith('mention:')) {
-              const name = decodeURIComponent(href.slice(8));
-              return (
-                <span className="text-primary font-bold cursor-pointer hover:underline" title={name === "All" || name === "Mọi người" ? "Nhắc cả nhóm" : `Tên gốc: ${name}`}>
-                  {children}
-                </span>
-              );
-            }
-            return <a href={href} target="_blank" rel="noreferrer" className="text-blue-500 hover:underline" {...props}>{children}</a>;
-          },
-          p: ({ node, children, ...props }) => <p className="mb-1 last:mb-0" {...props}>{children}</p>,
-          code: ({ node, inline, className, children, ...props }: any) => {
-            return inline ? (
-              <code className="bg-muted px-1.5 py-0.5 rounded text-[13px] font-mono" {...props}>{children}</code>
-            ) : (
-              <div className="relative group mt-2 mb-2 w-full max-w-[200px] sm:max-w-xs md:max-w-sm">
-                <pre className="bg-zinc-950 text-zinc-50 p-3 rounded-md overflow-x-auto text-[13px] font-mono w-full beautiful-scrollbar">
-                  <code {...props}>{children}</code>
-                </pre>
-              </div>
-            );
-          },
-          ul: ({ node, children, ...props }) => <ul className="list-disc pl-4 mb-1" {...props}>{children}</ul>,
-          ol: ({ node, children, ...props }) => <ol className="list-decimal pl-4 mb-1" {...props}>{children}</ol>,
-          li: ({ node, children, ...props }) => <li className="mb-0.5" {...props}>{children}</li>
-        }}
-      >
-        {processedContent}
-      </ReactMarkdown>
+      {parts.map((part, i) => {
+        if (!part) return null;
+        if (part.startsWith("@")) {
+          const mentionName = part.slice(1);
+          return (
+            <span
+              key={i}
+              className="text-primary font-bold cursor-pointer hover:underline"
+              title={
+                mentionName === "All" || mentionName === "Mọi người"
+                  ? "Nhắc cả nhóm"
+                  : `Tên gốc: ${mentionName}`
+              }
+            >
+              {part}
+            </span>
+          );
+        }
+        if (/^https?:\/\//.test(part)) {
+          return (
+            <a
+              key={i}
+              href={part}
+              target="_blank"
+              rel="noreferrer"
+              className="text-blue-500 hover:underline"
+            >
+              {part}
+            </a>
+          );
+        }
+        return <span key={i}>{part}</span>;
+      })}
     </div>
   );
 };
@@ -184,24 +189,27 @@ const MessageItem = ({
     new Date(prev?.createdAt || 0).getTime() >
     300000; // 5 phút
 
-  const isGroupBreak = isShowTime || message.senderId !== prev?.senderId;
+  const senderIdStr = typeof message.senderId === "object" ? (message.senderId as any)?._id || String(message.senderId) : String(message.senderId);
+  const prevSenderIdStr = prev?.senderId ? (typeof prev.senderId === "object" ? (prev.senderId as any)?._id || String(prev.senderId) : String(prev.senderId)) : undefined;
+
+  const isGroupBreak = isShowTime || senderIdStr !== prevSenderIdStr;
 
   const participants = selectedConvo.participants || [];
   const participant = participants.find(
-    (p: Participant) => p._id.toString() === message.senderId.toString()
+    (p: Participant) => p._id?.toString() === senderIdStr
   );
 
-  const isAI = message.senderId === "000000000000000000000000";
+  const isAI = senderIdStr === "000000000000000000000000";
 
-  const getDisplayName = () => {
+  const getDisplayName = (): string => {
     if (isAI) return "NexusAI";
     if (!participant) return "Unknown";
-    return selectedConvo.nicknames?.[participant._id] || participant.displayName;
+    return (selectedConvo.nicknames?.[participant._id] || participant.displayName || "Unknown");
   };
 
-  const getAvatarUrl = () => {
+  const getAvatarUrl = (): string | undefined => {
     if (isAI) return "https://cdn-icons-png.flaticon.com/512/826/826963.png";
-    return participant?.avatarUrl;
+    return participant?.avatarUrl || undefined;
   };
 
   // Group reactions
@@ -213,6 +221,7 @@ const MessageItem = ({
 
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
   const [showViewOnceModal, setShowViewOnceModal] = useState(false);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
 
   useEffect(() => {
     if (message.expiresAt) {
@@ -273,9 +282,9 @@ const MessageItem = ({
               <div
                 className="cursor-pointer hover:opacity-80 transition-opacity"
                 onClick={() => {
-                  import("@/stores/useProfileStore").then((mod) => {
-                    mod.useProfileStore.getState().openProfile(message.senderId);
-                  });
+                  if (!isAI && senderIdStr) {
+                    useAccountInfoModalStore.getState().openAccountModal(senderIdStr);
+                  }
                 }}
               >
                 <UserAvatar
@@ -296,7 +305,14 @@ const MessageItem = ({
           )}
         >
           {!message.isOwn && selectedConvo.type === "group" && isGroupBreak && (
-             <span className="text-[11px] text-muted-foreground ml-1 mb-0.5">
+             <span 
+               className="text-[11px] text-muted-foreground ml-1 mb-0.5 cursor-pointer hover:underline"
+               onClick={() => {
+                 if (!isAI && senderIdStr) {
+                   useAccountInfoModalStore.getState().openAccountModal(senderIdStr);
+                 }
+               }}
+             >
                {getDisplayName()}
              </span>
           )}
@@ -366,7 +382,23 @@ const MessageItem = ({
               ) : message.audioUrl ? (
                 <VoiceMessagePlayer src={message.audioUrl} isOwn={message.isOwn} />
               ) : message.imgUrl ? (
-                <img src={message.imgUrl} alt="Image" className="rounded-md max-w-full h-auto max-h-[300px]" />
+                <div className="space-y-1.5">
+                  <img 
+                    src={message.imgUrl} 
+                    alt="Image" 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setPreviewImage(message.imgUrl || null);
+                    }}
+                    className="rounded-md max-w-full h-auto max-h-[300px] object-cover cursor-pointer hover:opacity-95 hover:brightness-105 transition-all shadow-xs" 
+                    title="Bấm để xem ảnh phóng to"
+                  />
+                  {message.content && (
+                    <div className="pt-0.5">
+                      <FormattedText content={message.content} participants={participants} nicknames={selectedConvo.nicknames} />
+                    </div>
+                  )}
+                </div>
               ) : message.poll && message.poll.options && message.poll.options.length > 0 ? (
                 <div className="space-y-3 min-w-[200px]">
                   <p className="font-semibold">{message.poll.question}</p>
@@ -434,6 +466,21 @@ const MessageItem = ({
                   >
                     <EyeOff className="size-5" />
                   </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+
+            {/* Image Preview Lightbox Dialog */}
+            <Dialog open={Boolean(previewImage)} onOpenChange={(open) => !open && setPreviewImage(null)}>
+              <DialogContent className="max-w-4xl p-2 bg-black/95 border border-white/10 shadow-2xl flex flex-col items-center justify-center rounded-2xl overflow-hidden">
+                <div className="relative w-full max-h-[85vh] flex items-center justify-center p-2">
+                  {previewImage && (
+                    <img 
+                      src={previewImage} 
+                      alt="Full Preview" 
+                      className="max-w-full max-h-[80vh] object-contain rounded-xl shadow-2xl" 
+                    />
+                  )}
                 </div>
               </DialogContent>
             </Dialog>
@@ -536,7 +583,7 @@ const MessageItem = ({
                     return latestReadMsg?._id === message._id;
                   })
                   .map((vid) => {
-                    const p = participants.find((part) => part._id.toString() === vid);
+                    const p = participants.find((part) => part._id?.toString() === vid);
                     if (!p) return null;
                     return (
                       <img
@@ -567,6 +614,19 @@ const MessageItem = ({
           </div>
         </div>
       </div>
+
+      {/* Lightbox xem ảnh phóng to */}
+      {previewImage && (
+        <Dialog open={!!previewImage} onOpenChange={() => setPreviewImage(null)}>
+          <DialogContent className="sm:max-w-6xl w-auto max-h-[95vh] p-2 bg-black/85 backdrop-blur-xl border-white/10 shadow-2xl flex flex-col items-center justify-center overflow-hidden rounded-2xl">
+            <img
+              src={previewImage}
+              alt="Preview"
+              className="max-h-[88vh] max-w-[92vw] object-contain rounded-xl shadow-2xl"
+            />
+          </DialogContent>
+        </Dialog>
+      )}
     </>
   );
 };

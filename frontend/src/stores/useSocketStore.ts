@@ -9,6 +9,7 @@ const baseURL = import.meta.env.VITE_SOCKET_URL?.trim() || "http://localhost:500
 export const useSocketStore = create<SocketState>((set, get) => ({
   socket: null,
   onlineUsers: [],
+  lastActiveMap: {},
   connectSocket: () => {
     const accessToken = useAuthStore.getState().accessToken;
     const currentUser = useAuthStore.getState().user;
@@ -50,6 +51,18 @@ export const useSocketStore = create<SocketState>((set, get) => ({
       set({ onlineUsers: userIds });
     });
 
+    // user last active
+    socket.on("user:last-active", ({ userId, lastActiveAt }) => {
+      if (userId && lastActiveAt) {
+        set((state) => ({
+          lastActiveMap: {
+            ...state.lastActiveMap,
+            [userId]: String(lastActiveAt),
+          },
+        }));
+      }
+    });
+
     // user updated
     socket.on("user:updated", (updatedUser) => {
       import("./useFriendStore").then((store) => {
@@ -57,6 +70,42 @@ export const useSocketStore = create<SocketState>((set, get) => ({
       });
       import("./useChatStore").then((store) => {
         store.useChatStore.getState().updateParticipantData(updatedUser);
+      });
+    });
+
+    // streak reset
+    socket.on("conversation:streak-reset", ({ conversationId, streak }) => {
+      useChatStore.getState().updateConversation({
+        _id: conversationId,
+        streak: streak || { count: 0, lastMessageDate: null, senders: [], isBothMessaged: false },
+      });
+    });
+
+    // profile photo events
+    socket.on("user:photo-added", ({ userId, photo }) => {
+      import("./useAccountInfoModalStore").then((mod) => {
+        const modalStore = mod.useAccountInfoModalStore.getState();
+        if (modalStore.isOpen && modalStore.user && modalStore.user._id === userId) {
+          modalStore.setUserPhotos([photo, ...(modalStore.user.photos || [])]);
+        }
+      });
+    });
+
+    socket.on("user:photo-deleted", ({ userId, photoId }) => {
+      import("./useAccountInfoModalStore").then((mod) => {
+        const modalStore = mod.useAccountInfoModalStore.getState();
+        if (modalStore.isOpen && modalStore.user && modalStore.user._id === userId) {
+          modalStore.setUserPhotos((modalStore.user.photos || []).filter((p) => p._id !== photoId));
+        }
+      });
+    });
+
+    socket.on("user:photo-reacted", ({ userId, photoId, reactions }) => {
+      import("./useAccountInfoModalStore").then((mod) => {
+        const modalStore = mod.useAccountInfoModalStore.getState();
+        if (modalStore.isOpen && modalStore.user && modalStore.user._id === userId) {
+          modalStore.updatePhotoReactions(photoId, reactions);
+        }
       });
     });
 
