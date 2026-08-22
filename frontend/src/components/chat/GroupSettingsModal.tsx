@@ -18,8 +18,14 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "../ui/dropdown-menu";
+import { toast } from "sonner";
+import { chatService } from "@/services/chatService";
 import { useChatStore } from "@/stores/useChatStore";
 import { useAuthStore } from "@/stores/useAuthStore";
 import type { Conversation } from "@/types/chat";
@@ -40,7 +46,7 @@ export default function GroupSettingsModal({
   onOpenChange: (open: boolean) => void;
   conversation: Conversation;
 }) {
-  const { user, fetchMe } = useAuthStore();
+  const { user } = useAuthStore();
   const { friends, getFriends } = useFriendStore();
   const {
     addGroupMembers,
@@ -48,9 +54,11 @@ export default function GroupSettingsModal({
     updateGroupRole,
     updateGroupInfo,
     updateGroupAvatar,
+    updateChannelVisibility,
     convoLoading,
   } = useChatStore();
 
+  const [memberSearch, setMemberSearch] = useState("");
   const [isAddingMember, setIsAddingMember] = useState(false);
   const [selectedFriends, setSelectedFriends] = useState<string[]>([]);
   const [memberToPromote, setMemberToPromote] = useState<string | null>(null);
@@ -95,17 +103,30 @@ export default function GroupSettingsModal({
     (f) => !participants.some((p) => p._id === f._id)
   );
 
+  const filteredParticipants = participants.filter((p) =>
+    p.displayName?.toLowerCase().includes(memberSearch.toLowerCase())
+  );
+
+  const handleBanMember = async (memberId: string, durationInDays: number | null) => {
+    try {
+      const durationMs = durationInDays ? durationInDays * 24 * 60 * 60 * 1000 : null;
+      await chatService.banGroupMember(conversation._id, memberId, durationMs);
+      toast.success("Đã cấm người dùng thành công");
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || "Lỗi khi cấm người dùng");
+    }
+  };
+
   if (!conversation || conversation.type === "direct") return null;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md max-h-[80vh] overflow-y-auto">
+      <DialogContent aria-describedby={undefined} className="max-w-md max-h-[80vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Cài đặt nhóm</DialogTitle>
+          <DialogTitle>{conversation.type === "channel" ? "Cài đặt kênh" : "Cài đặt nhóm"}</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-6">
-          {/* Group Info Section */}
           <div className="space-y-4">
             <h3 className="font-medium">Thông tin chung</h3>
             {isEditingInfo ? (
@@ -118,8 +139,24 @@ export default function GroupSettingsModal({
                 <Input
                   value={groupDesc}
                   onChange={(e) => setGroupDesc(e.target.value)}
-                  placeholder="Mô tả nhóm"
+                  placeholder={conversation.type === "channel" ? "Mô tả kênh" : "Mô tả nhóm"}
                 />
+                {conversation.type === "channel" && (
+                  <div className="flex items-center gap-2 mt-2 p-2 bg-muted/30 rounded-md border border-border/50">
+                     <input 
+                       type="checkbox" 
+                       id="isPublicToggle" 
+                       checked={conversation.isPublic}
+                       onChange={async (e) => {
+                         await updateChannelVisibility(conversation._id, e.target.checked);
+                       }}
+                       className="size-4"
+                     />
+                     <label htmlFor="isPublicToggle" className="text-sm font-medium select-none cursor-pointer">
+                       Kênh công khai (Mọi người có thể tìm thấy kênh này)
+                     </label>
+                  </div>
+                )}
                 <div className="flex gap-2 justify-end">
                   <Button variant="outline" onClick={() => setIsEditingInfo(false)}>Hủy</Button>
                   <Button onClick={handleUpdateInfo}><Save className="size-4 mr-2" />Lưu</Button>
@@ -135,9 +172,8 @@ export default function GroupSettingsModal({
                       groupAvatar={conversation.group?.avatar}
                       groupName={conversation.group?.name}
                     />
-                    {/* Avatar Upload Overlay */}
                     {(isLeader || isDeputy) && (
-                      <div 
+                      <div
                         className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer z-20"
                         onClick={() => !convoLoading && fileInputRef.current?.click()}
                       >
@@ -174,6 +210,11 @@ export default function GroupSettingsModal({
                   {conversation.group?.description && (
                     <p className="text-sm text-muted-foreground">{conversation.group?.description}</p>
                   )}
+                  {conversation.type === "channel" && (
+                    <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-orange-500/10 text-orange-500 inline-block mt-1">
+                      {conversation.isPublic ? "Công khai" : "Riêng tư"}
+                    </span>
+                  )}
                 </div>
                 {(isLeader || isDeputy) && (
                   <Button variant="ghost" size="sm" onClick={() => setIsEditingInfo(true)}>
@@ -184,16 +225,21 @@ export default function GroupSettingsModal({
             )}
           </div>
 
-          {/* Members Section */}
           <div className="space-y-4">
             <div className="flex justify-between items-center">
-              <h3 className="font-medium">Thành viên ({participants.length})</h3>
+              <h3 className="font-medium">{conversation.type === "channel" ? "Người theo dõi" : "Thành viên"} ({participants.length})</h3>
               {(isLeader || isDeputy) && (
                 <Button size="sm" onClick={() => setIsAddingMember(!isAddingMember)}>
                   <UserPlus className="size-4 mr-2" /> Thêm bạn
                 </Button>
               )}
             </div>
+            <Input 
+              placeholder="Tìm kiếm..." 
+              value={memberSearch}
+              onChange={(e) => setMemberSearch(e.target.value)}
+              className="w-full bg-secondary"
+            />
 
             {isAddingMember && (
               <div className="bg-secondary/30 p-3 rounded-md space-y-3">
@@ -224,8 +270,8 @@ export default function GroupSettingsModal({
               </div>
             )}
 
-            <div className="space-y-2">
-              {participants.map((p) => (
+            <div className="space-y-2 max-h-[300px] overflow-y-auto">
+              {filteredParticipants.map((p) => (
                 <div key={p._id} className="flex items-center justify-between bg-secondary p-2 rounded-md">
                   <div className="flex items-center gap-3">
                     <UserAvatar type="chat" name={p.displayName as string} avatarUrl={p.avatarUrl || undefined} />
@@ -234,7 +280,7 @@ export default function GroupSettingsModal({
                         {p.displayName} {p._id === user?._id ? "(Bạn)" : ""}
                       </p>
                       <p className="text-xs text-muted-foreground uppercase">
-                        {p.role === "leader" ? "TRƯỞNG NHÓM" : p.role === "deputy" ? "PHÓ NHÓM" : "THÀNH VIÊN"}
+                        {p.role === "leader" ? "TRƯỞNG NHÓM" : p.role === "deputy" ? "PHÓ NHÓM" : (conversation.type === "channel" ? "NGƯỜI THEO DÕI" : "THÀNH VIÊN")}
                       </p>
                     </div>
                   </div>
@@ -265,13 +311,29 @@ export default function GroupSettingsModal({
                             Giáng cấp
                           </DropdownMenuItem>
                         )}
-                        <DropdownMenuItem 
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
                           className="text-red-500 focus:text-red-600 focus:bg-red-100 dark:focus:bg-red-900/50"
                           onClick={() => removeGroupMember(conversation._id, p._id)}
                         >
                           <Trash2 className="size-4 mr-2" />
                           Xóa khỏi nhóm
                         </DropdownMenuItem>
+                        {conversation.type === "channel" && (
+                          <DropdownMenuSub>
+                            <DropdownMenuSubTrigger className="text-red-500 focus:text-red-600 focus:bg-red-100 dark:focus:bg-red-900/50">
+                              <Trash2 className="size-4 mr-2" />
+                              Cấm (Ban)
+                            </DropdownMenuSubTrigger>
+                            <DropdownMenuSubContent>
+                              <DropdownMenuItem onClick={() => handleBanMember(p._id, 1)}>1 ngày</DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleBanMember(p._id, 7)}>1 tuần</DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleBanMember(p._id, 30)}>1 tháng</DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleBanMember(p._id, 365)}>1 năm</DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleBanMember(p._id, null)}>Vĩnh viễn</DropdownMenuItem>
+                            </DropdownMenuSubContent>
+                          </DropdownMenuSub>
+                        )}
                       </DropdownMenuContent>
                     </DropdownMenu>
                   )}
@@ -292,11 +354,15 @@ export default function GroupSettingsModal({
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Hủy</AlertDialogCancel>
-            <AlertDialogAction onClick={() => {
-              if (memberToPromote) {
-                updateGroupRole(conversation._id, memberToPromote, "leader");
-                setMemberToPromote(null);
-                onOpenChange(false); // Đóng setting modal sau khi chuyển quyền
+            <AlertDialogAction onClick={async () => {
+              try {
+                if (memberToPromote) {
+                  await updateGroupRole(conversation._id, memberToPromote, "leader");
+                  setMemberToPromote(null);
+                  onOpenChange(false);
+                }
+              } catch (error: any) {
+                toast.error(error.response?.data?.message || "Lỗi phong quyền");
               }
             }}>Xác nhận</AlertDialogAction>
           </AlertDialogFooter>

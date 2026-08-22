@@ -41,7 +41,8 @@ export interface LastMessage {
 
 export interface Conversation {
   _id: string;
-  type: "direct" | "group" | "community";
+  type: "direct" | "group" | "community" | "channel";
+  isPublic?: boolean;
   group: Group;
   participants: Participant[];
   lastMessageAt: string;
@@ -49,6 +50,7 @@ export interface Conversation {
   lastMessage: LastMessage | null;
   unreadCounts: Record<string, number>; // key = userId, value = unread count
   wallpaper?: string;
+  followerCount?: number;
   streak?: {
     count: number;
     lastMessageDate: string;
@@ -67,7 +69,7 @@ export interface ConversationResponse {
 export interface Message {
   _id: string;
   conversationId: string;
-  senderId: string;
+  senderId: any;
   content: string | null;
   imgUrl?: string | null;
   audioUrl?: string | null;

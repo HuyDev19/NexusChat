@@ -36,7 +36,15 @@ const MessageInput = ({ selectedConvo }: { selectedConvo: Conversation }) => {
       isBlocked = true;
     }
   }
-  
+
+  let isChannelMember = false;
+  if (selectedConvo.type === "channel") {
+    const userParticipant = selectedConvo.participants.find(p => p._id === user?._id);
+    if (userParticipant && userParticipant.role === "member") {
+      isChannelMember = true;
+    }
+  }
+
   const [value, setValue] = useState("");
   const [stagedImages, setStagedImages] = useState<StagedImage[]>([]);
   const [previewingImageUrl, setPreviewingImageUrl] = useState<string | null>(null);
@@ -451,9 +459,21 @@ const MessageInput = ({ selectedConvo }: { selectedConvo: Conversation }) => {
 
   const hasDraftOrMedia = Boolean(value.trim() || stagedImages.length > 0);
 
+  if (isChannelMember) {
+    return (
+      <div className="w-full h-14 bg-muted/40 border-t border-border/40 flex items-center justify-center p-3 select-none">
+        <div className="flex items-center gap-2 text-muted-foreground bg-muted px-4 py-2 rounded-xl text-xs font-medium border border-border/60">
+          <Ban className="size-4" />
+          <span>Chỉ quản trị viên mới có thể gửi tin nhắn vào kênh này.</span>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div 
-      className="flex flex-col bg-background relative"
+    <div
+      className={`w-full bg-background border-t border-border/40 relative z-20 ${isDragging ? "bg-primary/5 border-primary" : ""
+        }`}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
@@ -499,8 +519,8 @@ const MessageInput = ({ selectedConvo }: { selectedConvo: Conversation }) => {
 
           <div className="flex items-center gap-3 overflow-x-auto py-2 beautiful-scrollbar">
             {stagedImages.map((img) => (
-              <div 
-                key={img.id} 
+              <div
+                key={img.id}
                 onClick={() => setPreviewingImageUrl(img.previewUrl)}
                 className="relative group size-16 sm:size-20 rounded-xl overflow-hidden border border-border/60 bg-background shrink-0 shadow-sm cursor-pointer hover:opacity-90 hover:scale-[1.03] transition-all"
                 title="Bấm để xem ảnh lớn"

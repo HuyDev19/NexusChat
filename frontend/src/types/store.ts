@@ -99,7 +99,7 @@ export interface ChatState {
     replyTo?: string,
     isForwarded?: boolean
   ) => Promise<void>;
-  deleteConversation: (id: string) => Promise<void>;
+  deleteConversation: (id: string, password?: string) => Promise<void>;
   clearChatHistory: (id: string) => Promise<void>;
   leaveGroup: (id: string) => Promise<void>;
   removeConversation: (id: string) => void;
@@ -116,6 +116,10 @@ export interface ChatState {
     name: string,
     memberIds: string[]
   ) => Promise<any>;
+  createChannel: (name: string, description?: string, isPublic?: boolean) => Promise<any>;
+  joinChannel: (channelId: string) => Promise<void>;
+  updateChannelVisibility: (channelId: string, isPublic: boolean) => Promise<void>;
+  explorePublicChannels: (q?: string) => Promise<any[]>;
   updateParticipantData: (user: Partial<User> & { _id: string }) => void;
   uploadAudio: (file: Blob) => Promise<string>;
   uploadImage: (file: File) => Promise<string>;
@@ -170,10 +174,10 @@ export interface UserState {
   removeAvatar: () => Promise<void>;
   updateCoverUrl: (formData: FormData) => Promise<void>;
   updateNote: (content: string, expiresInHours?: number) => Promise<void>;
-  updateProfile: (data: { 
-    displayName?: string; 
-    phone?: string; 
-    bio?: string; 
+  updateProfile: (data: {
+    displayName?: string;
+    phone?: string;
+    bio?: string;
     presenceStatus?: 'online' | 'offline' | 'busy';
     lockedConversations?: { conversationId: string; pin: string }[];
   }) => Promise<void>;

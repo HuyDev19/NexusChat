@@ -149,7 +149,7 @@ const ChatWindowHeader = ({ chat }: { chat?: Conversation }) => {
                   />
                 </div>
               ) : (
-                <div 
+                <div
                   className="cursor-pointer hover:opacity-80 transition-opacity"
                   onClick={() => {
                     if (isProfileOpen && profileMode === "chat") {
@@ -172,7 +172,7 @@ const ChatWindowHeader = ({ chat }: { chat?: Conversation }) => {
             {/* name & badge & unfriend/online status (2 vertical rows) */}
             <div className="flex flex-col justify-center min-w-0">
               <div className="flex items-center gap-1.5 flex-wrap">
-                <h2 
+                <h2
                   className="font-semibold text-foreground truncate max-w-[220px] leading-snug cursor-pointer hover:underline"
                   onClick={() => {
                     if (isProfileOpen && profileMode === "chat") {
@@ -195,11 +195,11 @@ const ChatWindowHeader = ({ chat }: { chat?: Conversation }) => {
 
                 {chat.type === "direct" && isStreakActive(chat.streak) && chat.streak && chat.streak.count >= 1 && (
                   <div className="flex items-center gap-0.5" title={isStreakOnFire(chat.streak) ? `${chat.streak.count} ngày liên tiếp - Cả 2 đã thắp sáng chuỗi hôm nay!` : `${chat.streak.count} ngày liên tiếp - Đang chờ người kia nhắn lại`}>
-                    <Flame 
+                    <Flame
                       className={cn(
-                        "size-4 transition-colors", 
+                        "size-4 transition-colors",
                         isStreakOnFire(chat.streak) ? "text-amber-500 fill-amber-500" : "text-zinc-800 dark:text-zinc-400 fill-zinc-800 dark:fill-zinc-400"
-                      )} 
+                      )}
                     />
                     <span className={cn("text-xs font-bold", isStreakOnFire(chat.streak) ? "text-amber-500" : "text-zinc-500")}>
                       {chat.streak.count}
@@ -222,10 +222,14 @@ const ChatWindowHeader = ({ chat }: { chat?: Conversation }) => {
                 <span className="text-[11px] font-medium text-muted-foreground leading-tight">
                   {chat.participants?.length || 0} thành viên
                 </span>
+              ) : chat.type === "channel" ? (
+                <span className="text-[11px] font-medium text-muted-foreground leading-tight">
+                  {chat.participants?.length || 0} người theo dõi
+                </span>
               ) : null}
             </div>
-            </div>
           </div>
+        </div>
 
         {/* Call Actions */}
         {!activeCall && (
@@ -248,20 +252,37 @@ const ChatWindowHeader = ({ chat }: { chat?: Conversation }) => {
               >
                 <Sparkles size={20} />
               </button>
-              <button
-                onClick={() => handleStartCall(false)}
-                className="p-2 rounded-full hover:bg-accent text-muted-foreground hover:text-foreground transition-colors duration-200"
-                title="Bắt đầu cuộc gọi thoại"
-              >
-                <Phone size={20} />
-              </button>
-              <button
-                onClick={() => handleStartCall(true)}
-                className="p-2 rounded-full hover:bg-accent text-muted-foreground hover:text-foreground transition-colors duration-200"
-                title="Bắt đầu cuộc gọi video"
-              >
-                <Video size={20} />
-              </button>
+              {chat?.type === "channel" ? (
+                <button
+                  onClick={() => {
+                    const link = `${window.location.origin}/chat?join=${chat._id}`;
+                    navigator.clipboard.writeText(link);
+                    toast.success("Đã sao chép liên kết kênh!");
+                  }}
+                  className="px-3 py-1.5 rounded-xl bg-orange-500/10 hover:bg-orange-500/20 text-orange-500 font-medium text-xs flex items-center gap-1.5 transition-colors border border-orange-500/20"
+                  title="Sao chép liên kết mời"
+                >
+                  <span className="hidden sm:inline">Copy Link</span>
+                  <span className="sm:hidden">Link</span>
+                </button>
+              ) : (
+                <>
+                  <button
+                    onClick={() => handleStartCall(false)}
+                    className="p-2 rounded-full hover:bg-accent text-muted-foreground hover:text-foreground transition-colors duration-200"
+                    title="Bắt đầu cuộc gọi thoại"
+                  >
+                    <Phone size={20} />
+                  </button>
+                  <button
+                    onClick={() => handleStartCall(true)}
+                    className="p-2 rounded-full hover:bg-accent text-muted-foreground hover:text-foreground transition-colors duration-200"
+                    title="Bắt đầu cuộc gọi video"
+                  >
+                    <Video size={20} />
+                  </button>
+                </>
+              )}
             </div>
           )
         )}

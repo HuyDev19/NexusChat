@@ -4,9 +4,11 @@ import { useAuthStore } from "@/stores/useAuthStore";
 import { useFriendStore } from "@/stores/useFriendStore";
 import { useSocketStore } from "@/stores/useSocketStore";
 import { useAccountInfoModalStore } from "@/stores/useAccountInfoModalStore";
-import { 
-  X, Calendar, Phone, Image as ImageIcon, CaseSensitive, Ban, Settings, 
-  FileText, File, ChevronRight, UserMinus, Search, Pin, Lock, Unlock 
+import {
+  X, Calendar, Phone, Image as ImageIcon, CaseSensitive, Ban, Settings,
+  FileText, File, ChevronRight, UserMinus, Search, Pin, Lock, Unlock, MessageSquare,
+  ShieldAlert,
+  LogOut, Trash2,
 } from "lucide-react";
 import UserAvatar from "../chat/UserAvatar";
 import StatusBadge from "../chat/StatusBadge";
@@ -45,22 +47,25 @@ const ProfileSidebar = () => {
 
   const [showLockDialog, setShowLockDialog] = useState(false);
   const [newPin, setNewPin] = useState("");
-  
+
   const [showResetLockDialog, setShowResetLockDialog] = useState(false);
   const [resetMode, setResetMode] = useState<"remove" | "change">("remove");
   const [resetPassword, setResetPassword] = useState("");
   const [resetNewPin, setResetNewPin] = useState("");
 
+  const [showDeleteChannelDialog, setShowDeleteChannelDialog] = useState(false);
+  const [deleteChannelPassword, setDeleteChannelPassword] = useState("");
+
   const { fetchMe } = useAuthStore();
   const { unlockConversation } = useChatStore();
 
   const messages = useChatStore(state => state.messages);
-  
+
   if (!isOpen) return null;
 
   const activeChat = conversations.find(c => c._id === activeConversationId);
   const isActiveDirect = activeChat?.type === "direct";
-  
+
   let activeOtherUser: any = null;
   if (isActiveDirect && activeChat) {
     const participants = activeChat.participants || [];
@@ -70,6 +75,10 @@ const ProfileSidebar = () => {
   const chat = mode === "chat" ? activeChat : null;
   const isDirect = chat?.type === "direct";
   const isGroup = chat?.type === "group";
+  const isChannel = chat?.type === "channel";
+
+  const currentUserParticipant = chat?.participants?.find(p => p._id === user?._id);
+  const isChannelAdmin = isChannel && (currentUserParticipant?.role === "leader" || currentUserParticipant?.role === "deputy");
 
   // Target user for actions
   const targetUser = mode === "chat" && isDirect ? activeOtherUser : (mode === "user" ? profileData : null);
@@ -96,6 +105,21 @@ const ProfileSidebar = () => {
       } catch (err: any) {
         toast.error(err.response?.data?.message || "Lỗi khi xóa bạn bè");
       }
+    }
+  };
+
+  const handleDeleteChannel = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!chat || !deleteChannelPassword) return;
+    
+    try {
+      await useChatStore.getState().deleteConversation(chat._id, deleteChannelPassword);
+      toast.success("Đã xóa kênh thành công");
+      setShowDeleteChannelDialog(false);
+      setDeleteChannelPassword("");
+      closeProfile();
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || "Lỗi khi xóa kênh");
     }
   };
 
@@ -150,7 +174,7 @@ const ProfileSidebar = () => {
   const isLocked = user?.lockedConversations?.some(l => l.conversationId === chat?._id);
 
   const activeConvoMessages = activeConversationId ? messages[activeConversationId]?.items || [] : [];
-  
+
   const imagesCount = activeConvoMessages.filter(m => !!m.imgUrl).length;
   const filesCount = activeConvoMessages.filter(m => !!m.audioUrl).length;
   const linksCount = activeConvoMessages.filter(m => m.content && /https?:\/\/[^\s]+/.test(m.content)).length;
@@ -158,7 +182,7 @@ const ProfileSidebar = () => {
   const renderStats = () => (
     <div className="w-full mt-6 space-y-4">
       <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-2">Đa phương tiện & File</h4>
-      
+
       <div className="flex gap-2 mb-4">
         <div className="flex-1 bg-muted/30 rounded-xl p-3 flex flex-col justify-center border border-border/50">
           <span className="text-xs font-semibold text-muted-foreground uppercase">Ảnh/Video</span>
@@ -175,25 +199,25 @@ const ProfileSidebar = () => {
       </div>
 
       <div className="space-y-1">
-        <FileRow 
-          icon={ImageIcon} 
-          color="text-orange-500" 
-          bg="bg-orange-500/10" 
-          name="Hình ảnh & Video" 
+        <FileRow
+          icon={ImageIcon}
+          color="text-orange-500"
+          bg="bg-orange-500/10"
+          name="Hình ảnh & Video"
           onClick={() => { setSharedMediaTab("media"); setShowSharedMedia(true); }}
         />
-        <FileRow 
-          icon={FileText} 
-          color="text-indigo-500" 
-          bg="bg-indigo-500/10" 
-          name="Tài liệu" 
+        <FileRow
+          icon={FileText}
+          color="text-indigo-500"
+          bg="bg-indigo-500/10"
+          name="Tài liệu"
           onClick={() => { setSharedMediaTab("docs"); setShowSharedMedia(true); }}
         />
-        <FileRow 
-          icon={File} 
-          color="text-teal-500" 
-          bg="bg-teal-500/10" 
-          name="File khác" 
+        <FileRow
+          icon={File}
+          color="text-teal-500"
+          bg="bg-teal-500/10"
+          name="File khác"
           onClick={() => { setSharedMediaTab("docs"); setShowSharedMedia(true); }}
         />
       </div>
@@ -231,7 +255,7 @@ const ProfileSidebar = () => {
         ) : (
           <>
             {/* Cover Photo Area */}
-            {mode === "chat" && isGroup ? null : (
+            {mode === "chat" && (isGroup || isChannel) ? null : (
               <div className="w-full h-32 bg-muted relative shrink-0">
                 {(mode === "chat" && isDirect ? otherUser?.coverUrl : profileData?.coverUrl) ? (
                   <img
@@ -248,10 +272,10 @@ const ProfileSidebar = () => {
             {/* Content Container */}
             <div className="flex flex-col items-center px-4 pb-4">
               {/* Avatar Section */}
-              <div 
+              <div
                 className={cn(
-                  "relative z-10 transition-transform duration-200", 
-                  mode === "chat" && isGroup ? "mt-8 mb-4" : "-mt-12 mb-3",
+                  "relative z-10 transition-transform duration-200",
+                  mode === "chat" && (isGroup || isChannel) ? "mt-8 mb-4" : "-mt-12 mb-3",
                   otherUser && "cursor-pointer hover:scale-105 hover:brightness-110"
                 )}
                 onClick={() => {
@@ -260,7 +284,7 @@ const ProfileSidebar = () => {
                   }
                 }}
               >
-                {mode === "chat" && isGroup ? (
+                {mode === "chat" && (isGroup || isChannel) ? (
                   <GroupChatAvatar
                     participants={chat.participants || []}
                     type="chat"
@@ -269,182 +293,221 @@ const ProfileSidebar = () => {
                   />
                 ) : (
                   <>
-                  {(() => {
-                    const otherUserName = (otherUser?._id && chat?.nicknames && otherUser._id in chat.nicknames) ? chat.nicknames[otherUser._id] : (otherUser?.displayName || "");
-                    const profileName = profileData?.displayName || "";
-                    const currentName = mode === "chat" && isDirect ? otherUserName : profileName;
-                    const rawNote = mode === "chat" && isDirect ? otherUser?.note : profileData?.note;
-                    const noteText = isNoteExpired(rawNote) ? undefined : (typeof rawNote === "string" ? rawNote : rawNote?.content);
-                    const targetId = mode === "chat" && isDirect ? otherUser?._id : profileData?._id;
-                    const targetRawStatus = mode === "chat" && isDirect ? otherUser?.presenceStatus : profileData?.presenceStatus;
-                    const isTargetOnline = targetId ? onlineUsers.includes(targetId) : false;
-                    const targetStatus = !isTargetOnline ? "offline" : (targetRawStatus === "busy" ? "busy" : "online");
+                    {(() => {
+                      const otherUserName = (otherUser?._id && chat?.nicknames && otherUser._id in chat.nicknames) ? chat.nicknames[otherUser._id] : (otherUser?.displayName || "");
+                      const profileName = profileData?.displayName || "";
+                      const currentName = mode === "chat" && isDirect ? otherUserName : profileName;
+                      const rawNote = mode === "chat" && isDirect ? otherUser?.note : profileData?.note;
+                      const noteText = isNoteExpired(rawNote) ? undefined : (typeof rawNote === "string" ? rawNote : rawNote?.content);
+                      const targetId = mode === "chat" && isDirect ? otherUser?._id : profileData?._id;
+                      const targetRawStatus = mode === "chat" && isDirect ? otherUser?.presenceStatus : profileData?.presenceStatus;
+                      const isTargetOnline = targetId ? onlineUsers.includes(targetId) : false;
+                      const targetStatus = !isTargetOnline ? "offline" : (targetRawStatus === "busy" ? "busy" : "online");
 
-                    return (
-                      <>
-                        <UserAvatar
-                          type="profile"
-                          name={currentName || "User"}
-                          avatarUrl={(mode === "chat" && isDirect ? otherUser?.avatarUrl : profileData?.avatarUrl) ?? undefined}
-                          className="ring-4 ring-card bg-card"
-                          note={noteText}
-                          userId={targetId}
-                        />
-                        <StatusBadge
-                          status={targetStatus}
-                        />
-                      </>
-                    );
-                  })()}
-                </>
-              )}
-            </div>
+                      return (
+                        <>
+                          <UserAvatar
+                            type="profile"
+                            name={currentName || "User"}
+                            avatarUrl={(mode === "chat" && isDirect ? otherUser?.avatarUrl : profileData?.avatarUrl) ?? undefined}
+                            className="ring-4 ring-card bg-card"
+                            note={noteText}
+                            userId={targetId}
+                          />
+                          <StatusBadge
+                            status={targetStatus}
+                          />
+                        </>
+                      );
+                    })()}
+                  </>
+                )}
+              </div>
 
-            {/* Name */}
-            <h3 
-              className={cn(
-                "text-xl font-bold text-center text-foreground",
-                otherUser && "cursor-pointer hover:text-purple-400 transition-colors"
-              )}
-              onClick={() => {
-                if (otherUser?._id) {
-                  openAccountModal(otherUser._id);
-                }
-              }}
-            >
-              {mode === "chat" && isGroup 
-                ? (chat?.group?.name || "Nhóm") 
-                : (mode === "chat" && isDirect ? ((otherUser?._id && chat?.nicknames && otherUser._id in chat.nicknames) ? chat.nicknames[otherUser._id] : (otherUser?.displayName || "User")) : (profileData?.displayName || "User"))}
-            </h3>
-            
-            {mode === "chat" && isGroup && (
-              <p className="text-sm text-muted-foreground mt-1">
-                {chat?.participants?.length || 0} thành viên
-              </p>
-            )}
+              {/* Name */}
+              <h3
+                className={cn(
+                  "text-xl font-bold text-center text-foreground",
+                  otherUser && "cursor-pointer hover:text-purple-400 transition-colors"
+                )}
+                onClick={() => {
+                  if (otherUser?._id) {
+                    openAccountModal(otherUser._id);
+                  }
+                }}
+              >
+                {mode === "chat" && (isGroup || isChannel)
+                  ? (chat?.group?.name || (isChannel ? "Kênh" : "Nhóm"))
+                  : (mode === "chat" && isDirect ? ((otherUser?._id && chat?.nicknames && otherUser._id in chat.nicknames) ? chat.nicknames[otherUser._id] : (otherUser?.displayName || "User")) : (profileData?.displayName || "User"))}
+              </h3>
 
-            {/* Bio */}
-            {profileData?.bio && (
-              <p className="mt-4 text-center text-sm text-muted-foreground bg-muted/50 p-3 rounded-lg w-full">
-                {profileData.bio}
-              </p>
-            )}
-
-            <div className="w-full mt-6 space-y-4">
-              {/* Phone & Joined Date for User Profile or Direct Chat */}
-              {(!isGroup) && profileData?.phone && (
-                <div className="flex items-center gap-3 text-sm">
-                  <div className="p-2 bg-primary/10 text-primary rounded-full">
-                    <Phone className="size-4" />
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground">Số điện thoại</p>
-                    <p className="font-medium text-foreground">{profileData.phone}</p>
-                  </div>
-                </div>
+              {mode === "chat" && (isGroup || isChannel) && (
+                <p className="text-sm text-muted-foreground mt-1">
+                  {chat?.participants?.length || 0} {isChannel ? "người theo dõi" : "thành viên"}
+                </p>
               )}
 
-              {(!isGroup) && profileData?.createdAt && (
-                <div className="flex items-center gap-3 text-sm">
-                  <div className="p-2 bg-primary/10 text-primary rounded-full">
-                    <Calendar className="size-4" />
+              {/* Bio */}
+              {profileData?.bio && (
+                <p className="mt-4 text-center text-sm text-muted-foreground bg-muted/50 p-3 rounded-lg w-full">
+                  {profileData.bio}
+                </p>
+              )}
+
+              <div className="w-full mt-6 space-y-4">
+                {/* Phone & Joined Date for User Profile or Direct Chat */}
+                {(!isGroup) && profileData?.phone && (
+                  <div className="flex items-center gap-3 text-sm">
+                    <div className="p-2 bg-primary/10 text-primary rounded-full">
+                      <Phone className="size-4" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Số điện thoại</p>
+                      <p className="font-medium text-foreground">{profileData.phone}</p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground">Tham gia từ</p>
-                    <p className="font-medium text-foreground">
-                      {(() => {
-                        try {
-                          const d = new Date(profileData.createdAt);
-                          return !isNaN(d.getTime())
-                            ? d.toLocaleDateString("vi-VN", {
+                )}
+
+                {(!isGroup) && profileData?.createdAt && (
+                  <div className="flex items-center gap-3 text-sm">
+                    <div className="p-2 bg-primary/10 text-primary rounded-full">
+                      <Calendar className="size-4" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Tham gia từ</p>
+                      <p className="font-medium text-foreground">
+                        {(() => {
+                          try {
+                            const d = new Date(profileData.createdAt);
+                            return !isNaN(d.getTime())
+                              ? d.toLocaleDateString("vi-VN", {
                                 day: "2-digit",
                                 month: "2-digit",
                                 year: "numeric",
                               })
-                            : "Chưa cập nhật";
-                        } catch (e) {
-                          return "Chưa cập nhật";
-                        }
-                      })()}
-                    </p>
+                              : "Chưa cập nhật";
+                          } catch (e) {
+                            return "Chưa cập nhật";
+                          }
+                        })()}
+                      </p>
+                    </div>
                   </div>
-                </div>
-              )}
-              
-              {/* Actions for Chat Mode */}
-              {mode === "chat" && chat && (
-                <div className="pt-4 border-t border-border mt-4">
-                  <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-2">Tùy chỉnh trò chuyện</h4>
-                  
-                  <ActionRow icon={ImageIcon} label="Đổi hình nền" onClick={() => setShowWallpaperModal(true)} />
-                  
-                  <ActionRow icon={CaseSensitive} label="Đổi biệt danh" onClick={() => setShowNicknameModal(true)} />
-                  
+                )}
 
-                  {isGroup && (
-                    <ActionRow icon={Settings} label="Cài đặt nhóm" onClick={() => setShowGroupSettings(true)} />
-                  )}
-                  
-                  {mode === "chat" && (
-                    <>
-                      <ActionRow icon={Search} label="Tìm kiếm tin nhắn" onClick={() => setShowSearchMessages(true)} />
-                      <ActionRow icon={Pin} label="Tin nhắn đã ghim" onClick={() => setShowPinnedMessages(true)} />
-                      {!isLocked && (
-                        <ActionRow icon={Lock} label="Khóa cuộc trò chuyện" onClick={() => setShowLockDialog(true)} />
-                      )}
-                      {isLocked && (
-                        <ActionRow icon={Unlock} label="Gỡ khóa / Đổi mã PIN" onClick={() => setShowResetLockDialog(true)} />
-                      )}
-                    </>
-                  )}
+                {/* Actions for Chat Mode */}
+                {mode === "chat" && chat && (
+                  <div className="pt-4 border-t border-border mt-4">
+                    <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-2">Tùy chỉnh trò chuyện</h4>
 
-                  {isDirect && (
-                    <>
-                      {isTargetFriend && (
-                        <ActionRow 
-                          icon={UserMinus} 
-                          label="Xóa bạn" 
-                          onClick={handleUnfriend} 
-                          danger
+                    {(!isChannel || isChannelAdmin) && (
+                      <ActionRow icon={ImageIcon} label="Đổi hình nền" onClick={() => setShowWallpaperModal(true)} />
+                    )}
+
+                    {!isChannel && (
+                      <ActionRow icon={CaseSensitive} label="Đổi biệt danh" onClick={() => setShowNicknameModal(true)} />
+                    )}
+
+                    {isGroup && (
+                      <ActionRow icon={Settings} label="Cài đặt nhóm" onClick={() => setShowGroupSettings(true)} />
+                    )}
+                    {isChannel && isChannelAdmin && (
+                      <ActionRow icon={Settings} label="Cài đặt kênh" onClick={() => setShowGroupSettings(true)} />
+                    )}
+
+                    {mode === "chat" && (
+                      <>
+                        {(!isChannel || isChannelAdmin) && (
+                          <ActionRow icon={Search} label="Tìm kiếm tin nhắn" onClick={() => setShowSearchMessages(true)} />
+                        )}
+                        <ActionRow icon={Pin} label="Tin nhắn đã ghim" onClick={() => setShowPinnedMessages(true)} />
+                        
+                        {(!isChannel || isChannelAdmin) && !isLocked && (
+                          <ActionRow icon={Lock} label="Khóa cuộc trò chuyện" onClick={() => setShowLockDialog(true)} />
+                        )}
+                        {(!isChannel || isChannelAdmin) && isLocked && (
+                          <ActionRow icon={Unlock} label="Gỡ khóa / Đổi mã PIN" onClick={() => setShowResetLockDialog(true)} />
+                        )}
+                      </>
+                    )}
+
+                    {isDirect && (
+                      <>
+                        {isTargetFriend && (
+                          <ActionRow
+                            icon={UserMinus}
+                            label="Xóa bạn"
+                            onClick={handleUnfriend}
+                            danger
+                          />
+                        )}
+                        <ActionRow
+                          icon={Ban}
+                          label={isBlocked ? "Bỏ chặn người dùng" : "Chặn người dùng"}
+                          onClick={handleBlockUser}
+                          danger={!isBlocked}
+                          success={isBlocked}
                         />
-                      )}
-                      <ActionRow 
-                        icon={Ban} 
-                        label={isBlocked ? "Bỏ chặn người dùng" : "Chặn người dùng"} 
-                        onClick={handleBlockUser} 
-                        danger={!isBlocked}
-                        success={isBlocked}
+                      </>
+                    )}
+
+                    {(isGroup || isChannel) && (
+                      <>
+                        {isChannel && isChannelAdmin ? (
+                          <ActionRow
+                            icon={Trash2}
+                            label="Xóa kênh"
+                            onClick={() => setShowDeleteChannelDialog(true)}
+                            danger
+                          />
+                        ) : (
+                          <ActionRow
+                            icon={LogOut}
+                            label={isChannel ? "Rời kênh" : "Rời nhóm"}
+                            onClick={async () => {
+                              if (window.confirm(`Bạn có chắc chắn muốn rời ${isChannel ? "kênh" : "nhóm"} này không?`)) {
+                                try {
+                                  await useChatStore.getState().leaveGroup(chat._id);
+                                  toast.success(`Đã rời ${isChannel ? "kênh" : "nhóm"} thành công`);
+                                  closeProfile();
+                                } catch (error: any) {
+                                  toast.error(error.response?.data?.message || "Lỗi khi rời");
+                                }
+                              }
+                            }}
+                            danger
+                          />
+                        )}
+                      </>
+                    )}
+                  </div>
+                )}
+
+                {/* Actions for User Profile Mode */}
+                {mode === "user" && profileData && profileData._id !== user?._id && (
+                  <div className="pt-4 border-t border-border mt-4 w-full">
+                    <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-2">Tùy chọn</h4>
+                    {isTargetFriend && (
+                      <ActionRow
+                        icon={UserMinus}
+                        label="Xóa bạn"
+                        onClick={handleUnfriend}
+                        danger
                       />
-                    </>
-                  )}
-                </div>
-              )}
-
-              {/* Actions for User Profile Mode */}
-              {mode === "user" && profileData && profileData._id !== user?._id && (
-                <div className="pt-4 border-t border-border mt-4 w-full">
-                  <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-2">Tùy chọn</h4>
-                  {isTargetFriend && (
-                    <ActionRow 
-                      icon={UserMinus} 
-                      label="Xóa bạn" 
-                      onClick={handleUnfriend} 
-                      danger
+                    )}
+                    <ActionRow
+                      icon={Ban}
+                      label={isBlocked ? "Bỏ chặn người dùng" : "Chặn người dùng"}
+                      onClick={handleBlockUser}
+                      danger={!isBlocked}
+                      success={isBlocked}
                     />
-                  )}
-                  <ActionRow 
-                    icon={Ban} 
-                    label={isBlocked ? "Bỏ chặn người dùng" : "Chặn người dùng"} 
-                    onClick={handleBlockUser} 
-                    danger={!isBlocked}
-                    success={isBlocked}
-                  />
-                </div>
-              )}
+                  </div>
+                )}
 
-              {/* Stats for Chat Mode */}
-              {mode === "chat" && chat && renderStats()}
-            </div>
+                {/* Stats for Chat Mode */}
+                {mode === "chat" && chat && renderStats()}
+              </div>
             </div>
           </>
         )}
@@ -455,27 +518,27 @@ const ProfileSidebar = () => {
         <>
           <WallpaperModal open={showWallpaperModal} onOpenChange={setShowWallpaperModal} conversationId={chat._id} />
           <NicknameModal open={showNicknameModal} onOpenChange={setShowNicknameModal} conversation={chat} />
-          {isGroup && (
+          {(isGroup || isChannel) && (
             <GroupSettingsModal open={showGroupSettings} onOpenChange={setShowGroupSettings} conversation={chat} />
           )}
           {isGroup && (
             <RenameGroupModal open={showRenameGroup} onOpenChange={setShowRenameGroup} conversation={chat} />
           )}
-          <SharedMediaModal 
-            open={showSharedMedia} 
-            onOpenChange={setShowSharedMedia} 
-            conversationId={chat._id} 
-            defaultTab={sharedMediaTab} 
+          <SharedMediaModal
+            open={showSharedMedia}
+            onOpenChange={setShowSharedMedia}
+            conversationId={chat._id}
+            defaultTab={sharedMediaTab}
           />
-          <SearchMessagesModal 
-            open={showSearchMessages} 
-            onOpenChange={setShowSearchMessages} 
-            conversation={chat} 
+          <SearchMessagesModal
+            open={showSearchMessages}
+            onOpenChange={setShowSearchMessages}
+            conversation={chat}
           />
-          <PinnedMessagesModal 
-            open={showPinnedMessages} 
-            onOpenChange={setShowPinnedMessages} 
-            conversation={chat} 
+          <PinnedMessagesModal
+            open={showPinnedMessages}
+            onOpenChange={setShowPinnedMessages}
+            conversation={chat}
           />
           <Dialog open={showLockDialog} onOpenChange={setShowLockDialog}>
             <DialogContent>
@@ -529,7 +592,7 @@ const ProfileSidebar = () => {
                     Đổi mã PIN
                   </button>
                 </div>
-                
+
                 <p className="text-sm text-muted-foreground">
                   Để xác minh danh tính, vui lòng nhập mật khẩu tài khoản của bạn.
                 </p>
@@ -551,13 +614,37 @@ const ProfileSidebar = () => {
                     className="text-center tracking-widest text-lg"
                   />
                 )}
-                
-                <Button 
-                  type="submit" 
-                  className="w-full" 
+
+                <Button
+                  type="submit"
+                  className="w-full"
                   disabled={!resetPassword || (resetMode === "change" && resetNewPin.length !== 4)}
                 >
                   Xác nhận <Unlock className="ml-2 size-4" />
+                </Button>
+              </form>
+            </DialogContent>
+          </Dialog>
+
+          <Dialog open={showDeleteChannelDialog} onOpenChange={setShowDeleteChannelDialog}>
+            <DialogContent aria-describedby={undefined}>
+              <DialogHeader>
+                <DialogTitle>Xác nhận xóa kênh</DialogTitle>
+              </DialogHeader>
+              <form onSubmit={handleDeleteChannel} className="space-y-4 pt-4">
+                <p className="text-sm text-muted-foreground">
+                  Hành động này không thể hoàn tác. Kênh và toàn bộ tin nhắn sẽ bị xóa vĩnh viễn khỏi hệ thống.
+                  Vui lòng nhập mật khẩu tài khoản để xác nhận.
+                </p>
+                <Input
+                  type="password"
+                  placeholder="Nhập mật khẩu tài khoản của bạn"
+                  value={deleteChannelPassword}
+                  onChange={(e) => setDeleteChannelPassword(e.target.value)}
+                  className="w-full"
+                />
+                <Button type="submit" variant="destructive" className="w-full" disabled={!deleteChannelPassword}>
+                  Xóa kênh <Trash2 className="ml-2 size-4" />
                 </Button>
               </form>
             </DialogContent>
@@ -569,13 +656,12 @@ const ProfileSidebar = () => {
 };
 
 const ActionRow = ({ icon: Icon, label, onClick, danger, success }: any) => (
-  <button 
+  <button
     onClick={onClick}
-    className={`w-full flex items-center justify-between p-3 rounded-lg hover:bg-muted transition-colors ${
-      danger ? "text-red-500 hover:text-red-600 hover:bg-red-500/10" : 
-      success ? "text-green-500 hover:text-green-600 hover:bg-green-500/10" : 
-      "text-foreground"
-    }`}
+    className={`w-full flex items-center justify-between p-3 rounded-lg hover:bg-muted transition-colors ${danger ? "text-red-500 hover:text-red-600 hover:bg-red-500/10" :
+        success ? "text-green-500 hover:text-green-600 hover:bg-green-500/10" :
+          "text-foreground"
+      }`}
   >
     <div className="flex items-center gap-3">
       <Icon className="size-4" />
@@ -585,7 +671,7 @@ const ActionRow = ({ icon: Icon, label, onClick, danger, success }: any) => (
 );
 
 const FileRow = ({ icon: Icon, color, bg, name, onClick }: any) => (
-  <button 
+  <button
     onClick={onClick}
     className="w-full flex items-center justify-between p-2 rounded-lg hover:bg-muted transition-colors text-foreground"
   >

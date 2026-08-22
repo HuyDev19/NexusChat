@@ -1,6 +1,6 @@
 import { Card } from "@/components/ui/card";
 import { formatOnlineTime, cn } from "@/lib/utils";
-import { MoreHorizontal, Trash2, Archive, Bell, BellOff, Flag, Pin, PinOff, UserPlus } from "lucide-react";
+import { MoreHorizontal, Trash2, Archive, Bell, BellOff, Flag, Pin, PinOff, UserPlus, LogOut } from "lucide-react";
 import NewGroupChatModal from "./NewGroupChatModal";
 import {
   DropdownMenu,
@@ -31,6 +31,7 @@ interface ChatCardProps {
   name: string;
   timestamp?: Date;
   isGroup?: boolean;
+  isChannel?: boolean;
   isLeader?: boolean;
   isActive: boolean;
   onSelect: (id: string) => void;
@@ -52,12 +53,14 @@ const ChatCard = ({
   subtitle,
   rightSection,
   isGroup,
+  isChannel,
   isLeader,
   targetUser,
 }: ChatCardProps) => {
   const [showConfirm, setShowConfirm] = useState(false);
   const [showCreateGroupModal, setShowCreateGroupModal] = useState(false);
-  const [confirmType, setConfirmType] = useState<"clear" | "leave" | "disband" | null>(null);
+  const [confirmType, setConfirmType] = useState<"clear" | "leave" | "disband" | "leaveChannel" | "deleteChannel" | null>(null);
+  const [deleteChannelPassword, setDeleteChannelPassword] = useState("");
   
   const {
     clearChatHistory,
@@ -79,11 +82,24 @@ const ChatCard = ({
     (mutedConversations[convoId] === -1 || mutedConversations[convoId] > Date.now());
 
   const handleConfirm = async () => {
-    if (confirmType === "clear") await clearChatHistory(convoId);
-    else if (confirmType === "leave") await leaveGroup(convoId);
-    else if (confirmType === "disband") await deleteConversation(convoId);
-    setShowConfirm(false);
-    setConfirmType(null);
+    try {
+      if (confirmType === "clear") await clearChatHistory(convoId);
+      else if (confirmType === "leave" || confirmType === "leaveChannel") await leaveGroup(convoId);
+      else if (confirmType === "disband") await deleteConversation(convoId);
+      else if (confirmType === "deleteChannel") {
+        if (!deleteChannelPassword) {
+          toast.error("Vui lòng nhập mật khẩu");
+          return;
+        }
+        await deleteConversation(convoId, deleteChannelPassword);
+        toast.success("Đã xóa kênh");
+      }
+      setShowConfirm(false);
+      setConfirmType(null);
+      setDeleteChannelPassword("");
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || "Đã có lỗi xảy ra");
+    }
   };
 
   return (
@@ -273,7 +289,7 @@ const ChatCard = ({
                     Xóa đoạn chat
                   </DropdownMenuItem>
 
-                  {isGroup && (
+                  {isGroup && !isChannel && (
                     <DropdownMenuItem
                       className="cursor-pointer rounded-lg"
                       onClick={(e) => {
@@ -287,7 +303,7 @@ const ChatCard = ({
                     </DropdownMenuItem>
                   )}
 
-                  {isGroup && isLeader && (
+                  {isGroup && !isChannel && isLeader && (
                     <DropdownMenuItem
                       className="text-destructive cursor-pointer rounded-lg"
                       onClick={(e) => {
@@ -298,6 +314,34 @@ const ChatCard = ({
                     >
                       <Trash2 className="size-4 mr-2" />
                       Giải tán nhóm
+                    </DropdownMenuItem>
+                  )}
+
+                  {isChannel && !isLeader && (
+                    <DropdownMenuItem
+                      className="cursor-pointer rounded-lg"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setConfirmType("leaveChannel");
+                        setShowConfirm(true);
+                      }}
+                    >
+                      <LogOut className="size-4 mr-2" />
+                      Rời kênh
+                    </DropdownMenuItem>
+                  )}
+
+                  {isChannel && isLeader && (
+                    <DropdownMenuItem
+                      className="text-destructive cursor-pointer rounded-lg"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setConfirmType("deleteChannel");
+                        setShowConfirm(true);
+                      }}
+                    >
+                      <Trash2 className="size-4 mr-2" />
+                      Xóa kênh
                     </DropdownMenuItem>
                   )}
                 </DropdownMenuContent>
@@ -313,12 +357,30 @@ const ChatCard = ({
             <AlertDialogTitle>
               {confirmType === "clear" && "Bạn có chắc chắn muốn xóa đoạn chat này?"}
               {confirmType === "leave" && "Bạn có chắc chắn muốn rời nhóm?"}
+              {confirmType === "leaveChannel" && "Bạn có chắc chắn muốn rời kênh?"}
               {confirmType === "disband" && "Bạn có chắc chắn muốn giải tán nhóm?"}
+              {confirmType === "deleteChannel" && "Xác nhận xóa kênh"}
             </AlertDialogTitle>
-            <AlertDialogDescription>
-              {confirmType === "clear" && "Hành động này sẽ xóa/ẩn lịch sử tin nhắn ở phía bạn."}
-              {confirmType === "leave" && "Bạn sẽ không thể nhận tin nhắn từ nhóm này nữa trừ khi được thêm lại."}
-              {confirmType === "disband" && "Hành động này không thể hoàn tác. Nhóm sẽ bị xóa vĩnh viễn với tất cả mọi người."}
+            <AlertDialogDescription asChild>
+              <div className="flex flex-col gap-4 mt-2">
+                {confirmType === "clear" && <span>Hành động này sẽ xóa/ẩn lịch sử tin nhắn ở phía bạn.</span>}
+                {confirmType === "leave" && <span>Bạn sẽ không thể nhận tin nhắn từ nhóm này nữa trừ khi được thêm lại.</span>}
+                {confirmType === "leaveChannel" && <span>Bạn sẽ không thể xem thông tin kênh này nữa.</span>}
+                {confirmType === "disband" && <span>Hành động này không thể hoàn tác. Nhóm sẽ bị xóa vĩnh viễn với tất cả mọi người.</span>}
+                {confirmType === "deleteChannel" && (
+                  <>
+                    <span>Hành động này không thể hoàn tác. Kênh và toàn bộ tin nhắn sẽ bị xóa vĩnh viễn khỏi hệ thống. Vui lòng nhập mật khẩu tài khoản để xác nhận.</span>
+                    <input
+                      type="password"
+                      placeholder="Nhập mật khẩu tài khoản của bạn"
+                      value={deleteChannelPassword}
+                      onChange={(e) => setDeleteChannelPassword(e.target.value)}
+                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 mt-2"
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                  </>
+                )}
+              </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

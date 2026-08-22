@@ -53,7 +53,7 @@ export const sendDirectMessage = async (req, res) => {
     });
 
     await updateConversationAfterCreateMessage(conversation, message, senderId);
-    
+
     await conversation.save();
 
     await message.populate("replyTo", "content senderId imgUrl audioUrl isRecalled");
@@ -88,6 +88,13 @@ export const sendGroupMessage = async (req, res) => {
 
     if (!content && !audioUrl && !imgUrl && !poll) {
       return res.status(400).json("Thiếu nội dung hoặc file đính kèm hoặc bình chọn");
+    }
+
+    if (conversation.type === "channel") {
+      const userParticipant = conversation.participants.find(p => p.userId.toString() === senderId.toString());
+      if (userParticipant && userParticipant.role === "member") {
+        return res.status(403).json({ message: "Chỉ quản trị viên mới có thể gửi tin nhắn vào kênh này" });
+      }
     }
 
     const message = await Message.create({
@@ -244,6 +251,15 @@ export const pinMessage = async (req, res) => {
     const message = await Message.findById(messageId);
     if (!message) return res.status(404).json({ message: "Không tìm thấy tin nhắn" });
 
+    const conversation = await Conversation.findById(message.conversationId);
+    if (conversation && conversation.type === "channel") {
+      const userId = req.user._id;
+      const userParticipant = conversation.participants.find(p => p.userId.toString() === userId.toString());
+      if (userParticipant && userParticipant.role === "member") {
+        return res.status(403).json({ message: "Chỉ quản trị viên mới có thể ghim tin nhắn trong kênh" });
+      }
+    }
+
     if (!message.isPinned) {
       const pinnedCount = await Message.countDocuments({
         conversationId: message.conversationId,
@@ -257,7 +273,7 @@ export const pinMessage = async (req, res) => {
     message.isPinned = !message.isPinned;
     await message.save();
 
-    const conversation = await Conversation.findById(message.conversationId);
+
     if (conversation) {
       const io = req.app.get("io");
       if (io) {
@@ -333,18 +349,18 @@ export const recallMessage = async (req, res) => {
     // Delete media from cloudinary if present
     if (message.imgUrl) {
       const publicId = message.imgUrl.split("/").pop().split(".")[0];
-      if (publicId) await cloudinary.uploader.destroy(`nexuschat_images/${publicId}`, { resource_type: "image" }).catch(() => {});
+      if (publicId) await cloudinary.uploader.destroy(`nexuschat_images/${publicId}`, { resource_type: "image" }).catch(() => { });
     }
     if (message.audioUrl) {
       const publicId = message.audioUrl.split("/").pop().split(".")[0];
-      if (publicId) await cloudinary.uploader.destroy(`nexuschat_audio/${publicId}`, { resource_type: "video" }).catch(() => {});
+      if (publicId) await cloudinary.uploader.destroy(`nexuschat_audio/${publicId}`, { resource_type: "video" }).catch(() => { });
     }
 
     message.isRecalled = true;
     message.content = undefined;
     message.imgUrl = undefined;
     message.audioUrl = undefined;
-    
+
     await message.save();
 
     const conversation = await Conversation.findById(message.conversationId);
@@ -355,7 +371,7 @@ export const recallMessage = async (req, res) => {
           io.to(`user:${p.userId}`).emit("message:update", {
             messageId,
             conversationId: conversation._id,
-            updates: { 
+            updates: {
               isRecalled: true,
               content: undefined,
               imgUrl: undefined,

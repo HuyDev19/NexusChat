@@ -101,6 +101,41 @@ export const chatService = {
     return res.data.conversation;
   },
 
+  async createChannel(name: string, description?: string, isPublic: boolean = false) {
+    const res = await api.post("/conversations/channel", { name, description, isPublic });
+    return res.data;
+  },
+
+  async joinChannel(channelId: string) {
+    const res = await api.post(`/conversations/${channelId}/join`);
+    return res.data;
+  },
+
+  async updateChannelVisibility(channelId: string, isPublic: boolean) {
+    const res = await api.patch(`/conversations/${channelId}/visibility`, { isPublic });
+    return res.data;
+  },
+
+  async banGroupMember(id: string, memberId: string, duration?: number | null) {
+    const res = await api.post(`/conversations/${id}/members/ban`, { memberId, duration });
+    return res.data;
+  },
+
+  async deleteConversation(id: string, password?: string) {
+    const res = await api.delete(`/conversations/${id}`, { data: { password } });
+    return res.data;
+  },
+
+  async getChannelPreview(id: string) {
+    const res = await api.get(`/conversations/preview/${id}`);
+    return res.data;
+  },
+
+  async explorePublicChannels(q: string = "") {
+    const res = await api.get(`/conversations/channels/explore?q=${encodeURIComponent(q)}`);
+    return res.data;
+  },
+
   async uploadAudio(formData: FormData): Promise<{ audioUrl: string }> {
     const res = await api.post("/messages/upload-audio", formData, {
       headers: { "Content-Type": "multipart/form-data" },
@@ -189,10 +224,7 @@ export const chatService = {
     return res.data;
   },
 
-  deleteConversation: async (conversationId: string) => {
-    const response = await api.delete(`/conversations/${conversationId}`);
-    return response.data;
-  },
+
 
   clearChatHistory: async (conversationId: string) => {
     const response = await api.post(`/conversations/${conversationId}/clear`);

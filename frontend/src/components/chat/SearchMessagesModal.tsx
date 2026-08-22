@@ -28,28 +28,30 @@ export default function SearchMessagesModal({ open, onOpenChange, conversation }
   }, [open]);
 
   useEffect(() => {
+    let isMounted = true;
+    const searchMessages = async (searchQuery: string) => {
+      try {
+        setLoading(true);
+        const data = await chatService.searchMessages(conversation._id, searchQuery);
+        if (isMounted) setMessages(data);
+      } catch (error) {
+        console.error("Lỗi tìm kiếm tin nhắn", error);
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    };
+
     if (open && conversation._id && debouncedQuery.trim()) {
       searchMessages(debouncedQuery);
     } else {
       setMessages([]);
     }
+    return () => { isMounted = false; };
   }, [open, conversation._id, debouncedQuery]);
-
-  const searchMessages = async (searchQuery: string) => {
-    try {
-      setLoading(true);
-      const data = await chatService.searchMessages(conversation._id, searchQuery);
-      setMessages(data);
-    } catch (error) {
-      console.error("Lỗi tìm kiếm tin nhắn", error);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md max-h-[80vh] overflow-hidden flex flex-col p-0">
+      <DialogContent aria-describedby={undefined} className="max-w-md max-h-[80vh] overflow-hidden flex flex-col p-0">
         <DialogHeader className="p-4 border-b">
           <DialogTitle>Tìm kiếm tin nhắn</DialogTitle>
           <div className="relative mt-4">

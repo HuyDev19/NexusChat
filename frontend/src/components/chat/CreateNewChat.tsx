@@ -1,11 +1,13 @@
 import { useState } from "react";
 import { useFriendStore } from "@/stores/useFriendStore";
 import { useChatStore } from "@/stores/useChatStore";
-import { Search, X, Users, UserPlus, UsersRound, Archive, Plus } from "lucide-react";
+import { Search, X, Users, UserPlus, UsersRound, Archive, Plus, Megaphone, Compass } from "lucide-react";
 import FriendListModal from "../createNewChat/FriendListModal";
 import NewGroupChatModal from "./NewGroupChatModal";
 import AddFriendModal from "./AddFriendModal";
 import ArchivedChatsModal from "./ArchivedChatsModal";
+import CreateChannelModal from "./CreateChannelModal";
+import ExploreChannelsModal from "./ExploreChannelsModal";
 import { Input } from "../ui/input";
 import { Button } from "../ui/button";
 import {
@@ -25,6 +27,8 @@ const CreateNewChat = () => {
   const [showFriendModal, setShowFriendModal] = useState(false);
   const [showGroupModal, setShowGroupModal] = useState(false);
   const [showArchivedModal, setShowArchivedModal] = useState(false);
+  const [showCreateChannelModal, setShowCreateChannelModal] = useState(false);
+  const [showExploreChannelsModal, setShowExploreChannelsModal] = useState(false);
 
   const handleOpenFriendModal = async () => {
     await getFriends();
@@ -108,6 +112,26 @@ const CreateNewChat = () => {
 
             <DropdownMenuSeparator className="my-1" />
 
+            {/* Tạo kênh phát sóng */}
+            <DropdownMenuItem
+              onClick={() => setShowCreateChannelModal(true)}
+              className="cursor-pointer rounded-xl font-medium text-xs py-2"
+            >
+              <Megaphone className="w-4 h-4 mr-2.5 text-orange-400" />
+              <span>Tạo kênh phát sóng</span>
+            </DropdownMenuItem>
+
+            {/* Khám phá kênh */}
+            <DropdownMenuItem
+              onClick={() => setShowExploreChannelsModal(true)}
+              className="cursor-pointer rounded-xl font-medium text-xs py-2"
+            >
+              <Compass className="w-4 h-4 mr-2.5 text-cyan-400" />
+              <span>Khám phá kênh</span>
+            </DropdownMenuItem>
+
+            <DropdownMenuSeparator className="my-1" />
+
             {/* 4. Tin nhắn đã lưu trữ */}
             <DropdownMenuItem
               onClick={() => setShowArchivedModal(true)}
@@ -140,6 +164,12 @@ const CreateNewChat = () => {
 
       {/* Modal Tin nhắn đã lưu trữ */}
       <ArchivedChatsModal open={showArchivedModal} setOpen={setShowArchivedModal} />
+
+      {/* Modal Tạo kênh phát sóng */}
+      <CreateChannelModal open={showCreateChannelModal} onOpenChange={setShowCreateChannelModal} />
+
+      {/* Modal Khám phá kênh */}
+      <ExploreChannelsModal open={showExploreChannelsModal} onOpenChange={setShowExploreChannelsModal} />
     </>
   );
 };

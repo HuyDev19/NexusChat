@@ -39,6 +39,7 @@ const GroupChatCard = ({ convo }: { convo: Conversation }) => {
       onSelect={handleSelectConversation}
       unreadCount={unreadCount}
       isGroup={true}
+      isChannel={convo.type === "channel"}
       isLeader={isLeader}
       leftSection={
         <>
@@ -53,7 +54,7 @@ const GroupChatCard = ({ convo }: { convo: Conversation }) => {
       }
       subtitle={
         <p className="text-xs truncate text-muted-foreground">
-          {participants.length} thành viên
+          {participants.length} {convo.type === "channel" ? "người theo dõi" : "thành viên"}
         </p>
       }
     />

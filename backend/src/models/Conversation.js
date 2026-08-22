@@ -83,8 +83,12 @@ const conversationSchema = new mongoose.Schema(
   {
     type: {
       type: String,
-      enum: ["direct", "group", "community"],
+      enum: ["direct", "group", "community", "channel"],
       required: true,
+    },
+    isPublic: {
+      type: Boolean,
+      default: false,
     },
     participants: {
       type: [participantSchema],
@@ -131,6 +135,20 @@ const conversationSchema = new mongoose.Schema(
       of: Date,
       default: {},
     },
+    bannedUsers: [
+      {
+        userId: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "User",
+          required: true,
+        },
+        expiresAt: {
+          type: Date, // null means permanent ban
+          default: null,
+        },
+        _id: false,
+      }
+    ],
   },
   {
     timestamps: true,

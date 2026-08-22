@@ -1,5 +1,6 @@
 import { chatService } from "@/services/chatService";
 import type { ChatState } from "@/types/store";
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { useAuthStore } from "./useAuthStore";
@@ -179,21 +180,21 @@ export const useChatStore = create<ChatState>()(
                 conversations: state.conversations.map((c) =>
                   c._id === conversationId
                     ? {
-                        ...c,
-                        ...(updatedConvo ? { streak: updatedConvo.streak } : {}),
-                        lastMessage: {
-                          _id: sentMessage._id,
-                          content: sentMessage.content ?? "",
-                          createdAt: sentMessage.createdAt,
-                          sender: {
-                            _id: sentMessage.senderId,
-                            displayName: "",
-                            avatarUrl: null,
-                          },
+                      ...c,
+                      ...(updatedConvo ? { streak: updatedConvo.streak } : {}),
+                      lastMessage: {
+                        _id: sentMessage._id,
+                        content: sentMessage.content ?? "",
+                        createdAt: sentMessage.createdAt,
+                        sender: {
+                          _id: sentMessage.senderId,
+                          displayName: "",
+                          avatarUrl: null,
                         },
-                        lastMessageAt: sentMessage.createdAt,
-                        seenBy: [],
-                      }
+                      },
+                      lastMessageAt: sentMessage.createdAt,
+                      seenBy: [],
+                    }
                     : c
                 ),
                 replyingToMessage: null
@@ -249,20 +250,20 @@ export const useChatStore = create<ChatState>()(
               conversations: state.conversations.map((c) =>
                 c._id === conversationId
                   ? {
-                      ...c,
-                      lastMessage: {
-                        _id: sentMessage._id,
-                        content: sentMessage.content ?? "",
-                        createdAt: sentMessage.createdAt,
-                        sender: {
-                          _id: sentMessage.senderId || (typeof sentMessage.sender === 'object' ? sentMessage.sender?._id : sentMessage.sender) || "",
-                          displayName: (typeof sentMessage.sender === 'object' ? sentMessage.sender?.displayName : "") || "",
-                          avatarUrl: (typeof sentMessage.sender === 'object' ? sentMessage.sender?.avatarUrl : null) || null,
-                        },
+                    ...c,
+                    lastMessage: {
+                      _id: sentMessage._id,
+                      content: sentMessage.content ?? "",
+                      createdAt: sentMessage.createdAt,
+                      sender: {
+                        _id: sentMessage.senderId || (typeof sentMessage.sender === 'object' ? sentMessage.sender?._id : sentMessage.sender) || "",
+                        displayName: (typeof sentMessage.sender === 'object' ? sentMessage.sender?.displayName : "") || "",
+                        avatarUrl: (typeof sentMessage.sender === 'object' ? sentMessage.sender?.avatarUrl : null) || null,
                       },
-                      lastMessageAt: sentMessage.createdAt,
-                      seenBy: [],
-                    }
+                    },
+                    lastMessageAt: sentMessage.createdAt,
+                    seenBy: [],
+                  }
                   : c
               ),
               replyingToMessage: null,
@@ -322,9 +323,9 @@ export const useChatStore = create<ChatState>()(
           activeConversationId: state.activeConversationId === id ? null : state.activeConversationId,
         }));
       },
-      deleteConversation: async (id: string) => {
+      deleteConversation: async (id: string, password?: string) => {
         try {
-          await chatService.deleteConversation(id);
+          await chatService.deleteConversation(id, password);
           get().removeConversation(id);
           toast.success("Đã giải tán nhóm");
         } catch (error) {
@@ -423,14 +424,14 @@ export const useChatStore = create<ChatState>()(
           return {
             conversations: exists
               ? state.conversations.map((c) =>
-                  c._id.toString() === convo._id.toString() ? convo : c
-                )
+                c._id.toString() === convo._id.toString() ? convo : c
+              )
               : [convo, ...state.conversations],
             activeConversationId: convo._id,
           };
         });
       },
-      createConversation: async (type, name, memberIds) => {
+      createConversation: async (type: "group" | "direct", name: string, memberIds: string[]) => {
         try {
           set({ loading: true });
           const conversation = await chatService.createConversation(
@@ -484,13 +485,13 @@ export const useChatStore = create<ChatState>()(
                 avatarUrl: updatedUser.avatarUrl !== undefined ? updatedUser.avatarUrl : (p.avatarUrl ?? pUserIdObj?.avatarUrl),
                 ...(pUserIdObj && typeof pUserIdObj === "object"
                   ? {
-                      userId: {
-                        ...pUserIdObj,
-                        ...updatedUser,
-                        displayName: updatedUser.displayName ?? pUserIdObj.displayName,
-                        avatarUrl: updatedUser.avatarUrl !== undefined ? updatedUser.avatarUrl : pUserIdObj.avatarUrl,
-                      },
-                    }
+                    userId: {
+                      ...pUserIdObj,
+                      ...updatedUser,
+                      displayName: updatedUser.displayName ?? pUserIdObj.displayName,
+                      avatarUrl: updatedUser.avatarUrl !== undefined ? updatedUser.avatarUrl : pUserIdObj.avatarUrl,
+                    },
+                  }
                   : {}),
               };
             });
@@ -506,40 +507,40 @@ export const useChatStore = create<ChatState>()(
 
             const updatedLastMessage = c.lastMessage
               ? {
-                  ...c.lastMessage,
-                  sender: isUserMatch(c.lastMessage.sender)
+                ...c.lastMessage,
+                sender: isUserMatch(c.lastMessage.sender)
+                  ? {
+                    ...(typeof c.lastMessage.sender === "object"
+                      ? c.lastMessage.sender
+                      : { _id: updatedUser._id }),
+                    displayName:
+                      updatedUser.displayName ??
+                      (typeof c.lastMessage.sender === "object"
+                        ? c.lastMessage.sender.displayName
+                        : ""),
+                    avatarUrl:
+                      updatedUser.avatarUrl !== undefined
+                        ? updatedUser.avatarUrl
+                        : typeof c.lastMessage.sender === "object"
+                          ? c.lastMessage.sender.avatarUrl
+                          : null,
+                  }
+                  : c.lastMessage.sender,
+                senderId: isUserMatch((c.lastMessage as any).senderId)
+                  ? typeof (c.lastMessage as any).senderId === "object"
                     ? {
-                        ...(typeof c.lastMessage.sender === "object"
-                          ? c.lastMessage.sender
-                          : { _id: updatedUser._id }),
-                        displayName:
-                          updatedUser.displayName ??
-                          (typeof c.lastMessage.sender === "object"
-                            ? c.lastMessage.sender.displayName
-                            : ""),
-                        avatarUrl:
-                          updatedUser.avatarUrl !== undefined
-                            ? updatedUser.avatarUrl
-                            : typeof c.lastMessage.sender === "object"
-                            ? c.lastMessage.sender.avatarUrl
-                            : null,
-                      }
-                    : c.lastMessage.sender,
-                  senderId: isUserMatch((c.lastMessage as any).senderId)
-                    ? typeof (c.lastMessage as any).senderId === "object"
-                      ? {
-                          ...(c.lastMessage as any).senderId,
-                          displayName:
-                            updatedUser.displayName ??
-                            (c.lastMessage as any).senderId.displayName,
-                          avatarUrl:
-                            updatedUser.avatarUrl !== undefined
-                              ? updatedUser.avatarUrl
-                              : (c.lastMessage as any).senderId.avatarUrl,
-                        }
-                      : (c.lastMessage as any).senderId
-                    : (c.lastMessage as any).senderId,
-                }
+                      ...(c.lastMessage as any).senderId,
+                      displayName:
+                        updatedUser.displayName ??
+                        (c.lastMessage as any).senderId.displayName,
+                      avatarUrl:
+                        updatedUser.avatarUrl !== undefined
+                          ? updatedUser.avatarUrl
+                          : (c.lastMessage as any).senderId.avatarUrl,
+                    }
+                    : (c.lastMessage as any).senderId
+                  : (c.lastMessage as any).senderId,
+              }
               : c.lastMessage;
 
             return {
@@ -819,7 +820,63 @@ export const useChatStore = create<ChatState>()(
           toast.error(error.response?.data?.message || "Lỗi bình chọn");
         }
       },
-
+      createChannel: async (name, description, isPublic) => {
+        try {
+          const res = await chatService.createChannel(name, description, isPublic);
+          const newConvo = res.conversation;
+          set((state) => ({
+            conversations: [newConvo, ...state.conversations],
+            activeConversationId: newConvo._id,
+          }));
+          toast.success("Tạo kênh thành công!");
+          return newConvo;
+        } catch (error: any) {
+          toast.error(error.response?.data?.message || "Lỗi tạo kênh");
+          throw error;
+        }
+      },
+      joinChannel: async (channelId) => {
+        try {
+          const res = await chatService.joinChannel(channelId);
+          const newConvo = res.conversation;
+          set((state) => {
+            const exists = state.conversations.some(c => c._id === channelId);
+            return {
+              conversations: exists 
+                ? state.conversations.map(c => c._id === channelId ? newConvo : c)
+                : [newConvo, ...state.conversations],
+              activeConversationId: newConvo._id,
+            };
+          });
+          toast.success("Tham gia kênh thành công!");
+        } catch (error: any) {
+          toast.error(error.response?.data?.message || "Lỗi tham gia kênh");
+          throw error;
+        }
+      },
+      updateChannelVisibility: async (channelId, isPublic) => {
+        try {
+          const res = await chatService.updateChannelVisibility(channelId, isPublic);
+          set((state) => ({
+            conversations: state.conversations.map(c => 
+              c._id === channelId ? { ...c, isPublic: res.isPublic } : c
+            )
+          }));
+          toast.success("Cập nhật trạng thái kênh thành công!");
+        } catch (error: any) {
+          toast.error(error.response?.data?.message || "Lỗi cập nhật trạng thái");
+          throw error;
+        }
+      },
+      explorePublicChannels: async (q) => {
+        try {
+          const res = await chatService.explorePublicChannels(q);
+          return res.channels;
+        } catch {
+          toast.error("Không thể tải danh sách kênh");
+          return [];
+        }
+      },
     }),
     {
       name: "chat-storage",

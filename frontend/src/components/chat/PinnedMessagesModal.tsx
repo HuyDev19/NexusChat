@@ -17,26 +17,28 @@ export default function PinnedMessagesModal({ open, onOpenChange, conversation }
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
+    let isMounted = true;
+    const fetchPinnedMessages = async () => {
+      try {
+        setLoading(true);
+        const data = await chatService.getPinnedMessages(conversation._id);
+        if (isMounted) setMessages(data);
+      } catch (error) {
+        console.error("Lỗi khi tải tin nhắn ghim", error);
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    };
+
     if (open && conversation._id) {
       fetchPinnedMessages();
     }
+    return () => { isMounted = false; };
   }, [open, conversation._id]);
-
-  const fetchPinnedMessages = async () => {
-    try {
-      setLoading(true);
-      const data = await chatService.getPinnedMessages(conversation._id);
-      setMessages(data);
-    } catch (error) {
-      console.error("Lỗi khi tải tin nhắn ghim", error);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md max-h-[80vh] overflow-hidden flex flex-col p-0">
+      <DialogContent aria-describedby={undefined} className="max-w-md max-h-[80vh] overflow-hidden flex flex-col p-0">
         <DialogHeader className="p-4 border-b">
           <DialogTitle>Tin nhắn đã ghim</DialogTitle>
         </DialogHeader>

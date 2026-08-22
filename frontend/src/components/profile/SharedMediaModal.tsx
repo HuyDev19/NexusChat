@@ -34,7 +34,7 @@ const SharedMediaModal = ({ open, onOpenChange, conversationId, defaultTab = "me
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl h-[80vh] flex flex-col">
+      <DialogContent aria-describedby={undefined} className="max-w-2xl h-[80vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>Kho lưu trữ chung</DialogTitle>
         </DialogHeader>
@@ -63,8 +63,8 @@ const SharedMediaModal = ({ open, onOpenChange, conversationId, defaultTab = "me
                 {images.map(img => (
                   <div key={img._id} className="aspect-square relative group rounded-md overflow-hidden bg-muted">
                     <img src={img.imgUrl!} alt="Shared" className="w-full h-full object-cover" />
-                    <a 
-                      href={img.imgUrl!} 
+                    <a
+                      href={img.imgUrl!}
                       target="_blank"
                       rel="noreferrer"
                       className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white"

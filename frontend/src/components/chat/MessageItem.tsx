@@ -206,6 +206,12 @@ const MessageItem = ({
 
   const isAI = senderIdStr === "000000000000000000000000";
 
+  const isChannel = selectedConvo.type === "channel";
+  const currentUserParticipant = selectedConvo.participants?.find((p: Participant) => p._id === user?._id);
+  const isChannelAdmin = isChannel && (currentUserParticipant?.role === "leader" || currentUserParticipant?.role === "deputy");
+  const canPin = !isChannel || isChannelAdmin;
+  const canReply = !isChannel || isChannelAdmin;
+
   const getDisplayName = (): string => {
     if (isAI) return "NexusAI";
     if (!participant) return "Unknown";
@@ -516,13 +522,15 @@ const MessageItem = ({
                         </DropdownMenuItem>
                       ))}
                     </div>
-                    <DropdownMenuItem
-                      onClick={() => setReplyingToMessage(message)}
-                      className="cursor-pointer font-medium flex items-center gap-2"
-                    >
-                      <Reply className="size-4" />
-                      Trả lời
-                    </DropdownMenuItem>
+                    {canReply && (
+                      <DropdownMenuItem
+                        onClick={() => setReplyingToMessage(message)}
+                        className="cursor-pointer font-medium flex items-center gap-2"
+                      >
+                        <Reply className="size-4" />
+                        Trả lời
+                      </DropdownMenuItem>
+                    )}
                     {!message.isViewOnce && (
                       <DropdownMenuItem
                         onClick={() => setForwardingMessage(message)}
@@ -532,13 +540,15 @@ const MessageItem = ({
                         Chuyển tiếp
                       </DropdownMenuItem>
                     )}
-                    <DropdownMenuItem
-                      onClick={() => pinMessage(message._id)}
-                      className="cursor-pointer font-medium flex items-center gap-2"
-                    >
-                      {message.isPinned ? <PinOff className="size-4" /> : <Pin className="size-4" />}
-                      {message.isPinned ? "Bỏ ghim tin nhắn" : "Ghim tin nhắn"}
-                    </DropdownMenuItem>
+                    {canPin && (
+                      <DropdownMenuItem
+                        onClick={() => pinMessage(message._id)}
+                        className="cursor-pointer font-medium flex items-center gap-2"
+                      >
+                        {message.isPinned ? <PinOff className="size-4" /> : <Pin className="size-4" />}
+                        {message.isPinned ? "Bỏ ghim tin nhắn" : "Ghim tin nhắn"}
+                      </DropdownMenuItem>
+                    )}
                     {message.isOwn && (
                       <DropdownMenuItem
                         onClick={() => recallMessage(message._id)}
