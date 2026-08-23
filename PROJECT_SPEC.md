@@ -1,7 +1,7 @@
 # NexusChat - Project Specification
 
-**Document Generated**: August 09, 2026
-**Version**: 1.3.0
+**Document Generated**: August 23, 2026
+**Version**: 1.5.0
 **Status**: Active Development
 
 ---
@@ -38,6 +38,7 @@ NexusChat is a web-based messaging application for social communication. The cur
 | livekit-server-sdk | ^2.17.0 | Server token generation for LiveKit SFU |
 | cloudinary | ^2.0.0 | Image hosting for avatars |
 | multer | ^1.4.5 | File upload middleware |
+| @google/genai | ^0.1.2 | Gemini API SDK for AI Assistant |
 
 ### Frontend
 | Technology | Version / Note | Purpose |
@@ -218,15 +219,23 @@ The project is organized as a monorepo with two main parts:
 - **Shared Nicknames** for participants in a conversation
 - **Block/Unblock Users** in direct conversations
 - **Real-time synchronization**: Instant message delivery and conversation list updates via Socket.IO
-- **@NexusAI Chatbot**: Tích hợp trợ lý ảo thông minh sử dụng Gemini API, cho phép người dùng gọi `@NexusAI` trong chat để trò chuyện, hỏi đáp. Bot sẽ đọc ngữ cảnh 15 tin nhắn gần nhất và tự động phản hồi lại vào đoạn chat. 
+- **@NexusAI Chatbot & Summarization**: Tích hợp trợ lý ảo thông minh sử dụng Gemini API (`@google/genai`).
+  - Cho phép người dùng gọi `@NexusAI` trong chat để trò chuyện, hỏi đáp. Bot sẽ đọc ngữ cảnh 15 tin nhắn gần nhất và tự động phản hồi lại vào đoạn chat.
+  - Cung cấp nút **Tóm tắt (Summarize)** sử dụng AI để phân tích và tóm tắt nhanh nội dung quan trọng của cuộc trò chuyện.
 - **Rich Text & Markdown**: Hỗ trợ hiển thị Markdown (`in đậm`, `in nghiêng`, `danh sách`, `code block`) giúp cho các tin nhắn (đặc biệt là tin nhắn từ AI) trở nên rõ ràng và dễ đọc.
 
 ### Group Management
-- **Role Management**: Distinguish between `leader` (Admin) and `member`.
-- **Leader Permissions**: Leaders can add members, kick/remove members, promote other members to leader, update group info, upload group avatar, and disband the group entirely.
+- **Role Management**: Distinguish between `leader` (Admin), `deputy`, and `member`.
+- **Leader Permissions**: Leaders can add members, kick/remove members, promote other members to leader/deputy, update group info, upload group avatar, and disband the group entirely.
 - **Member Permissions**: Members can invite friends to join the group and voluntarily leave the group.
 - **Group Settings**: Centralized modal to view members, edit group name/description, and update the group avatar (with real-time UI updates for all members).
 - **Clear Chat History**: Independent from disbanding; allows any user to locally clear their message history in the group without affecting other members.
+
+### Public Channels
+- **Create Channels**: Users can create public or private channels to broadcast messages.
+- **Explore Channels**: Users can search and explore public channels. The system suggests popular channels based on follower count.
+- **Preview & Join**: Users can preview a channel's info (avatar, follower count, description) before joining.
+- **Channel Permissions**: Only admins (leaders) can send messages. Admins can ban members and delete the channel (requires password confirmation). Members can view messages, leave the channel, but cannot send messages.
 
 ### Real-Time Video/Audio Call (1:1 and Group)
 - **Call Launchers**: Integrated in `ChatWindowHeader.tsx` (Voice Call & Video Call buttons).
@@ -273,10 +282,29 @@ The project is organized as a monorepo with two main parts:
 - POST /api/messages/:id/recall
 - POST /api/messages/:id/view
 - POST /api/conversations
+- POST /api/conversations/channel
+- GET /api/conversations/channels/explore
+- GET /api/conversations/preview/:id
+- POST /api/conversations/:id/join
+- PATCH /api/conversations/:id/visibility
 - GET /api/conversations
 - GET /api/conversations/:conversationId/messages
+- GET /api/conversations/:conversationId/messages/pinned
+- GET /api/conversations/:conversationId/messages/search
+- PATCH /api/conversations/:conversationId/seen
 - POST /api/conversations/:id/wallpaper
 - POST /api/conversations/:id/nickname
+- POST /api/conversations/:id/members
+- DELETE /api/conversations/:id/members/:memberId
+- POST /api/conversations/:id/members/ban
+- PATCH /api/conversations/:id/role
+- PATCH /api/conversations/:id/info
+- POST /api/conversations/:id/avatar
+- DELETE /api/conversations/:id/avatar
+- DELETE /api/conversations/:id
+- POST /api/conversations/:id/clear
+- POST /api/conversations/:id/leave
+- GET /api/conversations/:id/summarize
 - POST /api/calls/token (Requests token and room details for LiveKit call room)
 
 ---
@@ -297,7 +325,8 @@ The project is organized as a monorepo with two main parts:
 - blockedUsers
 
 ### Conversation
-- type: direct | group
+- type: direct | group | channel
+- visibility: public | private
 - participants
 - group.name / group.createdBy
 - lastMessageAt
@@ -354,14 +383,9 @@ The frontend uses several Zustand stores:
 
 ## 9. Current Gaps and Known Issues
 
-### Backend / API
-- Pagination bug in conversationController.js uses createAt instead of createdAt.
-- The frontend calls a mark-as-seen endpoint, but the backend does not currently expose that route.
-
 ### Product scope
 - No unfriend action yet.
-- No group member management after creation.
-- No message editing or deletion flow.
+- No message editing flow.
 
 ---
 

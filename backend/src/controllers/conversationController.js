@@ -909,7 +909,7 @@ export const deleteConversation = async (req, res) => {
     if (!userRecord) {
       return res.status(404).json({ message: "Không tìm thấy người dùng" });
     }
-    
+
     const isPasswordValid = await bcrypt.compare(password, userRecord.hashedPassword);
     if (!isPasswordValid) {
       return res.status(401).json({ message: "Mật khẩu không chính xác" });
@@ -1319,7 +1319,7 @@ export const banGroupMember = async (req, res) => {
     // Thêm vào bannedUsers
     const expiresAt = duration ? new Date(Date.now() + duration) : null;
     const existingBanIndex = conversation.bannedUsers.findIndex(b => b.userId.toString() === memberId.toString());
-    
+
     if (existingBanIndex >= 0) {
       conversation.bannedUsers[existingBanIndex].expiresAt = expiresAt;
     } else {
@@ -1332,7 +1332,7 @@ export const banGroupMember = async (req, res) => {
     if (io) {
       // Thông báo cho người bị ban để họ bị đá ra
       io.to(`user:${memberId}`).emit("conversation:removed", { conversationId: id, isBanned: true });
-      
+
       // Update participants cho những người còn lại
       await conversation.populate("participants.userId", "displayName avatarUrl coverUrl note presenceStatus");
       const formattedParticipants = conversation.participants.map(p => ({
@@ -1364,10 +1364,10 @@ export const banGroupMember = async (req, res) => {
 export const getChannelPreview = async (req, res) => {
   try {
     const { id } = req.params;
-    
+
     // Tìm kênh công khai hoặc theo id
     const conversation = await Conversation.findById(id);
-    
+
     if (!conversation || conversation.type !== "channel") {
       return res.status(404).json({ message: "Không tìm thấy kênh này" });
     }
@@ -1385,4 +1385,4 @@ export const getChannelPreview = async (req, res) => {
     console.error("Lỗi getChannelPreview:", error);
     return res.status(500).json({ message: "Lỗi hệ thống" });
   }
-};
+};

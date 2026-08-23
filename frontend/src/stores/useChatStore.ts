@@ -842,7 +842,7 @@ export const useChatStore = create<ChatState>()(
           set((state) => {
             const exists = state.conversations.some(c => c._id === channelId);
             return {
-              conversations: exists 
+              conversations: exists
                 ? state.conversations.map(c => c._id === channelId ? newConvo : c)
                 : [newConvo, ...state.conversations],
               activeConversationId: newConvo._id,
@@ -858,7 +858,7 @@ export const useChatStore = create<ChatState>()(
         try {
           const res = await chatService.updateChannelVisibility(channelId, isPublic);
           set((state) => ({
-            conversations: state.conversations.map(c => 
+            conversations: state.conversations.map(c =>
               c._id === channelId ? { ...c, isPublic: res.isPublic } : c
             )
           }));
