@@ -12,7 +12,7 @@ const getTransporter = () => {
 
   if (isPlaceholder) {
     console.warn(
-      "⚠️ Cảnh báo: EMAIL_USER hoặc EMAIL_PASS đang sử dụng giá trị mặc định. Mã OTP sẽ được in ra console của Backend."
+      "⚠️ Cảnh báo: EMAIL_USER hoặc EMAIL_PASS chưa được cấu hình. Mã OTP sẽ được in trực tiếp ra console."
     );
     return null;
   }
@@ -23,10 +23,21 @@ const getTransporter = () => {
       user,
       pass,
     },
+    connectionTimeout: 4000, // 4s timeout nếu mạng chậm hoặc bị chặn
+    greetingTimeout: 4000,
+    socketTimeout: 5000,
   });
 };
 
 export const sendOtpEmail = async (email, otp, type) => {
+  // Luôn in mã OTP ra console Backend ngay lập tức để thuận tiện test
+  console.log(`\n========================================`);
+  console.log(`🔑 [MÃ OTP NEXUSCHAT]`);
+  console.log(`📧 Email: ${email}`);
+  console.log(`🏷️ Loại: ${type}`);
+  console.log(`👉 MÃ OTP: [ ${otp} ]`);
+  console.log(`========================================\n`);
+
   const transporter = getTransporter();
 
   const isRegister = type === "register";
@@ -68,26 +79,27 @@ export const sendOtpEmail = async (email, otp, type) => {
   `;
 
   if (!transporter) {
-    console.log(`\n========================================`);
-    console.log(`[DEV OTP LOG] Email: ${email} | Type: ${type} | OTP: ${otp}`);
-    console.log(`========================================\n`);
     return true;
   }
 
   try {
-    await transporter.sendMail({
+    const sendMailPromise = transporter.sendMail({
       from: `"NexusChat" <${process.env.EMAIL_USER}>`,
       to: email,
       subject: `[NexusChat] ${title} - Mã OTP: ${otp}`,
       html: htmlContent,
     });
+
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error("Timeout kết nối Gmail SMTP quá 4 giây")), 4000)
+    );
+
+    await Promise.race([sendMailPromise, timeoutPromise]);
+    console.log(`✅ [Nodemailer] Đã gửi email OTP thành công tới ${email}`);
     return true;
   } catch (error) {
-    console.error("Lỗi khi gửi email qua Gmail SMTP:", error.message);
-    console.log(`\n========================================`);
-    console.log(`[DEV FALLBACK OTP LOG] Email: ${email} | Type: ${type} | OTP: ${otp}`);
-    console.log(`========================================\n`);
-    // Cho phép fallback tự động in ra console để dev test thành công
+    console.warn("⚠️ [Nodemailer] Không thể gửi email qua Gmail SMTP:", error.message);
+    console.log(`💡 Mẹo: Sử dụng mã OTP [${otp}] đã được in ở trên để tiếp tục.`);
     return true;
   }
 };
