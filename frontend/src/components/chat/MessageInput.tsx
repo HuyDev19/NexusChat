@@ -2,7 +2,7 @@ import { useAuthStore } from "@/stores/useAuthStore";
 import type { Conversation } from "@/types/chat";
 import { useState, useRef, useEffect } from "react";
 import { Button } from "../ui/button";
-import { ImagePlus, Send, Mic, Square, Loader2, BarChart2, Plus } from "lucide-react";
+import { ImagePlus, Send, Mic, Square, Loader2, BarChart2, Plus, Paperclip } from "lucide-react";
 import { Input } from "../ui/input";
 import EmojiPicker from "./EmojiPicker";
 import CreatePollModal from "./CreatePollModal";
@@ -14,9 +14,15 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
+  DropdownMenuPortal,
 } from "@/components/ui/dropdown-menu";
-import { Timer, EyeOff, Ban, X, Reply } from "lucide-react";
+import { Timer, EyeOff, Ban, X, Reply, Pencil } from "lucide-react";
 import { Dialog, DialogContent } from "../ui/dialog";
+import { ImageEditorModal, type ImageEditResult } from "@vivekjha659/react-image-editor";
+import "@vivekjha659/react-image-editor/style.css";
 
 interface StagedImage {
   id: string;
@@ -26,7 +32,7 @@ interface StagedImage {
 
 const MessageInput = ({ selectedConvo }: { selectedConvo: Conversation }) => {
   const { user } = useAuthStore();
-  const { sendDirectMessage, sendGroupMessage, uploadAudio, uploadImage, setDraft, replyingToMessage, setReplyingToMessage } = useChatStore();
+  const { sendDirectMessage, sendGroupMessage, uploadAudio, uploadImage, uploadFile, setDraft, replyingToMessage, setReplyingToMessage } = useChatStore();
 
   let isBlocked = false;
   if (selectedConvo.type === "direct") {
@@ -48,6 +54,7 @@ const MessageInput = ({ selectedConvo }: { selectedConvo: Conversation }) => {
   const [value, setValue] = useState("");
   const [stagedImages, setStagedImages] = useState<StagedImage[]>([]);
   const [previewingImageUrl, setPreviewingImageUrl] = useState<string | null>(null);
+  const [editingImageId, setEditingImageId] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
 
   useEffect(() => {
@@ -61,6 +68,7 @@ const MessageInput = ({ selectedConvo }: { selectedConvo: Conversation }) => {
   const [isSendingMedia, setIsSendingMedia] = useState(false);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const attachmentInputRef = useRef<HTMLInputElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const chunksRef = useRef<BlobPart[]>([]);
   const timerRef = useRef<any>(null);
@@ -106,6 +114,55 @@ const MessageInput = ({ selectedConvo }: { selectedConvo: Conversation }) => {
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
+  };
+
+  const processAndSendFile = async (file: File) => {
+    if (file.size > 50 * 1024 * 1024) {
+      toast.error("File quá lớn, vui lòng chọn file dưới 50MB");
+      return;
+    }
+
+    try {
+      setIsSendingMedia(true);
+      const res = await uploadFile(file);
+
+      if (selectedConvo.type === "direct") {
+        const participants = selectedConvo.participants || [];
+        const otherUser = participants.find((p) => p._id !== user._id);
+        if (otherUser) {
+          await sendDirectMessage(otherUser._id, "", undefined, undefined, expiresIn, isViewOnce, undefined, replyingToMessage?._id, false, undefined, res.fileUrl, res.fileName, res.fileSize);
+        }
+      } else {
+        await sendGroupMessage(selectedConvo._id, "", undefined, undefined, expiresIn, isViewOnce, undefined, undefined, replyingToMessage?._id, false, res.fileUrl, res.fileName, res.fileSize);
+      }
+      if (replyingToMessage) setReplyingToMessage(null);
+    } catch (error: any) {
+      toast.error("Lỗi khi gửi file đính kèm");
+    } finally {
+      setIsSendingMedia(false);
+      if (attachmentInputRef.current) attachmentInputRef.current.value = "";
+    }
+  };
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    await processAndSendFile(file);
+  };
+
+  const handleSaveEditedImage = (result: ImageEditResult) => {
+    setStagedImages(prev => prev.map(img => {
+      if (img.id === editingImageId) {
+        URL.revokeObjectURL(img.previewUrl);
+        return {
+          ...img,
+          file: result.file,
+          previewUrl: URL.createObjectURL(result.file)
+        };
+      }
+      return img;
+    }));
+    setEditingImageId(null);
   };
 
   const removeStagedImage = (id: string) => {
@@ -168,16 +225,24 @@ const MessageInput = ({ selectedConvo }: { selectedConvo: Conversation }) => {
     e.stopPropagation();
     setIsDragging(false);
 
-    const files = Array.from(e.dataTransfer.files || []).filter(f => f.type.startsWith("image/"));
-    if (!files.length) return;
+    const allFiles = Array.from(e.dataTransfer.files || []);
+    if (!allFiles.length) return;
 
-    const newItems: StagedImage[] = files.map(file => ({
-      id: Math.random().toString(36).substring(2, 9) + Date.now(),
-      file,
-      previewUrl: URL.createObjectURL(file)
-    }));
+    const imageFiles = allFiles.filter(f => f.type.startsWith("image/"));
+    const otherFiles = allFiles.filter(f => !f.type.startsWith("image/"));
 
-    setStagedImages(prev => [...prev, ...newItems]);
+    if (imageFiles.length > 0) {
+      const newItems: StagedImage[] = imageFiles.map(file => ({
+        id: Math.random().toString(36).substring(2, 9) + Date.now(),
+        file,
+        previewUrl: URL.createObjectURL(file)
+      }));
+      setStagedImages(prev => [...prev, ...newItems]);
+    }
+
+    for (const file of otherFiles) {
+      processAndSendFile(file);
+    }
   };
 
   const sendMessage = async (audioBlob?: Blob) => {
@@ -480,7 +545,7 @@ const MessageInput = ({ selectedConvo }: { selectedConvo: Conversation }) => {
     >
       {isDragging && (
         <div className="absolute inset-0 bg-primary/10 border-2 border-dashed border-primary z-50 rounded-xl flex items-center justify-center pointer-events-none backdrop-blur-xs">
-          <span className="text-sm font-semibold text-primary">Thả ảnh vào đây để đính kèm</span>
+          <span className="text-sm font-semibold text-primary">Thả ảnh hoặc file vào đây để gửi</span>
         </div>
       )}
 
@@ -526,17 +591,30 @@ const MessageInput = ({ selectedConvo }: { selectedConvo: Conversation }) => {
                 title="Bấm để xem ảnh lớn"
               >
                 <img src={img.previewUrl} alt="Preview" className="w-full h-full object-cover" />
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    removeStagedImage(img.id);
-                  }}
-                  className="absolute top-1 right-1 size-5 bg-black/70 hover:bg-black text-white rounded-full flex items-center justify-center transition-colors shadow-md cursor-pointer z-10"
-                  title="Xoá ảnh này"
-                >
-                  <X className="size-3" />
-                </button>
+                <div className="absolute top-1 right-1 flex flex-col gap-1 z-10">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      removeStagedImage(img.id);
+                    }}
+                    className="size-5 bg-black/70 hover:bg-black text-white rounded-full flex items-center justify-center transition-colors shadow-md cursor-pointer"
+                    title="Xoá ảnh này"
+                  >
+                    <X className="size-3" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setEditingImageId(img.id);
+                    }}
+                    className="size-5 bg-primary/80 hover:bg-primary text-white rounded-full flex items-center justify-center transition-colors shadow-md cursor-pointer"
+                    title="Chỉnh sửa ảnh"
+                  >
+                    <Pencil className="size-2.5" />
+                  </button>
+                </div>
               </div>
             ))}
 
@@ -554,49 +632,91 @@ const MessageInput = ({ selectedConvo }: { selectedConvo: Conversation }) => {
 
       {/* Input bar */}
       <div className="flex items-center gap-2 p-3 min-h-[56px]">
+        {/* Hidden inputs must be outside the DropdownMenu so they don't unmount when it closes */}
+        <input
+          type="file"
+          accept="image/*"
+          multiple
+          className="hidden"
+          ref={fileInputRef}
+          onChange={handleImageSelect}
+        />
+        <input
+          type="file"
+          className="hidden"
+          ref={attachmentInputRef}
+          onChange={handleFileSelect}
+        />
+
         {!isRecording ? (
-          <div className="flex items-center gap-1">
-            <input
-              type="file"
-              accept="image/*"
-              multiple
-              className="hidden"
-              ref={fileInputRef}
-              onChange={handleImageSelect}
-            />
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => fileInputRef.current?.click()}
-              className="hover:bg-primary/10 transition-smooth shrink-0"
-              title="Gửi hình ảnh"
-              disabled={isSendingMedia}
-            >
-              <ImagePlus className="size-5" />
-            </Button>
-
-            <Button
-              variant={isViewOnce ? "default" : "ghost"}
-              size="icon"
-              onClick={() => setIsViewOnce(!isViewOnce)}
-              className="hover:bg-primary/10 transition-smooth shrink-0"
-              title="Chế độ xem một lần"
-            >
-              {isViewOnce ? <EyeOff className="size-4 text-white" /> : <EyeOff className="size-4" />}
-            </Button>
-
-            {selectedConvo.type === "group" && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={() => setShowPollModal(true)}
-                className="hover:bg-primary/10 transition-smooth shrink-0"
-                title="Tạo bình chọn"
+                className="shrink-0 rounded-full hover:bg-primary/10 transition-smooth"
+                disabled={isSendingMedia}
+                title="Tính năng mở rộng"
               >
-                <BarChart2 className="size-5" />
+                <Plus className="size-5" />
               </Button>
-            )}
-          </div>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" side="top" className="w-56 p-2 rounded-xl shadow-xl border-border/50">
+              <DropdownMenuItem onSelect={() => fileInputRef.current?.click()} className="cursor-pointer gap-3 p-2 rounded-lg">
+                <div className="bg-primary/10 p-2 rounded-full text-primary"><ImagePlus className="size-4" /></div>
+                <div className="flex flex-col"><span className="font-medium text-sm">Hình ảnh & Video</span></div>
+              </DropdownMenuItem>
+
+              <DropdownMenuItem onSelect={() => attachmentInputRef.current?.click()} className="cursor-pointer gap-3 p-2 rounded-lg">
+                <div className="bg-blue-500/10 p-2 rounded-full text-blue-500"><Paperclip className="size-4" /></div>
+                <div className="flex flex-col"><span className="font-medium text-sm">Tệp tài liệu</span></div>
+              </DropdownMenuItem>
+
+              <DropdownMenuItem onClick={startRecording} className="cursor-pointer gap-3 p-2 rounded-lg">
+                <div className="bg-orange-500/10 p-2 rounded-full text-orange-500"><Mic className="size-4" /></div>
+                <div className="flex flex-col"><span className="font-medium text-sm">Ghi âm</span></div>
+              </DropdownMenuItem>
+
+              <DropdownMenuItem onClick={() => setIsViewOnce(!isViewOnce)} className="cursor-pointer gap-3 p-2 rounded-lg">
+                <div className={`p-2 rounded-full transition-colors ${isViewOnce ? "bg-green-500 text-white" : "bg-green-500/10 text-green-500"}`}>
+                  <EyeOff className="size-4" />
+                </div>
+                <div className="flex flex-col">
+                  <span className="font-medium text-sm">Xem một lần</span>
+                  <span className="text-[11px] text-muted-foreground">{isViewOnce ? "Đang bật" : "Tắt"}</span>
+                </div>
+              </DropdownMenuItem>
+
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger className="cursor-pointer gap-3 p-2 rounded-lg">
+                  <div className={`p-2 rounded-full transition-colors ${expiresIn ? "bg-red-500 text-white" : "bg-red-500/10 text-red-500"}`}>
+                    <Timer className="size-4" />
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="font-medium text-sm">Tin nhắn tự hủy</span>
+                    <span className="text-[11px] text-muted-foreground">
+                      {expiresIn === 300 ? "5 phút" : expiresIn === 3600 ? "1 giờ" : expiresIn === 86400 ? "24 giờ" : "Tắt"}
+                    </span>
+                  </div>
+                </DropdownMenuSubTrigger>
+                <DropdownMenuPortal>
+                  <DropdownMenuSubContent className="w-36 rounded-xl border-border/50">
+                    <DropdownMenuItem className="cursor-pointer" onClick={() => { setExpiresIn(undefined); inputRef.current?.focus(); }}>Tắt</DropdownMenuItem>
+                    <DropdownMenuItem className="cursor-pointer" onClick={() => { setExpiresIn(300); inputRef.current?.focus(); }}>5 phút</DropdownMenuItem>
+                    <DropdownMenuItem className="cursor-pointer" onClick={() => { setExpiresIn(3600); inputRef.current?.focus(); }}>1 giờ</DropdownMenuItem>
+                    <DropdownMenuItem className="cursor-pointer" onClick={() => { setExpiresIn(86400); inputRef.current?.focus(); }}>24 giờ</DropdownMenuItem>
+                  </DropdownMenuSubContent>
+                </DropdownMenuPortal>
+              </DropdownMenuSub>
+
+              {selectedConvo.type === "group" && (
+                <DropdownMenuItem onClick={() => setShowPollModal(true)} className="cursor-pointer gap-3 p-2 rounded-lg">
+                  <div className="bg-purple-500/10 p-2 rounded-full text-purple-500"><BarChart2 className="size-4" /></div>
+                  <div className="flex flex-col"><span className="font-medium text-sm">Tạo bình chọn</span></div>
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
         ) : (
           <Button
             variant="destructive"
@@ -660,28 +780,9 @@ const MessageInput = ({ selectedConvo }: { selectedConvo: Conversation }) => {
                 value={value}
                 onChange={handleInputChange}
                 placeholder="Soạn tin nhắn..."
-                className="pr-20 h-9 bg-white dark:bg-background border-border/50 focus:border-primary/50 transition-smooth resize-none"
+                className="pr-12 h-9 bg-white dark:bg-background border-border/50 focus:border-primary/50 transition-smooth resize-none"
               />
-              <div className="absolute right-2 top-1/2 transform -translate-y-1/2 flex items-center gap-1">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className={`size-8 hover:bg-primary/10 transition-smooth ${expiresIn ? "text-red-500" : ""}`}
-                      title="Tin nhắn tự hủy"
-                    >
-                      <Timer className="size-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => { setExpiresIn(undefined); inputRef.current?.focus(); }}>Tắt</DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => { setExpiresIn(300); inputRef.current?.focus(); }}>5 phút</DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => { setExpiresIn(3600); inputRef.current?.focus(); }}>1 giờ</DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => { setExpiresIn(86400); inputRef.current?.focus(); }}>24 giờ</DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-
+              <div className="absolute right-2 top-1/2 transform -translate-y-1/2 flex items-center">
                 <Button
                   asChild
                   variant="ghost"
@@ -706,27 +807,15 @@ const MessageInput = ({ selectedConvo }: { selectedConvo: Conversation }) => {
           )}
         </div>
 
-        {!hasDraftOrMedia && !isRecording ? (
-          <Button
-            onClick={startRecording}
-            variant="ghost"
-            className="hover:bg-primary/10 transition-smooth shrink-0"
-            size="icon"
-            disabled={isSendingMedia}
-          >
-            {isSendingMedia ? <Loader2 className="size-5 animate-spin" /> : <Mic className="size-5" />}
-          </Button>
-        ) : (
-          <Button
-            type="button"
-            onMouseDown={(e) => e.preventDefault()}
-            onClick={() => sendMessage()}
-            className="bg-gradient-chat hover:shadow-glow transition-smooth hover:scale-105 shrink-0"
-            disabled={isRecording || isSendingMedia || !hasDraftOrMedia}
-          >
-            {isSendingMedia ? <Loader2 className="size-4 animate-spin text-white" /> : <Send className="size-4 text-white" />}
-          </Button>
-        )}
+        <Button
+          type="button"
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={() => sendMessage()}
+          className="bg-gradient-chat hover:shadow-glow transition-smooth hover:scale-105 shrink-0"
+          disabled={isRecording || isSendingMedia || !hasDraftOrMedia}
+        >
+          {isSendingMedia ? <Loader2 className="size-4 animate-spin text-white" /> : <Send className="size-4 text-white" />}
+        </Button>
 
         <CreatePollModal
           open={showPollModal}
@@ -738,17 +827,21 @@ const MessageInput = ({ selectedConvo }: { selectedConvo: Conversation }) => {
       {/* Lightbox Modal for Staged Image */}
       <Dialog open={Boolean(previewingImageUrl)} onOpenChange={(open) => !open && setPreviewingImageUrl(null)}>
         <DialogContent className="max-w-3xl p-3 bg-background/95 backdrop-blur-md border border-border/60 shadow-2xl flex flex-col items-center justify-center rounded-2xl overflow-hidden">
-          <div className="relative w-full max-h-[80vh] flex items-center justify-center">
-            {previewingImageUrl && (
-              <img
-                src={previewingImageUrl}
-                alt="Preview staged"
-                className="max-w-full max-h-[75vh] object-contain rounded-xl shadow-md"
-              />
-            )}
-          </div>
+          {previewingImageUrl && (
+            <img src={previewingImageUrl} alt="Preview Large" className="w-full h-auto max-h-[85vh] object-contain rounded-xl" />
+          )}
         </DialogContent>
       </Dialog>
+
+      {/* Fullscreen Editor Modal */}
+      {editingImageId && (
+        <ImageEditorModal
+          isOpen={true}
+          onClose={() => setEditingImageId(null)}
+          image={{ kind: "url", url: stagedImages.find(img => img.id === editingImageId)?.previewUrl || "" }}
+          onSave={handleSaveEditedImage}
+        />
+      )}
     </div>
   );
 };

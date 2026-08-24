@@ -6,15 +6,17 @@ import cloudinary from "../libs/cloudinary.js";
 import fs from "fs";
 import { handleAIResponse } from "../services/aiService.js";
 import { NEXUS_AI_ID } from "../utils/seedNexusAI.js";
+import { translate } from "@vitalets/google-translate-api";
+import { uploadFileToDrive } from "../services/driveService.js";
 
 export const sendDirectMessage = async (req, res) => {
   try {
-    const { recipientId, content, conversationId, audioUrl, expiresIn, isViewOnce, mentions, replyTo, isForwarded } = req.body;
+    const { recipientId, content, conversationId, audioUrl, expiresIn, isViewOnce, mentions, replyTo, isForwarded, fileUrl, fileName, fileSize } = req.body;
     const senderId = req.user._id;
 
     let conversation;
 
-    if (!content && !audioUrl && !req.body.imgUrl) {
+    if (!content && !audioUrl && !req.body.imgUrl && !fileUrl) {
       return res.status(400).json({ message: "Thiếu nội dung hoặc file đính kèm" });
     }
 
@@ -50,6 +52,9 @@ export const sendDirectMessage = async (req, res) => {
       mentions,
       replyTo,
       isForwarded,
+      fileUrl,
+      fileName,
+      fileSize,
     });
 
     await updateConversationAfterCreateMessage(conversation, message, senderId);
@@ -82,11 +87,11 @@ export const sendDirectMessage = async (req, res) => {
 
 export const sendGroupMessage = async (req, res) => {
   try {
-    const { conversationId, content, audioUrl, imgUrl, expiresIn, isViewOnce, poll, mentions, replyTo, isForwarded } = req.body;
+    const { conversationId, content, audioUrl, imgUrl, expiresIn, isViewOnce, poll, mentions, replyTo, isForwarded, fileUrl, fileName, fileSize } = req.body;
     const senderId = req.user._id;
     const conversation = req.conversation;
 
-    if (!content && !audioUrl && !imgUrl && !poll) {
+    if (!content && !audioUrl && !imgUrl && !poll && !fileUrl) {
       return res.status(400).json("Thiếu nội dung hoặc file đính kèm hoặc bình chọn");
     }
 
@@ -109,6 +114,9 @@ export const sendGroupMessage = async (req, res) => {
       mentions,
       replyTo,
       isForwarded,
+      fileUrl,
+      fileName,
+      fileSize,
     });
 
     await updateConversationAfterCreateMessage(conversation, message, senderId);
@@ -444,5 +452,42 @@ export const voteOnPoll = async (req, res) => {
   } catch (error) {
     console.error("Lỗi khi vote bình chọn:", error);
     return res.status(500).json({ message: "Lỗi hệ thống" });
+  }
+};
+
+export const translateMessage = async (req, res) => {
+  try {
+    const { messageId } = req.params;
+    const { targetLang = "vi" } = req.body;
+
+    const message = await Message.findById(messageId);
+    if (!message) return res.status(404).json({ message: "Không tìm thấy tin nhắn" });
+    if (!message.content) return res.status(400).json({ message: "Tin nhắn không có nội dung để dịch" });
+
+    const result = await translate(message.content, { to: targetLang });
+    return res.status(200).json({ translatedContent: result.text });
+  } catch (error) {
+    console.error("Lỗi khi dịch tin nhắn:", error);
+    return res.status(500).json({ message: "Lỗi hệ thống khi dịch" });
+  }
+};
+
+export const uploadFile = async (req, res) => {
+  try {
+    const file = req.file;
+
+    if (!file) {
+      return res.status(400).json({ message: "Không có file được tải lên" });
+    }
+
+    // Fix multer encoding for originalname (HTTP headers are latin1 by default)
+    file.originalname = Buffer.from(file.originalname, 'latin1').toString('utf8');
+
+    const fileData = await uploadFileToDrive(file);
+
+    return res.status(200).json(fileData);
+  } catch (error) {
+    console.error("Lỗi khi upload file:", error);
+    return res.status(500).json({ message: "Lỗi hệ thống khi tải file lên" });
   }
 };

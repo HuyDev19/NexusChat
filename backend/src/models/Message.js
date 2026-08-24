@@ -31,6 +31,15 @@ const messageSchema = new mongoose.Schema(
     audioUrl: {
       type: String,
     },
+    fileUrl: {
+      type: String,
+    },
+    fileName: {
+      type: String,
+    },
+    fileSize: {
+      type: Number,
+    },
     reactions: [
       {
         userId: {

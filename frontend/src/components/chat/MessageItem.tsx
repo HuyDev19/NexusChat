@@ -3,7 +3,7 @@ import type { Conversation, Message, Participant } from "@/types/chat";
 import UserAvatar from "./UserAvatar";
 import { Card } from "../ui/card";
 import { Badge } from "../ui/badge";
-import { Play, Pause, Pin, PinOff, Timer, EyeOff, Eye, Undo2, MoreHorizontal, Reply, Forward } from "lucide-react";
+import { Play, Pause, Pin, PinOff, Timer, EyeOff, Eye, Undo2, MoreHorizontal, Reply, Forward, Languages, FileText, Download } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { useChatStore } from "@/stores/useChatStore";
 import { useAuthStore } from "@/stores/useAuthStore";
@@ -184,7 +184,7 @@ const MessageItem = ({
   selectedConvo,
   lastMessageStatus,
 }: MessageItemProps) => {
-  const { reactToMessage, pinMessage, recallMessage, markMediaAsViewed, voteOnPoll, setReplyingToMessage, setForwardingMessage } = useChatStore();
+  const { reactToMessage, pinMessage, recallMessage, markMediaAsViewed, voteOnPoll, setReplyingToMessage, setForwardingMessage, translateMessage } = useChatStore();
   const { user } = useAuthStore();
   const prev = index + 1 < messages.length ? messages[index + 1] : undefined;
 
@@ -209,8 +209,8 @@ const MessageItem = ({
   const isChannel = selectedConvo.type === "channel";
   const currentUserParticipant = selectedConvo.participants?.find((p: Participant) => p._id === user?._id);
   const isChannelAdmin = isChannel && (currentUserParticipant?.role === "leader" || currentUserParticipant?.role === "deputy");
-  const canPin = !isChannel || isChannelAdmin;
-  const canReply = !isChannel || isChannelAdmin;
+  const canPin = (!isChannel || isChannelAdmin) && !message.isViewOnce;
+  const canReply = (!isChannel || isChannelAdmin) && !message.isViewOnce;
 
   const getDisplayName = (): string => {
     if (isAI) return "NexusAI";
@@ -344,7 +344,7 @@ const MessageItem = ({
                   {message.replyTo.senderId === user?._id ? "Bạn" : (selectedConvo.participants.find(p => p._id === message.replyTo?.senderId)?.displayName || "người dùng")}
                 </span>
                 <span className="text-muted-foreground truncate">
-                  {message.replyTo.isRecalled ? "Tin nhắn đã thu hồi" : message.replyTo.audioUrl ? "🎵 Tin nhắn thoại" : message.replyTo.imgUrl ? "🖼️ Hình ảnh" : message.replyTo.content}
+                  {message.replyTo.isViewOnce ? "[Tin nhắn xem một lần]" : message.replyTo.isRecalled ? "Tin nhắn đã thu hồi" : message.replyTo.audioUrl ? "🎵 Tin nhắn thoại" : message.replyTo.imgUrl ? "🖼️ Hình ảnh" : message.replyTo.content}
                 </span>
               </div>
             </div>
@@ -405,8 +405,46 @@ const MessageItem = ({
                     title="Bấm để xem ảnh phóng to"
                   />
                   {message.content && (
-                    <div className="pt-0.5">
-                      <FormattedText content={message.content} participants={participants} nicknames={selectedConvo.nicknames} isOwn={message.isOwn} />
+                    <div className="pt-0.5 flex flex-col">
+                      <FormattedText content={message.translatedContent || message.content} participants={participants} nicknames={selectedConvo.nicknames} isOwn={message.isOwn} />
+                      {message.translatedContent && (
+                        <span className="text-[10px] opacity-70 italic mt-0.5">(Đã dịch)</span>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ) : message.fileUrl ? (
+                <div className="flex flex-col gap-2 min-w-[200px] max-w-[280px]">
+                  <div className="flex items-center gap-3 p-3 bg-background/50 rounded-lg border border-border/50">
+                    <div className="size-10 rounded-lg bg-primary/10 flex flex-shrink-0 items-center justify-center">
+                      <FileText className="size-5 text-primary" />
+                    </div>
+                    <div className="flex flex-col flex-1 min-w-0">
+                      <span className="text-sm font-semibold truncate text-foreground" title={message.fileName || "Tệp đính kèm"}>
+                        {message.fileName || "Tệp đính kèm"}
+                      </span>
+                      {message.fileSize && (
+                        <span className="text-[10px] text-muted-foreground">
+                          {(message.fileSize / 1024 / 1024).toFixed(2)} MB
+                        </span>
+                      )}
+                    </div>
+                    <a
+                      href={message.fileUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="size-8 rounded-full bg-primary/10 hover:bg-primary/20 flex flex-shrink-0 items-center justify-center transition-colors cursor-pointer"
+                      title="Tải xuống"
+                    >
+                      <Download className="size-4 text-primary" />
+                    </a>
+                  </div>
+                  {message.content && (
+                    <div className="pt-0.5 flex flex-col">
+                      <FormattedText content={message.translatedContent || message.content} participants={participants} nicknames={selectedConvo.nicknames} isOwn={message.isOwn} />
+                      {message.translatedContent && (
+                        <span className="text-[10px] opacity-70 italic mt-0.5">(Đã dịch)</span>
+                      )}
                     </div>
                   )}
                 </div>
@@ -443,7 +481,12 @@ const MessageItem = ({
                   </div>
                 </div>
               ) : (
-                <FormattedText content={message.content} participants={participants} nicknames={selectedConvo.nicknames} isOwn={message.isOwn} />
+                <div className="flex flex-col">
+                  <FormattedText content={message.translatedContent || message.content} participants={participants} nicknames={selectedConvo.nicknames} isOwn={message.isOwn} />
+                  {message.translatedContent && (
+                    <span className="text-[10px] opacity-70 italic mt-1">(Đã dịch)</span>
+                  )}
+                </div>
               )}
 
               {message.expiresIn && !message.isRecalled && (
@@ -529,6 +572,15 @@ const MessageItem = ({
                       >
                         <Reply className="size-4" />
                         Trả lời
+                      </DropdownMenuItem>
+                    )}
+                    {message.content && !message.translatedContent && (
+                      <DropdownMenuItem
+                        onClick={() => translateMessage(selectedConvo._id, message._id)}
+                        className="cursor-pointer font-medium flex items-center gap-2"
+                      >
+                        <Languages className="size-4" />
+                        Dịch sang tiếng Việt
                       </DropdownMenuItem>
                     )}
                     {!message.isViewOnce && (

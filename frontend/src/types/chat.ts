@@ -73,6 +73,9 @@ export interface Message {
   content: string | null;
   imgUrl?: string | null;
   audioUrl?: string | null;
+  fileUrl?: string | null;
+  fileName?: string | null;
+  fileSize?: number | null;
   reactions?: { userId: string; emoji: string }[];
   isPinned?: boolean;
   expiresIn?: number;
@@ -101,4 +104,5 @@ export interface Message {
     isRecalled?: boolean;
   };
   isForwarded?: boolean;
+  translatedContent?: string;
 }

@@ -85,7 +85,10 @@ export interface ChatState {
     mentions?: string[],
     replyTo?: string,
     isForwarded?: boolean,
-    targetConversationId?: string
+    targetConversationId?: string,
+    fileUrl?: string | null,
+    fileName?: string | null,
+    fileSize?: number | null
   ) => Promise<void>;
   sendGroupMessage: (
     conversationId: string,
@@ -97,7 +100,10 @@ export interface ChatState {
     poll?: any,
     mentions?: string[],
     replyTo?: string,
-    isForwarded?: boolean
+    isForwarded?: boolean,
+    fileUrl?: string | null,
+    fileName?: string | null,
+    fileSize?: number | null
   ) => Promise<void>;
   deleteConversation: (id: string, password?: string) => Promise<void>;
   clearChatHistory: (id: string) => Promise<void>;
@@ -123,10 +129,12 @@ export interface ChatState {
   updateParticipantData: (user: Partial<User> & { _id: string }) => void;
   uploadAudio: (file: Blob) => Promise<string>;
   uploadImage: (file: File) => Promise<string>;
+  uploadFile: (file: File) => Promise<{fileUrl: string, fileName: string, fileSize: number}>;
   reactToMessage: (messageId: string, emoji: string) => Promise<void>;
   pinMessage: (messageId: string) => Promise<void>;
   markMediaAsViewed: (messageId: string) => Promise<void>;
   recallMessage: (messageId: string) => Promise<void>;
+  translateMessage: (conversationId: string, messageId: string) => Promise<void>;
   updateWallpaper: (conversationId: string, data: string | File) => Promise<void>;
   updateNickname: (conversationId: string, targetUserId: string, nickname: string) => Promise<void>;
   updateConversationFields: (conversationId: string, fields: Partial<Conversation>) => void;

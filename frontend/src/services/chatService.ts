@@ -42,7 +42,10 @@ export const chatService = {
     isViewOnce?: boolean,
     mentions?: string[],
     replyTo?: string,
-    isForwarded?: boolean
+    isForwarded?: boolean,
+    fileUrl?: string | null,
+    fileName?: string | null,
+    fileSize?: number | null
   ) {
     const res = await api.post("/messages/direct", {
       recipientId,
@@ -55,6 +58,9 @@ export const chatService = {
       mentions,
       replyTo,
       isForwarded,
+      fileUrl,
+      fileName,
+      fileSize,
     });
 
     return res.data;
@@ -70,7 +76,10 @@ export const chatService = {
     poll?: any,
     mentions?: string[],
     replyTo?: string,
-    isForwarded?: boolean
+    isForwarded?: boolean,
+    fileUrl?: string | null,
+    fileName?: string | null,
+    fileSize?: number | null
   ) {
     const res = await api.post("/messages/group", {
       conversationId,
@@ -83,6 +92,9 @@ export const chatService = {
       mentions,
       replyTo,
       isForwarded,
+      fileUrl,
+      fileName,
+      fileSize,
     });
     return res.data;
   },
@@ -150,6 +162,13 @@ export const chatService = {
     return res.data;
   },
 
+  async uploadFile(formData: FormData): Promise<{ fileUrl: string, fileName: string, fileSize: number }> {
+    const res = await api.post("/messages/upload-file", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+    return res.data;
+  },
+
   async reactToMessage(messageId: string, emoji: string) {
     const res = await api.post(`/messages/${messageId}/react`, { emoji });
     return res.data;
@@ -167,6 +186,11 @@ export const chatService = {
 
   async recallMessage(messageId: string) {
     const res = await api.post(`/messages/${messageId}/recall`);
+    return res.data;
+  },
+
+  async translateMessage(messageId: string, targetLang: string = "vi") {
+    const res = await api.post(`/messages/${messageId}/translate`, { targetLang });
     return res.data;
   },
 

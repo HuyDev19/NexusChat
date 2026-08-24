@@ -1,4 +1,4 @@
-import { Bell, ChevronsUpDown, UserIcon } from "lucide-react";
+import { Bell, ChevronsUpDown, UserIcon, Settings } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -20,12 +20,14 @@ import Logout from "../auth/Logout";
 import { useState, useEffect } from "react";
 import FriendRequestDialog from "../friendRequest/FriendRequestDialog";
 import ProfileDialog from "../profile/ProfileDialog";
+import SettingsDialog from "../profile/SettingsDialog";
 import { useFriendStore } from "@/stores/useFriendStore";
 
 export function NavUser({ user }: { user: User }) {
   const { isMobile } = useSidebar();
   const [friendRequestOpen, setfriendRequestOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   const { receivedList, getAllFriendRequests } = useFriendStore();
 
@@ -101,7 +103,11 @@ export function NavUser({ user }: { user: User }) {
               <DropdownMenuGroup>
                 <DropdownMenuItem onClick={() => setProfileOpen(true)} className="cursor-pointer rounded-lg">
                   <UserIcon className="text-muted-foreground dark:group-focus:!text-accent-foreground" />
-                  <span>Tài Khoản</span>
+                  <span>Hồ sơ cá nhân</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setSettingsOpen(true)} className="cursor-pointer rounded-lg">
+                  <Settings className="text-muted-foreground dark:group-focus:!text-accent-foreground" />
+                  <span>Cài đặt</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={() => setfriendRequestOpen(true)}
@@ -143,6 +149,11 @@ export function NavUser({ user }: { user: User }) {
       <ProfileDialog
         open={profileOpen}
         setOpen={setProfileOpen}
+      />
+
+      <SettingsDialog
+        open={settingsOpen}
+        setOpen={setSettingsOpen}
       />
     </>
   );

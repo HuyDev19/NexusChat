@@ -142,7 +142,7 @@ export const useChatStore = create<ChatState>()(
           set({ messageLoading: false });
         }
       },
-      sendDirectMessage: async (recipientId, content, imgUrl, audioUrl, expiresIn, isViewOnce, mentions, replyTo, isForwarded, targetConversationId) => {
+      sendDirectMessage: async (recipientId, content, imgUrl, audioUrl, expiresIn, isViewOnce, mentions, replyTo, isForwarded, targetConversationId, fileUrl, fileName, fileSize) => {
         try {
           const { activeConversationId } = get();
           const convoIdToUse = targetConversationId || activeConversationId || undefined;
@@ -156,12 +156,24 @@ export const useChatStore = create<ChatState>()(
             isViewOnce,
             mentions,
             replyTo,
-            isForwarded
+            isForwarded,
+            fileUrl,
+            fileName,
+            fileSize
           );
 
           const sentMessage = data?.message || data;
           const updatedConvo = data?.conversation;
           const conversationId = sentMessage.conversationId || convoIdToUse;
+
+          let finalContent = sentMessage.content;
+          if (!finalContent) {
+            if (sentMessage.fileUrl) finalContent = "Đã gửi tệp tin";
+            else if (sentMessage.imgUrl) finalContent = "Đã gửi 1 ảnh";
+            else if (sentMessage.audioUrl) finalContent = "Đã gửi tin nhắn thoại";
+            else if (sentMessage.poll) finalContent = "Đã tạo một bình chọn";
+            else finalContent = "";
+          }
 
           if (conversationId) {
             set((state) => {
@@ -184,7 +196,7 @@ export const useChatStore = create<ChatState>()(
                       ...(updatedConvo ? { streak: updatedConvo.streak } : {}),
                       lastMessage: {
                         _id: sentMessage._id,
-                        content: sentMessage.content ?? "",
+                        content: finalContent,
                         createdAt: sentMessage.createdAt,
                         sender: {
                           _id: sentMessage.senderId,
@@ -216,7 +228,10 @@ export const useChatStore = create<ChatState>()(
         poll,
         mentions,
         replyTo,
-        isForwarded
+        isForwarded,
+        fileUrl,
+        fileName,
+        fileSize
       ) => {
         try {
           const data: any = await chatService.sendGroupMessage(
@@ -229,10 +244,22 @@ export const useChatStore = create<ChatState>()(
             poll,
             mentions,
             replyTo,
-            isForwarded
+            isForwarded,
+            fileUrl,
+            fileName,
+            fileSize
           );
 
           const sentMessage = data?.message || data;
+
+          let finalContent = sentMessage.content;
+          if (!finalContent) {
+            if (sentMessage.fileUrl) finalContent = "Đã gửi tệp tin";
+            else if (sentMessage.imgUrl) finalContent = "Đã gửi 1 ảnh";
+            else if (sentMessage.audioUrl) finalContent = "Đã gửi tin nhắn thoại";
+            else if (sentMessage.poll) finalContent = "Đã tạo một bình chọn";
+            else finalContent = "";
+          }
 
           set((state) => {
             const prevItems = state.messages[conversationId]?.items ?? [];
@@ -253,7 +280,7 @@ export const useChatStore = create<ChatState>()(
                     ...c,
                     lastMessage: {
                       _id: sentMessage._id,
-                      content: sentMessage.content ?? "",
+                      content: finalContent,
                       createdAt: sentMessage.createdAt,
                       sender: {
                         _id: sentMessage.senderId || (typeof sentMessage.sender === 'object' ? sentMessage.sender?._id : sentMessage.sender) || "",
@@ -564,6 +591,12 @@ export const useChatStore = create<ChatState>()(
         const res = await chatService.uploadImage(formData);
         return res.imgUrl;
       },
+      uploadFile: async (file) => {
+        const formData = new FormData();
+        formData.append("file", file);
+        const res = await chatService.uploadFile(formData);
+        return res;
+      },
       reactToMessage: async (messageId, emoji) => {
         try {
           await chatService.reactToMessage(messageId, emoji);
@@ -596,6 +629,33 @@ export const useChatStore = create<ChatState>()(
         } catch (error: any) {
           console.error("Lỗi xảy ra khi thu hồi tin nhắn:", error);
           toast.error(error.response?.data?.message || "Lỗi hệ thống khi thu hồi tin nhắn.");
+        }
+      },
+      translateMessage: async (conversationId: string, messageId: string) => {
+        try {
+          const res = await chatService.translateMessage(messageId);
+          if (res.translatedContent) {
+            set((state) => {
+              const currentItems = state.messages[conversationId]?.items;
+              if (!currentItems) return state;
+
+              return {
+                messages: {
+                  ...state.messages,
+                  [conversationId]: {
+                    ...state.messages[conversationId],
+                    items: currentItems.map((m) =>
+                      m._id === messageId ? { ...m, translatedContent: res.translatedContent } : m
+                    ),
+                  },
+                },
+              };
+            });
+            toast.success("Dịch tin nhắn thành công!");
+          }
+        } catch (error: any) {
+          console.error("Lỗi khi dịch tin nhắn:", error);
+          toast.error(error.response?.data?.message || "Không thể dịch tin nhắn.");
         }
       },
       updateWallpaper: async (conversationId, data) => {

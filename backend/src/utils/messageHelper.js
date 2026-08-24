@@ -32,12 +32,29 @@ export const updateConversationAfterCreateMessage = async (
   message,
   senderId
 ) => {
+  let finalContent = message.content;
+  if (message.isViewOnce) {
+    finalContent = "[Tin nhắn xem một lần]";
+  } else if (!finalContent) {
+    if (message.fileUrl) {
+      finalContent = "Đã gửi tệp tin";
+    } else if (message.imgUrl) {
+      finalContent = "Đã gửi 1 ảnh";
+    } else if (message.audioUrl) {
+      finalContent = "Đã gửi tin nhắn thoại";
+    } else if (message.poll) {
+      finalContent = "Đã tạo một bình chọn";
+    } else {
+      finalContent = "";
+    }
+  }
+
   conversation.set({
     seenBy: [],
     lastMessageAt: message.createdAt,
     lastMessage: {
       _id: message._id,
-      content: message.content,
+      content: finalContent,
       senderId,
       createdAt: message.createdAt,
     },
