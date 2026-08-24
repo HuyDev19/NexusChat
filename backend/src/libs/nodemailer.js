@@ -1,8 +1,13 @@
 import nodemailer from "nodemailer";
 
+let transporterInstance = null;
+
 const getTransporter = () => {
+  if (transporterInstance) return transporterInstance;
+
   const user = process.env.EMAIL_USER;
-  const pass = process.env.EMAIL_PASS;
+  const rawPass = process.env.EMAIL_PASS;
+  const pass = rawPass ? rawPass.replace(/\s+/g, "") : "";
 
   const isPlaceholder =
     !user ||
@@ -17,16 +22,21 @@ const getTransporter = () => {
     return null;
   }
 
-  return nodemailer.createTransport({
+  transporterInstance = nodemailer.createTransport({
     service: "gmail",
     auth: {
       user,
       pass,
     },
-    connectionTimeout: 4000, // 4s timeout nếu mạng chậm hoặc bị chặn
-    greetingTimeout: 4000,
-    socketTimeout: 5000,
+    pool: true,
+    maxConnections: 5,
+    maxMessages: 100,
+    connectionTimeout: 8000,
+    greetingTimeout: 8000,
+    socketTimeout: 10000,
   });
+
+  return transporterInstance;
 };
 
 export const sendOtpEmail = async (email, otp, type) => {
@@ -83,18 +93,12 @@ export const sendOtpEmail = async (email, otp, type) => {
   }
 
   try {
-    const sendMailPromise = transporter.sendMail({
+    await transporter.sendMail({
       from: `"NexusChat" <${process.env.EMAIL_USER}>`,
       to: email,
       subject: `[NexusChat] ${title} - Mã OTP: ${otp}`,
       html: htmlContent,
     });
-
-    const timeoutPromise = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error("Timeout kết nối Gmail SMTP quá 4 giây")), 4000)
-    );
-
-    await Promise.race([sendMailPromise, timeoutPromise]);
     console.log(`✅ [Nodemailer] Đã gửi email OTP thành công tới ${email}`);
     return true;
   } catch (error) {

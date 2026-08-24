@@ -316,6 +316,16 @@ const PrivacySettings = () => {
                 </Button>
                 <Button
                   type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={pwTimer > 0 || isPwLoading}
+                  onClick={handleSendPwOtp}
+                  className="h-8 text-xs rounded-xl"
+                >
+                  {pwTimer > 0 ? `Gửi lại sau (${pwTimer}s)` : "Gửi lại OTP"}
+                </Button>
+                <Button
+                  type="button"
                   size="sm"
                   onClick={handleConfirmChangePassword}
                   disabled={isPwLoading || pwOtp.length !== 6 || !newPw || !confirmPw}

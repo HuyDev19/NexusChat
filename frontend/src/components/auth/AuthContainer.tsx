@@ -73,6 +73,7 @@ export function AuthContainer({ className, ...props }: React.ComponentProps<"div
 
   // Sign Up OTP State
   const [signUpStep, setSignUpStep] = useState<1 | 2>(1);
+  const [signUpEmail, setSignUpEmail] = useState("");
   const [otpCode, setOtpCode] = useState("");
   const [resendTimer, setResendTimer] = useState(0);
   const [isSendingOtp, setIsSendingOtp] = useState(false);
@@ -103,6 +104,7 @@ export function AuthContainer({ className, ...props }: React.ComponentProps<"div
   useEffect(() => {
     setIsSignUp(location.pathname === "/signup");
     setSignUpStep(1);
+    setSignUpEmail("");
     setOtpCode("");
   }, [location.pathname]);
 
@@ -128,6 +130,7 @@ export function AuthContainer({ className, ...props }: React.ComponentProps<"div
   const handleToggleMode = (targetPath: "/signin" | "/signup") => {
     setIsSignUp(targetPath === "/signup");
     setSignUpStep(1);
+    setSignUpEmail("");
     setOtpCode("");
     window.history.pushState({}, "", targetPath);
   };
@@ -151,6 +154,7 @@ export function AuthContainer({ className, ...props }: React.ComponentProps<"div
   } = useForm<SignUpFormValues>({
     resolver: zodResolver(signUpSchema),
     mode: "onChange",
+    shouldUnregister: false,
   });
 
   const signUpPasswordVal = watchSignUp("password") || "";
@@ -238,7 +242,9 @@ export function AuthContainer({ className, ...props }: React.ComponentProps<"div
 
     try {
       setIsSendingOtp(true);
-      await sendOtp(values.email, "register");
+      const emailToUse = values.email.trim().toLowerCase();
+      setSignUpEmail(emailToUse);
+      await sendOtp(emailToUse, "register");
       setSignUpStep(2);
       setResendTimer(60);
     } catch (error) {
@@ -250,11 +256,15 @@ export function AuthContainer({ className, ...props }: React.ComponentProps<"div
 
   // Resend OTP for Sign Up
   const handleResendSignUpOtp = async () => {
-    if (resendTimer > 0) return;
-    const email = getValuesSignUp("email");
+    if (resendTimer > 0 || isSendingOtp) return;
+    const emailToUse = signUpEmail || getValuesSignUp("email")?.trim().toLowerCase();
+    if (!emailToUse) {
+      toast.error("Vui lòng quay lại bước 1 và nhập email");
+      return;
+    }
     try {
       setIsSendingOtp(true);
-      await sendOtp(email, "register");
+      await sendOtp(emailToUse, "register");
       setResendTimer(60);
     } catch (error) {
       // error handled in store
@@ -270,13 +280,19 @@ export function AuthContainer({ className, ...props }: React.ComponentProps<"div
       return;
     }
 
+    const emailToUse = signUpEmail || data.email || getValuesSignUp("email");
+    const usernameToUse = data.username || getValuesSignUp("username");
+    const passwordToUse = data.password || getValuesSignUp("password");
+    const firstnameToUse = data.firstname || getValuesSignUp("firstname");
+    const lastnameToUse = data.lastname || getValuesSignUp("lastname");
+
     try {
       await signUp(
-        data.username,
-        data.password,
-        data.email,
-        data.firstname,
-        data.lastname,
+        usernameToUse,
+        passwordToUse,
+        emailToUse,
+        firstnameToUse,
+        lastnameToUse,
         otpCode.trim()
       );
       handleToggleMode("/signin");
@@ -309,10 +325,15 @@ export function AuthContainer({ className, ...props }: React.ComponentProps<"div
 
   // Forgot Password: Resend OTP
   const handleResendForgotOtp = async () => {
-    if (forgotResendTimer > 0) return;
+    if (forgotResendTimer > 0 || isForgotLoading) return;
+    const emailToUse = forgotEmail?.trim().toLowerCase();
+    if (!emailToUse) {
+      toast.error("Vui lòng nhập địa chỉ email");
+      return;
+    }
     try {
       setIsForgotLoading(true);
-      await sendOtp(forgotEmail.trim(), "reset_password");
+      await sendOtp(emailToUse, "reset_password");
       setForgotResendTimer(60);
     } catch (error) {
       // error handled in store
