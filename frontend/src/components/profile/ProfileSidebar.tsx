@@ -18,7 +18,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../ui/dialog";
 import { Input } from "../ui/input";
 import { Button } from "../ui/button";
 import { userService } from "@/services/userService";
-import { cn, isNoteExpired } from "@/lib/utils";
+import { cn, isNoteExpired, getEffectiveStatus } from "@/lib/utils";
 import WallpaperModal from "../chat/WallpaperModal";
 import NicknameModal from "../chat/NicknameModal";
 import GroupSettingsModal from "../chat/GroupSettingsModal";
@@ -69,7 +69,7 @@ const ProfileSidebar = () => {
   let activeOtherUser: any = null;
   if (isActiveDirect && activeChat) {
     const participants = activeChat.participants || [];
-    activeOtherUser = participants.find((p) => p._id !== user?._id);
+    activeOtherUser = participants.find((p) => (p?._id || (p as any)?.userId?._id)?.toString() !== user?._id?.toString());
   }
 
   const chat = mode === "chat" ? activeChat : null;
@@ -77,12 +77,12 @@ const ProfileSidebar = () => {
   const isGroup = chat?.type === "group";
   const isChannel = chat?.type === "channel";
 
-  const currentUserParticipant = chat?.participants?.find(p => p._id === user?._id);
+  const currentUserParticipant = chat?.participants?.find(p => (p?._id || (p as any)?.userId?._id)?.toString() === user?._id?.toString());
   const isChannelAdmin = isChannel && (currentUserParticipant?.role === "leader" || currentUserParticipant?.role === "deputy");
 
   // Target user for actions
   const targetUser = mode === "chat" && isDirect ? activeOtherUser : (mode === "user" ? profileData : null);
-  const isTargetFriend = targetUser ? friends.some(f => f._id === targetUser._id) : false;
+  const isTargetFriend = targetUser ? (friends || []).some(f => ((f as any)?._id || f)?.toString() === targetUser._id?.toString()) : false;
   const otherUser = targetUser;
 
   const isBlocked = targetUser && user?.blockedUsers?.includes(targetUser._id);
@@ -286,7 +286,7 @@ const ProfileSidebar = () => {
               >
                 {mode === "chat" && (isGroup || isChannel) ? (
                   <GroupChatAvatar
-                    participants={chat.participants || []}
+                    participants={chat?.participants || []}
                     type="chat"
                     groupAvatar={chat?.group?.avatar}
                     groupName={chat?.group?.name}
@@ -301,8 +301,8 @@ const ProfileSidebar = () => {
                       const noteText = isNoteExpired(rawNote) ? undefined : (typeof rawNote === "string" ? rawNote : rawNote?.content);
                       const targetId = mode === "chat" && isDirect ? otherUser?._id : profileData?._id;
                       const targetRawStatus = mode === "chat" && isDirect ? otherUser?.presenceStatus : profileData?.presenceStatus;
-                      const isTargetOnline = targetId ? onlineUsers.includes(targetId) : false;
-                      const targetStatus = !isTargetOnline ? "offline" : (targetRawStatus === "busy" ? "busy" : "online");
+                      const isTargetOnline = targetId ? (onlineUsers || []).includes(targetId) : false;
+                      const targetStatus = getEffectiveStatus(isTargetOnline, targetRawStatus);
 
                       return (
                         <>

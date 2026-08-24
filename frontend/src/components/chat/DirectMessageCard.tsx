@@ -2,7 +2,7 @@ import type { Conversation } from "@/types/chat";
 import ChatCard from "./ChatCard";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useChatStore } from "@/stores/useChatStore";
-import { cn, isNoteExpired, isStreakActive, isStreakOnFire } from "@/lib/utils";
+import { cn, isNoteExpired, isStreakActive, isStreakOnFire, getEffectiveStatus } from "@/lib/utils";
 import UserAvatar from "./UserAvatar";
 import StatusBadge from "./StatusBadge";
 import UnreadCountBadge from "./UnreadCountBadge";
@@ -18,24 +18,27 @@ const DirectMessageCard = ({ convo }: { convo: Conversation }) => {
   if (!user) return null;
 
   const participants = convo.participants || [];
-  const otherUser = participants.find((p) => p._id !== user._id);
+  const otherUser = participants.find((p) => (p?._id || (p as any)?.userId?._id)?.toString() !== user._id?.toString());
   if (!otherUser) return null;
 
+  const otherUserId = (otherUser._id || (otherUser as any)?.userId?._id)?.toString() || "";
+
   const displayName =
-    convo.nicknames && otherUser._id in convo.nicknames && convo.nicknames[otherUser._id]
-      ? convo.nicknames[otherUser._id]
+    convo.nicknames && otherUserId && otherUserId in convo.nicknames && convo.nicknames[otherUserId]
+      ? convo.nicknames[otherUserId]
       : otherUser.displayName ?? "";
 
-  const unreadCount = convo.unreadCounts[user._id];
+  const unreadCount = convo.unreadCounts && user._id ? (convo.unreadCounts[user._id] || 0) : 0;
   const lastMessage = convo.lastMessage?.content ?? "";
 
-  const isOnline = otherUser?._id ? onlineUsers.includes(otherUser._id) : false;
-  const userLastActive = otherUser?._id ? (lastActiveMap?.[otherUser._id] || otherUser.lastActiveAt || null) : null;
+  const isOnline = otherUserId ? (onlineUsers || []).includes(otherUserId) : false;
+  const effectiveStatus = getEffectiveStatus(isOnline, otherUser?.presenceStatus);
+  const userLastActive = otherUserId ? (lastActiveMap?.[otherUserId] || otherUser.lastActiveAt || null) : null;
 
   const handleSelectConversation = async (id: string) => {
     setActiveConversation(id);
     if (!messages[id]) {
-      await fetchMessages();
+      await fetchMessages(id);
     }
   };
 
@@ -67,13 +70,7 @@ const DirectMessageCard = ({ convo }: { convo: Conversation }) => {
             userId={otherUser._id}
           />
           <StatusBadge
-            status={
-              !isOnline
-                ? "offline"
-                : otherUser?.presenceStatus === "busy"
-                  ? "busy"
-                  : "online"
-            }
+            status={effectiveStatus}
             lastActiveAt={userLastActive}
             showMinutesBadge={true}
           />

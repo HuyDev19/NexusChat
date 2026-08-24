@@ -116,11 +116,27 @@ export const getOfflineMinutes = (dateStrOrDate?: string | Date | null): number 
   return diffMins;
 };
 
-export const formatLastActive = (dateStrOrDate?: string | Date | null, isOnline?: boolean): string => {
-  if (isOnline) return "Đang hoạt động";
-  if (!dateStrOrDate) return "Offline";
+export const getEffectiveStatus = (
+  isOnline: boolean,
+  presenceStatus?: "online" | "offline" | "busy" | string | null
+): "online" | "offline" | "busy" => {
+  if (presenceStatus === "offline") return "offline";
+  if (presenceStatus === "busy") return isOnline ? "busy" : "offline";
+  return isOnline ? "online" : "offline";
+};
+
+export const formatLastActive = (
+  dateStrOrDate?: string | Date | null,
+  isOnline?: boolean,
+  presenceStatus?: "online" | "offline" | "busy" | string | null
+): string => {
+  const status = getEffectiveStatus(Boolean(isOnline), presenceStatus);
+  if (status === "online") return "Đang hoạt động";
+  if (status === "busy") return "Đang bận";
+
+  if (!dateStrOrDate) return "Ngoại tuyến";
   const date = new Date(dateStrOrDate);
-  if (isNaN(date.getTime())) return "Offline";
+  if (isNaN(date.getTime())) return "Ngoại tuyến";
   const now = new Date();
   const diffMs = now.getTime() - date.getTime();
   const diffMins = Math.floor(diffMs / (1000 * 60));
@@ -128,7 +144,7 @@ export const formatLastActive = (dateStrOrDate?: string | Date | null, isOnline?
   const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
 
   if (diffMins < 1) return "Vừa mới truy cập";
-  if (diffMins < 60) return `Online ${diffMins} phút trước`;
+  if (diffMins < 60) return `Hoạt động ${diffMins} phút trước`;
   if (diffHours < 24) return `Hoạt động ${diffHours} giờ trước`;
   if (diffDays < 7) return `Hoạt động ${diffDays} ngày trước`;
   return "Không hoạt động gần đây";

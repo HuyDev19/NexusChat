@@ -25,8 +25,10 @@ import {
 } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { toast } from "sonner";
-import { cn, isNoteExpired } from "@/lib/utils";
+import { cn, isNoteExpired, getEffectiveStatus } from "@/lib/utils";
 import { userService } from "@/services/userService";
+import StatusBadge from "../chat/StatusBadge";
+import { useSocketStore } from "@/stores/useSocketStore";
 
 const EMOJI_REACTIONS = ["👍", "❤️", "😂", "😮", "🔥"];
 
@@ -36,6 +38,7 @@ const AccountInfoModal = () => {
   const { friends, sentList, receivedList, addFriend, cancelRequest, acceptRequest } = useFriendStore();
   const { conversations, messages: chatMessages, fetchMessages, setActiveConversation, createConversation } = useChatStore();
   const { startCall } = useCallStore();
+  const { onlineUsers, lastActiveMap } = useSocketStore();
   
   const [actionLoading, setActionLoading] = useState(false);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
@@ -67,12 +70,12 @@ const AccountInfoModal = () => {
   if (!isOpen && !previewImage && !selectedPhoto && !showAddPhotoModal) return null;
 
   const isSelf = Boolean(currentUser?._id && profileUser?._id && currentUser._id === profileUser._id);
-  const isFriend = Boolean(profileUser?._id && friends.some((f) => (f?._id || f)?.toString() === profileUser._id));
-  const sentReq = sentList.find((r) => {
+  const isFriend = Boolean(profileUser?._id && (friends || []).some((f) => (f?._id || f)?.toString() === profileUser._id));
+  const sentReq = (sentList || []).find((r) => {
     const toId = (r?.to?._id || r?.to)?.toString();
     return Boolean(toId && profileUser?._id && toId === profileUser._id);
   });
-  const receivedReq = receivedList.find((r) => {
+  const receivedReq = (receivedList || []).find((r) => {
     const fromId = (r?.from?._id || r?.from)?.toString();
     return Boolean(fromId && profileUser?._id && fromId === profileUser._id);
   });
@@ -297,6 +300,13 @@ const AccountInfoModal = () => {
                       {profileUser.displayName?.charAt(0)?.toUpperCase() || "U"}
                     </AvatarFallback>
                   </Avatar>
+                  <StatusBadge
+                    status={getEffectiveStatus(
+                      profileUser._id ? onlineUsers.includes(profileUser._id) : false,
+                      profileUser.presenceStatus
+                    )}
+                    lastActiveAt={profileUser._id ? (lastActiveMap?.[profileUser._id] || profileUser.lastActiveAt) : null}
+                  />
                 </div>
               </div>
 
@@ -708,12 +718,28 @@ const AccountInfoModal = () => {
       {/* Lightbox xem ảnh đơn thuần (Cover / Avatar / Chat images) */}
       {previewImage && (
         <Dialog open={!!previewImage} onOpenChange={() => setPreviewImage(null)}>
-          <DialogContent className="sm:max-w-6xl w-auto max-h-[95vh] p-2 bg-black/85 backdrop-blur-xl border-white/10 shadow-2xl flex flex-col items-center justify-center overflow-hidden rounded-2xl">
-            <img
-              src={previewImage}
-              alt="Preview"
-              className="max-h-[88vh] max-w-[92vw] object-contain rounded-xl shadow-2xl"
-            />
+          <DialogContent
+            className="max-w-[95vw] w-auto max-h-[95vh] p-0 bg-transparent border-none shadow-none flex items-center justify-center overflow-visible"
+            showCloseButton={false}
+          >
+            <div className="relative inline-flex flex-col items-center justify-center max-w-[92vw] max-h-[90vh]">
+              <div className="absolute top-3 right-3 z-50 flex items-center gap-1.5 bg-black/75 backdrop-blur-md p-1.5 rounded-full border border-white/20 shadow-xl">
+                <button
+                  type="button"
+                  onClick={() => setPreviewImage(null)}
+                  className="p-1.5 text-white/80 hover:text-white hover:bg-white/20 rounded-full transition-colors cursor-pointer"
+                  title="Đóng (Esc)"
+                >
+                  <X className="size-4" />
+                </button>
+              </div>
+              <img
+                src={previewImage}
+                alt="Preview"
+                className="w-auto h-auto max-w-[90vw] max-h-[88vh] object-contain rounded-2xl shadow-2xl border border-white/10"
+                onClick={(e) => e.stopPropagation()}
+              />
+            </div>
           </DialogContent>
         </Dialog>
       )}

@@ -112,9 +112,10 @@ export const useAuthStore = create<AuthState>()(
           useChatStore.getState().fetchConversations();
 
           toast.success("Chào mừng bạn quay lại với NexusChat 🎉");
-        } catch (error) {
+        } catch (error: any) {
           console.error(error);
-          toast.error("Đăng nhập không thành công!");
+          toast.error(error.response?.data?.message || "Đăng nhập không thành công! Vui lòng kiểm tra lại thông tin hoặc kết nối server.");
+          throw error;
         } finally {
           set({ loading: false });
         }

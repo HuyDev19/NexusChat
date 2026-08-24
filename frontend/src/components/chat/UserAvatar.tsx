@@ -19,20 +19,22 @@ interface IUserAvatarProps {
 const UserAvatar = ({ type, name, avatarUrl, className, note, userId }: IUserAvatarProps) => {
   const bgColor = !avatarUrl ? "bg-blue-500" : "";
   const [replyText, setReplyText] = useState("");
+  const [open, setOpen] = useState(false);
   const { sendDirectMessage } = useChatStore();
   const { user } = useAuthStore();
-  const [open, setOpen] = useState(false);
+  const noteContent = typeof note === "string" ? note : (note as any)?.content || undefined;
 
-  const getTruncatedNote = (text: string) => {
-    const words = text.trim().split(/\s+/);
-    if (words.length <= 3) return text;
+  const getTruncatedNote = (text: any) => {
+    const str = typeof text === "string" ? text : (text?.content || "");
+    const words = str.trim().split(/\s+/).filter(Boolean);
+    if (words.length <= 3) return str;
     return words.slice(0, 3).join(" ") + "...";
   };
 
   const handleReply = async () => {
-    if (!replyText.trim() || !userId) return;
+    if (!replyText.trim() || !userId || !noteContent) return;
     try {
-      await sendDirectMessage(userId, `Phản hồi ghi chú "${note}": ${replyText}`);
+      await sendDirectMessage(userId, `Phản hồi ghi chú "${noteContent}": ${replyText}`);
       setReplyText("");
       setOpen(false);
       toast.success("Đã gửi phản hồi");
@@ -62,7 +64,7 @@ const UserAvatar = ({ type, name, avatarUrl, className, note, userId }: IUserAva
         </AvatarFallback>
       </Avatar>
 
-    {note && (
+    {noteContent && (
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <div 
@@ -70,7 +72,7 @@ const UserAvatar = ({ type, name, avatarUrl, className, note, userId }: IUserAva
             style={{ maxWidth: '120px' }}
             onClick={(e) => e.stopPropagation()}
           >
-            <p className="text-[10px] sm:text-xs truncate">{getTruncatedNote(note)}</p>
+            <p className="text-[10px] sm:text-xs truncate">{getTruncatedNote(noteContent)}</p>
             <div className="absolute -bottom-1 right-3 size-2 bg-popover border-r border-b border-border rotate-45"></div>
           </div>
         </PopoverTrigger>
@@ -82,7 +84,7 @@ const UserAvatar = ({ type, name, avatarUrl, className, note, userId }: IUserAva
                 <AvatarFallback className="text-xs bg-primary text-primary-foreground">{displayName.charAt(0)}</AvatarFallback>
               </Avatar>
               <div className="flex-1 bg-muted/60 rounded-xl p-2.5 text-sm text-foreground break-words whitespace-pre-wrap leading-snug">
-                {note}
+                {noteContent}
               </div>
             </div>
             

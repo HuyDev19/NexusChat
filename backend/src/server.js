@@ -15,6 +15,7 @@ import { protectedRoute } from "./middlewares/authMiddleware.js";
 import cors from "cors";
 import jwt from "jsonwebtoken";
 import { seedNexusAIUser } from "./utils/seedNexusAI.js";
+import { startScheduleWorker } from "./services/scheduleWorker.js";
 import User from "./models/User.js";
 
 dotenv.config();
@@ -138,6 +139,7 @@ io.on("connection", (socket) => {
 
 connectDB().then(async () => {
   await seedNexusAIUser();
+  startScheduleWorker(io);
   server.listen(PORT, () => {
     console.log(`server bắt đầu trên cổng ${PORT}`);
     console.log(`Socket.IO đang lắng nghe trên cổng ${PORT}`);

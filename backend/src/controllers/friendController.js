@@ -163,9 +163,13 @@ export const getAllFriends = async (req, res) => {
       return res.status(200).json({ friends: [] });
     }
 
-    const friends = friendships.map((f) =>
-      f.userA._id.toString() === userId.toString() ? f.userB : f.userA
-    );
+    const friends = friendships
+      .map((f) => {
+        if (!f || !f.userA || !f.userB) return null;
+        const userAId = (f.userA._id || f.userA).toString();
+        return userAId === userId.toString() ? f.userB : f.userA;
+      })
+      .filter((friend) => friend && friend._id);
 
     return res.status(200).json({ friends });
   } catch (error) {
@@ -183,11 +187,14 @@ export const getFriendRequests = async (req, res) => {
     const populateFields = "_id displayName avatarUrl coverUrl note username presenceStatus lastActiveAt updatedAt";
 
     const [sent, received] = await Promise.all([
-      FriendRequest.find({ from: userId }).populate("to", populateFields),
-      FriendRequest.find({ to: userId }).populate("from", populateFields),
+      FriendRequest.find({ from: userId }).populate("to", populateFields).lean(),
+      FriendRequest.find({ to: userId }).populate("from", populateFields).lean(),
     ]);
 
-    res.status(200).json({ sent, received });
+    const cleanSent = (sent || []).filter((r) => r && r.to);
+    const cleanReceived = (received || []).filter((r) => r && r.from);
+
+    res.status(200).json({ sent: cleanSent, received: cleanReceived });
   } catch (error) {
     console.error("Lỗi khi lấy danh sách yêu cầu kết bạn", error);
     return res.status(500).json({ message: "Lỗi hệ thống" });

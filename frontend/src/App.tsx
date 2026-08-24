@@ -9,15 +9,22 @@ import { useThemeStore } from "./stores/useThemeStore";
 import { useEffect } from "react";
 import { useAuthStore } from "./stores/useAuthStore";
 import { useSocketStore } from "./stores/useSocketStore";
+import { useOfflineStore } from "./stores/useOfflineStore";
 
 function App() {
   const { isDark, setTheme } = useThemeStore();
   const { accessToken } = useAuthStore();
   const { connectSocket, disconnectSocket } = useSocketStore();
+  const { initListeners } = useOfflineStore();
 
   useEffect(() => {
     setTheme(isDark);
   }, [isDark]);
+
+  useEffect(() => {
+    const cleanupOffline = initListeners();
+    return () => cleanupOffline();
+  }, [initListeners]);
 
   useEffect(() => {
     if (accessToken) {

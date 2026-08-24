@@ -173,6 +173,13 @@ export const useSocketStore = create<SocketState>((set, get) => ({
       }
     });
 
+    // scheduled message executed
+    socket.on("scheduled-message:executed", ({ scheduledId }) => {
+      import("./useScheduleStore").then((mod) => {
+        mod.useScheduleStore.getState().handleExecutedEvent(scheduledId);
+      });
+    });
+
     // new group chat
     socket.on("new-group", (conversation) => {
       useChatStore.getState().addConvo(conversation);

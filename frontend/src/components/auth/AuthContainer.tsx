@@ -194,8 +194,12 @@ export function AuthContainer({ className, ...props }: React.ComponentProps<"div
       toast.error("Bạn cần nhập đủ thông tin!");
       return;
     }
-    await signIn(data.username, data.password);
-    navigate("/chat");
+    try {
+      await signIn(data.username, data.password);
+      navigate("/chat");
+    } catch (error) {
+      // Toast thông báo lỗi đã được kích hoạt trong store
+    }
   };
 
   const onSignInInvalid = () => {

@@ -3,12 +3,13 @@ import type { Conversation, Message, Participant } from "@/types/chat";
 import UserAvatar from "./UserAvatar";
 import { Card } from "../ui/card";
 import { Badge } from "../ui/badge";
-import { Play, Pause, Pin, PinOff, Timer, EyeOff, Eye, Undo2, MoreHorizontal, Reply, Forward, Languages, FileText, Download } from "lucide-react";
+import { Play, Pause, Pin, PinOff, Timer, EyeOff, Eye, Undo2, MoreHorizontal, Reply, Forward, Languages, FileText, Download, X, ExternalLink } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { useChatStore } from "@/stores/useChatStore";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useProfileStore } from "@/stores/useProfileStore";
 import { useAccountInfoModalStore } from "@/stores/useAccountInfoModalStore";
+import { useMediaViewerStore, type MediaItem } from "@/stores/useMediaViewerStore";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -174,7 +175,7 @@ interface MessageItemProps {
   index: number;
   messages: Message[];
   selectedConvo: Conversation;
-  lastMessageStatus: "đã gửi" | "đã nhận" | "đã xem";
+  lastMessageStatus?: "đã gửi" | "đã nhận" | "đã xem";
 }
 
 const MessageItem = ({
@@ -199,15 +200,15 @@ const MessageItem = ({
 
   const isGroupBreak = isShowTime || senderIdStr !== prevSenderIdStr;
 
-  const participants = selectedConvo.participants || [];
+  const participants = selectedConvo?.participants || [];
   const participant = participants.find(
-    (p: Participant) => p._id?.toString() === senderIdStr
+    (p: Participant) => p?._id?.toString() === senderIdStr
   );
 
   const isAI = senderIdStr === "000000000000000000000000";
 
-  const isChannel = selectedConvo.type === "channel";
-  const currentUserParticipant = selectedConvo.participants?.find((p: Participant) => p._id === user?._id);
+  const isChannel = selectedConvo?.type === "channel";
+  const currentUserParticipant = participants.find((p: Participant) => p?._id?.toString() === user?._id?.toString());
   const isChannelAdmin = isChannel && (currentUserParticipant?.role === "leader" || currentUserParticipant?.role === "deputy");
   const canPin = (!isChannel || isChannelAdmin) && !message.isViewOnce;
   const canReply = (!isChannel || isChannelAdmin) && !message.isViewOnce;
@@ -215,7 +216,7 @@ const MessageItem = ({
   const getDisplayName = (): string => {
     if (isAI) return "NexusAI";
     if (!participant) return "Unknown";
-    return (selectedConvo.nicknames?.[participant._id] || participant.displayName || "Unknown");
+    return (selectedConvo?.nicknames?.[participant._id] || participant.displayName || "Unknown");
   };
 
   const getAvatarUrl = (): string | undefined => {
@@ -232,7 +233,43 @@ const MessageItem = ({
 
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
   const [showViewOnceModal, setShowViewOnceModal] = useState(false);
-  const [previewImage, setPreviewImage] = useState<string | null>(null);
+
+  const handleOpenImageGallery = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!selectedConvo?._id) return;
+    const convoMessages = useChatStore.getState().messages[selectedConvo._id]?.items || [];
+    const imageMessages = convoMessages.filter((m) => !!m.imgUrl && !m.isRecalled && !m.isViewOnce);
+
+    if (imageMessages.length > 0) {
+      const mediaItems: MediaItem[] = imageMessages.map((m) => {
+        const sender = participants.find((p) => p?._id?.toString() === m.senderId?.toString());
+        const senderName =
+          selectedConvo?.nicknames?.[m.senderId] ||
+          sender?.displayName ||
+          (m.isOwn ? "Bạn" : "Người dùng");
+        return {
+          _id: m._id,
+          url: m.imgUrl!,
+          senderName,
+          senderAvatar: sender?.avatarUrl || null,
+          createdAt: m.createdAt,
+          content: m.content || undefined,
+          conversationId: selectedConvo._id,
+        };
+      });
+
+      const targetIdx = mediaItems.findIndex((item) => item._id === message._id);
+      useMediaViewerStore.getState().openViewer(mediaItems, targetIdx >= 0 ? targetIdx : 0);
+    } else if (message.imgUrl) {
+      useMediaViewerStore.getState().openSingle(
+        message.imgUrl,
+        "Hình ảnh",
+        message.isOwn ? "Bạn" : participant?.displayName || "Người dùng",
+        participant?.avatarUrl || null,
+        message.createdAt
+      );
+    }
+  };
 
   useEffect(() => {
     if (message.expiresAt) {
@@ -397,10 +434,7 @@ const MessageItem = ({
                   <img 
                     src={message.imgUrl} 
                     alt="Image" 
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setPreviewImage(message.imgUrl || null);
-                    }}
+                    onClick={handleOpenImageGallery}
                     className="rounded-md max-w-full h-auto max-h-[300px] object-cover cursor-pointer hover:opacity-95 hover:brightness-105 transition-all shadow-xs" 
                     title="Bấm để xem ảnh phóng to"
                   />
@@ -520,21 +554,6 @@ const MessageItem = ({
                   >
                     <EyeOff className="size-5" />
                   </Button>
-                </div>
-              </DialogContent>
-            </Dialog>
-
-            {/* Image Preview Lightbox Dialog */}
-            <Dialog open={Boolean(previewImage)} onOpenChange={(open) => !open && setPreviewImage(null)}>
-              <DialogContent className="max-w-4xl p-2 bg-black/95 border border-white/10 shadow-2xl flex flex-col items-center justify-center rounded-2xl overflow-hidden">
-                <div className="relative w-full max-h-[85vh] flex items-center justify-center p-2">
-                  {previewImage && (
-                    <img 
-                      src={previewImage} 
-                      alt="Full Preview" 
-                      className="max-w-full max-h-[80vh] object-contain rounded-xl shadow-2xl" 
-                    />
-                  )}
                 </div>
               </DialogContent>
             </Dialog>
@@ -665,7 +684,7 @@ const MessageItem = ({
               </div>
             )}
             
-            {message.isOwn && message._id === selectedConvo.lastMessage?._id && lastMessageStatus !== "đã xem" && (
+            {message.isOwn && message._id === selectedConvo?.lastMessage?._id && lastMessageStatus !== "đã xem" && (
               <Badge
                 variant="outline"
                 className={cn(
@@ -681,19 +700,6 @@ const MessageItem = ({
           </div>
         </div>
       </div>
-
-      {/* Lightbox xem ảnh phóng to */}
-      {previewImage && (
-        <Dialog open={!!previewImage} onOpenChange={() => setPreviewImage(null)}>
-          <DialogContent className="sm:max-w-6xl w-auto max-h-[95vh] p-2 bg-black/85 backdrop-blur-xl border-white/10 shadow-2xl flex flex-col items-center justify-center overflow-hidden rounded-2xl">
-            <img
-              src={previewImage}
-              alt="Preview"
-              className="max-h-[88vh] max-w-[92vw] object-contain rounded-xl shadow-2xl"
-            />
-          </DialogContent>
-        </Dialog>
-      )}
     </>
   );
 };

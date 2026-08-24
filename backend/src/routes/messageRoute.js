@@ -19,8 +19,22 @@ import {
   checkGroupMembership,
 } from "../middlewares/friendMiddleware.js";
 
+import {
+  createScheduledMessage,
+  getScheduledMessages,
+  cancelScheduledMessage,
+  updateScheduledMessage,
+} from "../controllers/scheduledController.js";
+
 const router = express.Router();
 const upload = multer({ dest: "uploads/" });
+
+// Scheduled Messages routes
+router.post("/schedule", createScheduledMessage);
+router.get("/scheduled", getScheduledMessages);
+router.get("/scheduled/:conversationId", getScheduledMessages);
+router.delete("/scheduled/:id", cancelScheduledMessage);
+router.put("/scheduled/:id", updateScheduledMessage);
 
 router.post("/direct", checkFriendship, sendDirectMessage);
 router.post("/group", checkGroupMembership, sendGroupMessage);

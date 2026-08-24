@@ -74,9 +74,15 @@ export const updateMe = async (req, res) => {
     const userId = req.user._id;
     const { displayName, phone, bio, presenceStatus } = req.body;
 
+    const updateData = {};
+    if (displayName !== undefined) updateData.displayName = displayName;
+    if (phone !== undefined) updateData.phone = phone;
+    if (bio !== undefined) updateData.bio = bio;
+    if (presenceStatus !== undefined) updateData.presenceStatus = presenceStatus;
+
     const updatedUser = await User.findByIdAndUpdate(
       userId,
-      { displayName, phone, bio, presenceStatus },
+      updateData,
       { new: true }
     );
 

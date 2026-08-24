@@ -10,6 +10,8 @@ import ProfileSidebar from "../profile/ProfileSidebar";
 import LockedChatScreen from "./LockedChatScreen";
 import { useAuthStore } from "@/stores/useAuthStore";
 
+import OfflineBanner from "./OfflineBanner";
+
 const ChatWindowLayout = () => {
   const {
     activeConversationId,
@@ -69,6 +71,9 @@ const ChatWindowLayout = () => {
       <SidebarInset className="flex flex-col h-full flex-1 overflow-hidden rounded-sm shadow-md transition-all duration-300">
         {/* Header */}
         <ChatWindowHeader chat={selectedConvo} />
+
+        {/* Offline & Sync Status Banner */}
+        <OfflineBanner />
 
         {/* Body */}
         <div className="flex-1 overflow-y-auto bg-primary-foreground">

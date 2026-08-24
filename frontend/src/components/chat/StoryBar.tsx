@@ -18,7 +18,7 @@ import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Plus, Sparkles, Trash2, Smile, Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { cn, isNoteExpired } from "@/lib/utils";
+import { cn, isNoteExpired, getEffectiveStatus } from "@/lib/utils";
 
 const StoryBar = () => {
   const { user } = useAuthStore();
@@ -93,7 +93,8 @@ const StoryBar = () => {
   };
 
   // Sort friends: Friends with active notes come first
-  const sortedFriends = [...(friends || [])].sort((a, b) => {
+  const validFriends = (friends || []).filter((f) => Boolean(f && f._id));
+  const sortedFriends = [...validFriends].sort((a, b) => {
     const hasNoteA = !isNoteExpired(a.note) ? 1 : 0;
     const hasNoteB = !isNoteExpired(b.note) ? 1 : 0;
     return hasNoteB - hasNoteA;
@@ -165,10 +166,11 @@ const StoryBar = () => {
           {/* 2. Danh sách Bạn bè & Trạng thái Note                     */}
           {/* ========================================================= */}
           {sortedFriends.map((friend) => {
+            if (!friend || !friend._id) return null;
             const hasNote = !isNoteExpired(friend.note);
-            const isOnline = onlineUsers.includes(friend._id);
-            const isBusy = isOnline && friend.presenceStatus === "busy";
-            const shortName = friend.displayName.split(" ").pop() || friend.displayName;
+            const isOnline = (onlineUsers || []).includes(friend._id);
+            const effectiveStatus = getEffectiveStatus(isOnline, friend.presenceStatus);
+            const shortName = (friend.displayName || "User").split(" ").pop() || friend.displayName || "User";
 
             return (
               <div
@@ -209,7 +211,7 @@ const StoryBar = () => {
 
                   {/* Status Badge */}
                   <StatusBadge
-                    status={isBusy ? "busy" : isOnline ? "online" : "offline"}
+                    status={effectiveStatus}
                     lastActiveAt={lastActiveMap?.[friend._id] || friend.lastActiveAt}
                     showMinutesBadge={true}
                   />

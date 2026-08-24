@@ -88,6 +88,10 @@ export const useUserStore = create<UserState>(() => ({
           ...user,
           ...resData.user,
         });
+        useChatStore.getState().updateParticipantData(resData.user);
+        import("./useFriendStore").then((mod) => {
+          mod.useFriendStore.getState().updateFriendData(resData.user);
+        });
         toast.success("Cập nhật thông tin thành công!");
       }
     } catch (error) {

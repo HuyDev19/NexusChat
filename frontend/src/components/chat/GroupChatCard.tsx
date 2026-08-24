@@ -12,18 +12,18 @@ const GroupChatCard = ({ convo }: { convo: Conversation }) => {
 
   if (!user) return null;
 
-  const unreadCount = convo.unreadCounts[user._id];
+  const unreadCount = convo.unreadCounts && user._id ? (convo.unreadCounts[user._id] || 0) : 0;
   const name = convo.group?.name ?? "Nhóm";
 
   const handleSelectConversation = async (id: string) => {
     setActiveConversation(id);
     if (!messages[id]) {
-      await fetchMessages();
+      await fetchMessages(id);
     }
   };
 
   const participants = convo.participants || [];
-  const currentUser = participants.find((p) => p._id === user._id);
+  const currentUser = participants.find((p) => (p?._id || (p as any)?.userId?._id)?.toString() === user._id?.toString());
   const isLeader = currentUser?.role === "leader";
 
   return (

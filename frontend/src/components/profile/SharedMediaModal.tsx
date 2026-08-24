@@ -1,7 +1,8 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
 import { useChatStore } from "@/stores/useChatStore";
-import { FileText, Link, Image as ImageIcon, Download, File } from "lucide-react";
+import { useMediaViewerStore, type MediaItem } from "@/stores/useMediaViewerStore";
+import { FileText, Link, Image as ImageIcon, Download, File, Eye } from "lucide-react";
 
 interface SharedMediaModalProps {
   open: boolean;
@@ -12,10 +13,33 @@ interface SharedMediaModalProps {
 
 const SharedMediaModal = ({ open, onOpenChange, conversationId, defaultTab = "media" }: SharedMediaModalProps) => {
   const messages = useChatStore(state => state.messages[conversationId]?.items || []);
+  const convo = useChatStore(state => state.conversations.find(c => c._id === conversationId));
 
-  const images = messages.filter(m => !!m.imgUrl);
+  const images = messages.filter(m => !!m.imgUrl && !m.isRecalled);
   const files = messages.filter(m => !!m.audioUrl); // Mapping audio to files for now since no other file uploads
   const links = messages.filter(m => m.content && /https?:\/\/[^\s]+/.test(m.content));
+
+  const handleOpenMedia = (clickedIndex: number) => {
+    if (images.length === 0) return;
+    const mediaItems: MediaItem[] = images.map((m) => {
+      const sender = convo?.participants?.find((p) => p._id === m.senderId);
+      const senderName =
+        convo?.nicknames?.[m.senderId] ||
+        sender?.displayName ||
+        (m.isOwn ? "Bạn" : "Người dùng");
+      return {
+        _id: m._id,
+        url: m.imgUrl!,
+        senderName,
+        senderAvatar: sender?.avatarUrl || null,
+        createdAt: m.createdAt,
+        content: m.content || undefined,
+        conversationId,
+      };
+    });
+
+    useMediaViewerStore.getState().openViewer(mediaItems, clickedIndex);
+  };
 
   const formatDate = (dateString: string) => {
     try {
@@ -60,17 +84,16 @@ const SharedMediaModal = ({ open, onOpenChange, conversationId, defaultTab = "me
               <EmptyState icon={ImageIcon} text="Chưa có ảnh/video nào được chia sẻ" />
             ) : (
               <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-                {images.map(img => (
-                  <div key={img._id} className="aspect-square relative group rounded-md overflow-hidden bg-muted">
-                    <img src={img.imgUrl!} alt="Shared" className="w-full h-full object-cover" />
-                    <a
-                      href={img.imgUrl!}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white"
-                    >
-                      <Download className="size-6" />
-                    </a>
+                {images.map((img, idx) => (
+                  <div
+                    key={img._id}
+                    className="aspect-square relative group rounded-md overflow-hidden bg-muted cursor-pointer"
+                    onClick={() => handleOpenMedia(idx)}
+                  >
+                    <img src={img.imgUrl!} alt="Shared" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200" />
+                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
+                      <Eye className="size-5" />
+                    </div>
                   </div>
                 ))}
               </div>

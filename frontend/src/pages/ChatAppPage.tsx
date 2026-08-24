@@ -7,10 +7,20 @@ import AccountInfoModal from "@/components/profile/AccountInfoModal";
 import ChannelPreviewModal from "@/components/chat/ChannelPreviewModal";
 import { useSearchParams } from "react-router";
 import { useState, useEffect } from "react";
+import { useFriendStore } from "@/stores/useFriendStore";
+
+import MediaViewerModal from "@/components/chat/MediaViewerModal";
+import ScheduleMessageModal from "@/components/chat/ScheduleMessageModal";
 
 const ChatAppPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [previewChannelId, setPreviewChannelId] = useState<string | null>(null);
+  const { getFriends, getAllFriendRequests } = useFriendStore();
+
+  useEffect(() => {
+    getFriends();
+    getAllFriendRequests();
+  }, [getFriends, getAllFriendRequests]);
 
   useEffect(() => {
     const joinId = searchParams.get("join");
@@ -40,6 +50,8 @@ const ChatAppPage = () => {
       <IncomingCallModal />
       <CallRoomModal />
       <AccountInfoModal />
+      <MediaViewerModal />
+      <ScheduleMessageModal />
       <ChannelPreviewModal 
         isOpen={!!previewChannelId} 
         onOpenChange={(open) => !open && handleClosePreview()} 

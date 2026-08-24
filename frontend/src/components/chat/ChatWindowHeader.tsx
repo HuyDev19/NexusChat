@@ -18,7 +18,7 @@ import { userService } from "@/services/userService";
 import { chatService } from "@/services/chatService";
 import { toast } from "sonner";
 import { Settings, Ban, Flame, Pencil, Edit3, Sparkles, Loader2, UserPlus } from "lucide-react";
-import { isNoteExpired, isStreakActive, isStreakOnFire, formatLastActive, getOfflineMinutes, cn } from "@/lib/utils";
+import { isNoteExpired, isStreakActive, isStreakOnFire, formatLastActive, getEffectiveStatus, cn } from "@/lib/utils";
 import { Label } from "../ui/label";
 import { useProfileStore } from "@/stores/useProfileStore";
 
@@ -45,16 +45,38 @@ const ChatWindowHeader = ({ chat }: { chat?: Conversation }) => {
 
   if (chat.type === "direct") {
     const participants = chat.participants || [];
-    const otherUsers = participants.filter((p) => p._id !== user?._id);
+    const otherUsers = participants.filter(
+      (p) => (p?._id || (p as any)?.userId?._id)?.toString() !== user?._id?.toString()
+    );
     otherUser = otherUsers.length > 0 ? otherUsers[0] : null;
 
-    if (!user || !otherUser) return null;
+    if (!user || !otherUser) {
+      return (
+        <header className="sticky top-0 z-10 flex flex-col w-full bg-background border-b border-border/50">
+          <div className="px-4 py-2 flex items-center gap-2 w-full">
+            <SidebarTrigger className="-ml-1 text-foreground shrink-0" />
+            <span className="font-semibold text-sm text-foreground">Đoạn chat</span>
+          </div>
+        </header>
+      );
+    }
   }
 
-  const isOnline = otherUser?._id ? onlineUsers.includes(otherUser._id) : false;
+  const isOnline = otherUser?._id ? (onlineUsers || []).includes(otherUser._id) : false;
+  const effectiveStatus = getEffectiveStatus(isOnline, otherUser?.presenceStatus);
   const userLastActive = otherUser?._id ? (lastActiveMap?.[otherUser._id] || otherUser.lastActiveAt || null) : null;
-  const isFriend = otherUser?._id ? friends.some((f) => f._id === otherUser._id) : true;
-  const sentRequest = otherUser?._id ? sentList.find((r: any) => (r.to?._id === otherUser._id || r.to === otherUser._id || r.toUser?._id === otherUser._id || r.toUser === otherUser._id)) : null;
+  const isFriend = otherUser?._id
+    ? (friends || []).some((f) => ((f as any)?._id || f)?.toString() === otherUser._id.toString())
+    : true;
+  const sentRequest = otherUser?._id
+    ? (sentList || []).find(
+        (r: any) =>
+          r?.to?._id === otherUser._id ||
+          r?.to === otherUser._id ||
+          r?.toUser?._id === otherUser._id ||
+          r?.toUser === otherUser._id
+      )
+    : null;
   const hasSentRequest = Boolean(sentRequest);
 
   const handleToggleFriendRequest = async () => {
@@ -138,13 +160,7 @@ const ChatWindowHeader = ({ chat }: { chat?: Conversation }) => {
                     userId={otherUser?._id}
                   />
                   <StatusBadge
-                    status={
-                      !isOnline
-                        ? "offline"
-                        : otherUser?.presenceStatus === "busy"
-                          ? "busy"
-                          : "online"
-                    }
+                    status={effectiveStatus}
                     lastActiveAt={userLastActive}
                   />
                 </div>
@@ -160,10 +176,10 @@ const ChatWindowHeader = ({ chat }: { chat?: Conversation }) => {
                   }}
                 >
                   <GroupChatAvatar
-                    participants={chat.participants || []}
+                    participants={chat?.participants || []}
                     type="sidebar"
-                    groupAvatar={chat.group?.avatar}
-                    groupName={chat.group?.name}
+                    groupAvatar={chat?.group?.avatar}
+                    groupName={chat?.group?.name}
                   />
                 </div>
               )}
@@ -182,18 +198,18 @@ const ChatWindowHeader = ({ chat }: { chat?: Conversation }) => {
                     }
                   }}
                 >
-                  {chat.type === "direct"
+                  {chat?.type === "direct"
                     ? getDisplayName(otherUser)
-                    : chat.group?.name || "Nhóm"}
+                    : chat?.group?.name || "Nhóm"}
                 </h2>
 
-                {chat.type === "direct" && otherUser && !isFriend && (
+                {chat?.type === "direct" && otherUser && !isFriend && (
                   <span className="bg-zinc-700/80 text-zinc-200 text-[10px] font-bold px-2 py-0.5 rounded tracking-wide uppercase shrink-0">
                     NGƯỜI LẠ
                   </span>
                 )}
 
-                {chat.type === "direct" && isStreakActive(chat.streak) && chat.streak && chat.streak.count >= 1 && (
+                {chat?.type === "direct" && isStreakActive(chat?.streak) && chat?.streak && chat.streak.count >= 1 && (
                   <div className="flex items-center gap-0.5" title={isStreakOnFire(chat.streak) ? `${chat.streak.count} ngày liên tiếp - Cả 2 đã thắp sáng chuỗi hôm nay!` : `${chat.streak.count} ngày liên tiếp - Đang chờ người kia nhắn lại`}>
                     <Flame
                       className={cn(
@@ -208,23 +224,27 @@ const ChatWindowHeader = ({ chat }: { chat?: Conversation }) => {
                 )}
               </div>
 
-              {chat.type === "direct" && otherUser ? (
+              {chat?.type === "direct" && otherUser ? (
                 !isFriend ? (
                   <span className="text-[11px] font-medium text-rose-500 dark:text-rose-400 leading-tight">
                     Chưa kết bạn với người này
                   </span>
                 ) : (
-                  <span className={cn("text-[11px] font-medium leading-tight", isOnline ? "text-emerald-500" : "text-muted-foreground")}>
-                    {formatLastActive(userLastActive, isOnline)}
+                  <span className={cn("text-[11px] font-medium leading-tight",
+                    effectiveStatus === "online" ? "text-emerald-500" :
+                    effectiveStatus === "busy" ? "text-red-500 font-semibold" :
+                    "text-muted-foreground"
+                  )}>
+                    {formatLastActive(userLastActive, isOnline, otherUser?.presenceStatus)}
                   </span>
                 )
-              ) : chat.type === "group" ? (
+              ) : chat?.type === "group" ? (
                 <span className="text-[11px] font-medium text-muted-foreground leading-tight">
-                  {chat.participants?.length || 0} thành viên
+                  {chat?.participants?.length || 0} thành viên
                 </span>
-              ) : chat.type === "channel" ? (
+              ) : chat?.type === "channel" ? (
                 <span className="text-[11px] font-medium text-muted-foreground leading-tight">
-                  {chat.participants?.length || 0} người theo dõi
+                  {chat?.participants?.length || 0} người theo dõi
                 </span>
               ) : null}
             </div>
@@ -233,7 +253,7 @@ const ChatWindowHeader = ({ chat }: { chat?: Conversation }) => {
 
         {/* Call Actions */}
         {!activeCall && (
-          chat?.type !== 'direct' && chat?._id && activeGroupCalls[chat._id] ? (
+          chat?.type !== 'direct' && chat?._id && activeGroupCalls?.[chat._id] ? (
             <div className="pr-2 shrink-0">
               <button
                 onClick={() => joinExistingCall(chat._id, activeGroupCalls[chat._id].roomName, activeGroupCalls[chat._id].isVideo)}

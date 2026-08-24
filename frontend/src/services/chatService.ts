@@ -264,4 +264,38 @@ export const chatService = {
     const response = await api.get(`/conversations/${conversationId}/summarize`);
     return response.data;
   },
+
+  scheduleMessage: async (payload: {
+    conversationId: string;
+    recipientId?: string;
+    content?: string;
+    imgUrl?: string | null;
+    audioUrl?: string | null;
+    fileUrl?: string | null;
+    fileName?: string | null;
+    fileSize?: number | null;
+    mentions?: string[];
+    scheduledFor: string | Date;
+    title?: string;
+    type?: "direct" | "group" | "reminder";
+  }) => {
+    const res = await api.post("/messages/schedule", payload);
+    return res.data;
+  },
+
+  getScheduledMessages: async (conversationId?: string) => {
+    const url = conversationId ? `/messages/scheduled/${conversationId}` : "/messages/scheduled";
+    const res = await api.get(url);
+    return res.data;
+  },
+
+  cancelScheduledMessage: async (id: string) => {
+    const res = await api.delete(`/messages/scheduled/${id}`);
+    return res.data;
+  },
+
+  updateScheduledMessage: async (id: string, payload: { content?: string; scheduledFor?: string | Date; title?: string }) => {
+    const res = await api.put(`/messages/scheduled/${id}`, payload);
+    return res.data;
+  },
 };

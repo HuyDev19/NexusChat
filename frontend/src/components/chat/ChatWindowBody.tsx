@@ -53,10 +53,10 @@ const ChatWindowBody = () => {
         if (seenBy.length > 0) {
             setLastMessageStatus("đã xem");
         } else {
-            const otherParticipants = selectedConvo?.participants?.filter(p => p._id !== user?._id && (p as any).userId?._id !== user?._id) || [];
+            const otherParticipants = selectedConvo?.participants?.filter(p => (p?._id || (p as any)?.userId?._id)?.toString() !== user?._id?.toString()) || [];
             const isAnyOnline = otherParticipants.some(p => {
-                const pId = (p as any).userId?._id || p._id;
-                return onlineUsers.includes(pId) || p.presenceStatus === "online" || (p as any).userId?.presenceStatus === "online";
+                const pId = ((p as any)?.userId?._id || p?._id)?.toString();
+                return pId ? (onlineUsers || []).includes(pId) || p?.presenceStatus === "online" || (p as any)?.userId?.presenceStatus === "online" : false;
             });
             setLastMessageStatus(isAnyOnline ? "đã nhận" : "đã gửi");
         }
@@ -170,7 +170,8 @@ const ChatWindowBody = () => {
                         <PopoverContent align="start" className="w-[calc(100vw-2rem)] sm:w-[400px] max-h-[60vh] overflow-y-auto beautiful-scrollbar p-2 z-50 ml-4 mt-1">
                             <div className="space-y-2">
                                 {pinnedMessages.map((msg) => {
-                                    const sender = selectedConvo?.participants.find(p => p._id === msg.senderId);
+                                    const sender = selectedConvo?.participants?.find(p => (p?._id || (p as any)?.userId?._id)?.toString() === msg.senderId?.toString());
+                                    const displayName = selectedConvo?.nicknames?.[msg.senderId] || sender?.displayName || "Người dùng";
                                     return (
                                         <div
                                             key={msg._id}
@@ -178,7 +179,7 @@ const ChatWindowBody = () => {
                                             className="p-3 bg-muted/50 rounded-md hover:bg-muted cursor-pointer transition-colors"
                                         >
                                             <div className="text-xs font-semibold mb-1 text-primary">
-                                                {sender?.displayName || "Người dùng"}
+                                                {displayName}
                                             </div>
                                             <div className="text-sm break-words whitespace-pre-wrap">
                                                 {msg.audioUrl ? "🎵 Tin nhắn thoại" : msg.content}
@@ -202,11 +203,11 @@ const ChatWindowBody = () => {
 
                 {activeTypingUsers.map((typingUserId) => {
                     const isAI = typingUserId === "000000000000000000000000";
-                    const typingUser = selectedConvo?.participants.find(p => p._id === typingUserId);
+                    const typingUser = selectedConvo?.participants?.find(p => p?._id?.toString() === typingUserId?.toString());
                     if (!typingUser && !isAI) return null;
                     
                     const avatarUrl = isAI ? "https://cdn-icons-png.flaticon.com/512/826/826963.png" : (typingUser as any)?.avatarUrl;
-                    const displayName = isAI ? "NexusAI" : (selectedConvo.nicknames?.[typingUserId] || (typingUser as any)?.displayName || "User");
+                    const displayName = isAI ? "NexusAI" : (selectedConvo?.nicknames?.[typingUserId] || (typingUser as any)?.displayName || "User");
 
                     return (
                         <div key={typingUserId} className="flex items-end mb-2 mt-1 opacity-70 transition-opacity justify-start w-full gap-2">

@@ -717,6 +717,16 @@ export const useChatStore = create<ChatState>()(
           toast.error("Không thể cập nhật biệt danh.");
         }
       },
+      updateParticipantData: (userUpdate) => {
+        set((state) => ({
+          conversations: state.conversations.map((convo) => ({
+            ...convo,
+            participants: (convo.participants || []).map((p) =>
+              p._id === userUpdate._id ? { ...p, ...userUpdate } : p
+            ),
+          })),
+        }));
+      },
       updateConversationFields: (conversationId, fields) => {
         set((state) => {
           const index = state.conversations.findIndex(c => c._id === conversationId);
