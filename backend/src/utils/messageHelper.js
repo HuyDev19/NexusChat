@@ -42,8 +42,10 @@ export const updateConversationAfterCreateMessage = async (
       finalContent = "Đã gửi 1 ảnh";
     } else if (message.audioUrl) {
       finalContent = "Đã gửi tin nhắn thoại";
-    } else if (message.poll) {
+    } else if (message.poll && message.poll.options && message.poll.options.length > 0) {
       finalContent = "Đã tạo một bình chọn";
+    } else if (message.sharedContact) {
+      finalContent = "Đã chia sẻ 1 liên hệ";
     } else {
       finalContent = "";
     }

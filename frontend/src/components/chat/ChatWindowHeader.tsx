@@ -229,7 +229,7 @@ const ChatWindowHeader = ({ chat }: { chat?: Conversation }) => {
                   <span className="text-[11px] font-medium text-rose-500 dark:text-rose-400 leading-tight">
                     Chưa kết bạn với người này
                   </span>
-                ) : (
+                ) : formatLastActive(userLastActive, isOnline, otherUser?.presenceStatus) ? (
                   <span className={cn("text-[11px] font-medium leading-tight",
                     effectiveStatus === "online" ? "text-emerald-500" :
                     effectiveStatus === "busy" ? "text-red-500 font-semibold" :
@@ -237,7 +237,7 @@ const ChatWindowHeader = ({ chat }: { chat?: Conversation }) => {
                   )}>
                     {formatLastActive(userLastActive, isOnline, otherUser?.presenceStatus)}
                   </span>
-                )
+                ) : null
               ) : chat?.type === "group" ? (
                 <span className="text-[11px] font-medium text-muted-foreground leading-tight">
                   {chat?.participants?.length || 0} thành viên

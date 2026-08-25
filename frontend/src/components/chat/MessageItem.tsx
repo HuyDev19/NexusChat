@@ -3,7 +3,7 @@ import type { Conversation, Message, Participant } from "@/types/chat";
 import UserAvatar from "./UserAvatar";
 import { Card } from "../ui/card";
 import { Badge } from "../ui/badge";
-import { Play, Pause, Pin, PinOff, Timer, EyeOff, Eye, Undo2, MoreHorizontal, Reply, Forward, Languages, FileText, Download, X, ExternalLink } from "lucide-react";
+import { Play, Pause, Pin, PinOff, Timer, EyeOff, Eye, Undo2, MoreHorizontal, Reply, Forward, Languages, FileText, Download, Pencil, X, ExternalLink } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { useChatStore } from "@/stores/useChatStore";
 import { useAuthStore } from "@/stores/useAuthStore";
@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "../ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
+import ImageViewerModal from "./ImageViewerModal";
 
 const EMOJI_LIST = ["👍", "❤️", "😂", "😮", "🔥"];
 
@@ -185,9 +186,10 @@ const MessageItem = ({
   selectedConvo,
   lastMessageStatus,
 }: MessageItemProps) => {
-  const { reactToMessage, pinMessage, recallMessage, markMediaAsViewed, voteOnPoll, setReplyingToMessage, setForwardingMessage, translateMessage } = useChatStore();
+  const { reactToMessage, pinMessage, recallMessage, markMediaAsViewed, voteOnPoll, setReplyingToMessage, setForwardingMessage, translateMessage, setEditingMessage } = useChatStore();
   const { user } = useAuthStore();
   const prev = index + 1 < messages.length ? messages[index + 1] : undefined;
+  const next = index > 0 ? messages[index - 1] : undefined;
 
   const isShowTime =
     index === 0 ||
@@ -197,8 +199,14 @@ const MessageItem = ({
 
   const senderIdStr = typeof message.senderId === "object" ? (message.senderId as any)?._id || String(message.senderId) : String(message.senderId);
   const prevSenderIdStr = prev?.senderId ? (typeof prev.senderId === "object" ? (prev.senderId as any)?._id || String(prev.senderId) : String(prev.senderId)) : undefined;
+  const nextSenderIdStr = next?.senderId ? (typeof next.senderId === "object" ? (next.senderId as any)?._id || String(next.senderId) : String(next.senderId)) : undefined;
 
   const isGroupBreak = isShowTime || senderIdStr !== prevSenderIdStr;
+
+  const isLastInGroup =
+    !next ||
+    senderIdStr !== nextSenderIdStr ||
+    new Date(next.createdAt).getTime() - new Date(message.createdAt).getTime() > 600000; // 10 minutes
 
   const participants = selectedConvo?.participants || [];
   const participant = participants.find(
@@ -233,6 +241,8 @@ const MessageItem = ({
 
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
   const [showViewOnceModal, setShowViewOnceModal] = useState(false);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [showEditHistory, setShowEditHistory] = useState(false);
 
   const handleOpenImageGallery = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -514,6 +524,34 @@ const MessageItem = ({
                     {message.poll.options.reduce((sum, o) => sum + (o.votes || []).length, 0)} lượt bình chọn
                   </div>
                 </div>
+              ) : message.sharedContact ? (
+                <div className="flex flex-col gap-2 min-w-[200px]">
+                  <div className="flex items-center gap-3 p-3 bg-background/50 rounded-lg border border-border/50">
+                    <UserAvatar
+                      name={message.sharedContact.displayName}
+                      avatarUrl={message.sharedContact.avatarUrl}
+                      type="chat"
+                    />
+                    <div className="flex flex-col flex-1 min-w-0">
+                      <span className="text-sm font-semibold truncate text-foreground">
+                        {message.sharedContact.displayName}
+                      </span>
+                      <span className="text-[10px] text-muted-foreground truncate">
+                        Danh thiếp liên hệ
+                      </span>
+                    </div>
+                  </div>
+                  <Button 
+                    variant="secondary" 
+                    size="sm" 
+                    className="w-full text-xs py-1 h-8"
+                    onClick={() => {
+                      useAccountInfoModalStore.getState().openAccountModal(message.sharedContact!._id);
+                    }}
+                  >
+                    Xem trang cá nhân
+                  </Button>
+                </div>
               ) : (
                 <div className="flex flex-col">
                   <FormattedText content={message.translatedContent || message.content} participants={participants} nicknames={selectedConvo.nicknames} isOwn={message.isOwn} />
@@ -558,10 +596,31 @@ const MessageItem = ({
               </DialogContent>
             </Dialog>
 
+            {/* Image Preview Lightbox Dialog */}
+            {previewImage && (
+              <ImageViewerModal
+                initialImageId={message._id}
+                images={messages.filter((m) => !!m.imgUrl)}
+                participants={participants}
+                onClose={() => setPreviewImage(null)}
+              />
+            )}
             {/* Timestamp next to bubble */}
-            <span className="text-[10px] text-muted-foreground/60 whitespace-nowrap self-end mb-1 px-1">
-               {formatMessageTime(new Date(message.createdAt))}
-            </span>
+            {isLastInGroup && (
+              <div className="flex items-center gap-1 self-end mb-1 px-1">
+                {message.isEdited && (
+                  <span 
+                    className="text-[10px] text-muted-foreground/60 cursor-pointer hover:underline"
+                    onClick={() => setShowEditHistory(true)}
+                  >
+                    (Đã chỉnh sửa)
+                  </span>
+                )}
+                <span className="text-[10px] text-muted-foreground/60 whitespace-nowrap">
+                   {formatMessageTime(new Date(message.createdAt))}
+                </span>
+              </div>
+            )}
 
             {/* Hover Actions */}
             {!message.isRecalled && (
@@ -618,6 +677,15 @@ const MessageItem = ({
                       >
                         {message.isPinned ? <PinOff className="size-4" /> : <Pin className="size-4" />}
                         {message.isPinned ? "Bỏ ghim tin nhắn" : "Ghim tin nhắn"}
+                      </DropdownMenuItem>
+                    )}
+                    {message.isOwn && !message.isViewOnce && !message.expiresIn && (
+                      <DropdownMenuItem
+                        onClick={() => setEditingMessage(message)}
+                        className="cursor-pointer font-medium flex items-center gap-2"
+                      >
+                        <Pencil className="size-4" />
+                        Chỉnh sửa tin nhắn
                       </DropdownMenuItem>
                     )}
                     {message.isOwn && (
@@ -700,6 +768,28 @@ const MessageItem = ({
           </div>
         </div>
       </div>
+      {/* Lịch sử chỉnh sửa */}
+      <Dialog open={showEditHistory} onOpenChange={setShowEditHistory}>
+        <DialogContent className="max-w-md p-4">
+          <div className="font-semibold text-lg border-b pb-2 mb-3">Lịch sử chỉnh sửa</div>
+          <div className="flex flex-col gap-3 max-h-[60vh] overflow-y-auto beautiful-scrollbar">
+            {message.editHistory?.map((history, idx) => (
+              <div key={idx} className="flex flex-col gap-1 p-2 bg-muted/30 rounded-lg">
+                <span className="text-xs text-muted-foreground">
+                  {formatMessageTime(new Date(history.editedAt))} - {new Date(history.editedAt).toLocaleDateString("vi-VN")}
+                </span>
+                <span className="text-sm">{history.content}</span>
+              </div>
+            ))}
+            <div className="flex flex-col gap-1 p-2 bg-primary/5 rounded-lg border border-primary/20">
+              <span className="text-xs text-primary/70">
+                Hiện tại - Đã cập nhật
+              </span>
+              <span className="text-sm font-medium">{message.content}</span>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   );
 };

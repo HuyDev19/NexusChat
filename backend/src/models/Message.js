@@ -96,6 +96,21 @@ const messageSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    isEdited: {
+      type: Boolean,
+      default: false,
+    },
+    sharedContact: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
+    editHistory: [
+      {
+        content: String,
+        editedAt: { type: Date, default: Date.now },
+      },
+    ],
   },
   {
     timestamps: true,

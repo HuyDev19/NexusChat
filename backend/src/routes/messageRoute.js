@@ -13,6 +13,7 @@ import {
   voteOnPoll,
   translateMessage,
   uploadFile,
+  editMessage,
 } from "../controllers/messageController.js";
 import {
   checkFriendship,
@@ -47,5 +48,6 @@ router.post("/:messageId/view-media", markMediaAsViewed);
 router.post("/:messageId/recall", recallMessage);
 router.post("/:messageId/vote", voteOnPoll);
 router.post("/:messageId/translate", translateMessage);
+router.post("/:messageId/edit", editMessage);
 
 export default router;

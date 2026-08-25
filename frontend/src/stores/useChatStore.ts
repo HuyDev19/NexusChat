@@ -25,6 +25,7 @@ export const useChatStore = create<ChatState>()(
       drafts: {},
       replyingToMessage: null,
       forwardingMessage: null,
+      editingMessage: null,
 
       setSearchQuery: (searchQuery) => set({ searchQuery }),
       archiveConversation: (id) =>
@@ -62,6 +63,7 @@ export const useChatStore = create<ChatState>()(
         })),
       setReplyingToMessage: (message) => set({ replyingToMessage: message }),
       setForwardingMessage: (message) => set({ forwardingMessage: message }),
+      setEditingMessage: (message) => set({ editingMessage: message }),
       setActiveConversation: (id) => set({ activeConversationId: id }),
       reset: () => {
         set({
@@ -142,7 +144,7 @@ export const useChatStore = create<ChatState>()(
           set({ messageLoading: false });
         }
       },
-      sendDirectMessage: async (recipientId, content, imgUrl, audioUrl, expiresIn, isViewOnce, mentions, replyTo, isForwarded, targetConversationId, fileUrl, fileName, fileSize) => {
+      sendDirectMessage: async (recipientId, content, imgUrl, audioUrl, expiresIn, isViewOnce, mentions, replyTo, isForwarded, targetConversationId, fileUrl, fileName, fileSize, sharedContactId) => {
         try {
           const { activeConversationId } = get();
           const convoIdToUse = targetConversationId || activeConversationId || undefined;
@@ -159,7 +161,8 @@ export const useChatStore = create<ChatState>()(
             isForwarded,
             fileUrl,
             fileName,
-            fileSize
+            fileSize,
+            sharedContactId
           );
 
           const sentMessage = data?.message || data;
@@ -171,7 +174,8 @@ export const useChatStore = create<ChatState>()(
             if (sentMessage.fileUrl) finalContent = "Đã gửi tệp tin";
             else if (sentMessage.imgUrl) finalContent = "Đã gửi 1 ảnh";
             else if (sentMessage.audioUrl) finalContent = "Đã gửi tin nhắn thoại";
-            else if (sentMessage.poll) finalContent = "Đã tạo một bình chọn";
+            else if (sentMessage.poll && sentMessage.poll.options && sentMessage.poll.options.length > 0) finalContent = "Đã tạo một bình chọn";
+            else if (sentMessage.sharedContact) finalContent = "Đã chia sẻ 1 liên hệ";
             else finalContent = "";
           }
 
@@ -231,7 +235,8 @@ export const useChatStore = create<ChatState>()(
         isForwarded,
         fileUrl,
         fileName,
-        fileSize
+        fileSize,
+        sharedContactId
       ) => {
         try {
           const data: any = await chatService.sendGroupMessage(
@@ -247,7 +252,8 @@ export const useChatStore = create<ChatState>()(
             isForwarded,
             fileUrl,
             fileName,
-            fileSize
+            fileSize,
+            sharedContactId
           );
 
           const sentMessage = data?.message || data;
@@ -257,7 +263,8 @@ export const useChatStore = create<ChatState>()(
             if (sentMessage.fileUrl) finalContent = "Đã gửi tệp tin";
             else if (sentMessage.imgUrl) finalContent = "Đã gửi 1 ảnh";
             else if (sentMessage.audioUrl) finalContent = "Đã gửi tin nhắn thoại";
-            else if (sentMessage.poll) finalContent = "Đã tạo một bình chọn";
+            else if (sentMessage.poll && sentMessage.poll.options && sentMessage.poll.options.length > 0) finalContent = "Đã tạo một bình chọn";
+            else if (sentMessage.sharedContact) finalContent = "Đã chia sẻ 1 liên hệ";
             else finalContent = "";
           }
 
@@ -629,6 +636,16 @@ export const useChatStore = create<ChatState>()(
         } catch (error: any) {
           console.error("Lỗi xảy ra khi thu hồi tin nhắn:", error);
           toast.error(error.response?.data?.message || "Lỗi hệ thống khi thu hồi tin nhắn.");
+        }
+      },
+      editMessage: async (messageId: string, content: string) => {
+        try {
+          await chatService.editMessage(messageId, content);
+          set({ editingMessage: null });
+          toast.success("Đã chỉnh sửa tin nhắn");
+        } catch (error: any) {
+          console.error("Lỗi xảy ra khi chỉnh sửa tin nhắn:", error);
+          toast.error(error.response?.data?.message || "Không thể chỉnh sửa tin nhắn.");
         }
       },
       translateMessage: async (conversationId: string, messageId: string) => {

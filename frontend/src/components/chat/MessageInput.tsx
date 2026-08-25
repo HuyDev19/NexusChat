@@ -70,6 +70,9 @@ const MessageInput = ({ selectedConvo }: { selectedConvo: Conversation }) => {
     setDraft,
     replyingToMessage,
     setReplyingToMessage,
+    editingMessage,
+    setEditingMessage,
+    editMessage
   } = useChatStore();
 
   const participants = selectedConvo?.participants || [];
@@ -99,10 +102,15 @@ const MessageInput = ({ selectedConvo }: { selectedConvo: Conversation }) => {
   const [isDragging, setIsDragging] = useState(false);
 
   useEffect(() => {
-    const draft = useChatStore.getState().drafts[selectedConvo._id] || "";
-    setValue(draft);
-    inputRef.current?.focus();
-  }, [selectedConvo._id]);
+    if (editingMessage) {
+      setValue(editingMessage.content || "");
+      inputRef.current?.focus();
+    } else {
+      const draft = useChatStore.getState().drafts[selectedConvo._id] || "";
+      setValue(draft);
+      inputRef.current?.focus();
+    }
+  }, [selectedConvo._id, editingMessage]);
 
   const [isRecording, setIsRecording] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
@@ -336,6 +344,18 @@ const MessageInput = ({ selectedConvo }: { selectedConvo: Conversation }) => {
 
     if (!value.trim() && !audioBlob && !hasImages && !hasFiles) return;
     const currValue = value.trim();
+
+    if (editingMessage) {
+      if (currValue !== editingMessage.content) {
+        await editMessage(editingMessage._id, currValue);
+      } else {
+        setEditingMessage(null);
+      }
+      setValue("");
+      setDraft(selectedConvo._id, "");
+      inputRef.current?.focus();
+      return;
+    }
 
     // Clear text and staged items immediately for snappy UI
     setValue("");
@@ -830,6 +850,25 @@ const MessageInput = ({ selectedConvo }: { selectedConvo: Conversation }) => {
         </div>
       )}
 
+      {editingMessage && (
+        <div className="flex items-center justify-between px-4 py-2 bg-primary/10 border-t border-b border-primary/20">
+          <div className="flex items-center gap-2 overflow-hidden">
+            <Pencil className="size-4 text-primary shrink-0" />
+            <div className="flex flex-col text-sm truncate">
+              <span className="font-semibold text-primary truncate">
+                Đang chỉnh sửa tin nhắn
+              </span>
+              <span className="text-muted-foreground truncate">
+                {editingMessage.content}
+              </span>
+            </div>
+          </div>
+          <Button variant="ghost" size="icon" className="size-6 shrink-0 text-primary" onClick={() => setEditingMessage(null)}>
+            <X className="size-4" />
+          </Button>
+        </div>
+      )}
+
       {/* Mode Indicators (View Once & Self-destruct timer) */}
       {(isViewOnce || expiresIn) && (
         <div className="flex items-center gap-2 px-4 py-1.5 bg-primary/5 border-b border-border/40 text-xs">
@@ -869,7 +908,7 @@ const MessageInput = ({ selectedConvo }: { selectedConvo: Conversation }) => {
         </div>
       )}
 
-      {/* Staged Images Preview */}
+      {/* Staged Images Preview matching composer layout */}
       {stagedImages.length > 0 && (
         <div className="px-4 pb-3 pt-2 border-t border-border/40 bg-muted/20">
           <div className="flex items-center justify-between py-1 text-xs">
@@ -1163,6 +1202,15 @@ const MessageInput = ({ selectedConvo }: { selectedConvo: Conversation }) => {
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+        ) : editingMessage ? (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="shrink-0 rounded-full hover:bg-primary/10 transition-smooth opacity-50"
+            disabled
+          >
+            <Pencil className="size-5" />
+          </Button>
         ) : (
           <div className="flex items-center gap-1.5">
             <Button

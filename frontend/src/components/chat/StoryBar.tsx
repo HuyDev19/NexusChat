@@ -92,8 +92,11 @@ const StoryBar = () => {
     }
   };
 
+  // Filter only online friends who have not hidden their status
+  const onlineFriends = (friends || []).filter(f => onlineUsers.includes(f._id) && f.presenceStatus !== 'offline');
+
   // Sort friends: Friends with active notes come first
-  const validFriends = (friends || []).filter((f) => Boolean(f && f._id));
+  const validFriends = (onlineFriends || []).filter((f) => Boolean(f && f._id));
   const sortedFriends = [...validFriends].sort((a, b) => {
     const hasNoteA = !isNoteExpired(a.note) ? 1 : 0;
     const hasNoteB = !isNoteExpired(b.note) ? 1 : 0;

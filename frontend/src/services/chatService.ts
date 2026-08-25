@@ -45,7 +45,8 @@ export const chatService = {
     isForwarded?: boolean,
     fileUrl?: string | null,
     fileName?: string | null,
-    fileSize?: number | null
+    fileSize?: number | null,
+    sharedContactId?: string
   ) {
     const res = await api.post("/messages/direct", {
       recipientId,
@@ -61,6 +62,7 @@ export const chatService = {
       fileUrl,
       fileName,
       fileSize,
+      sharedContactId,
     });
 
     return res.data;
@@ -79,7 +81,8 @@ export const chatService = {
     isForwarded?: boolean,
     fileUrl?: string | null,
     fileName?: string | null,
-    fileSize?: number | null
+    fileSize?: number | null,
+    sharedContactId?: string
   ) {
     const res = await api.post("/messages/group", {
       conversationId,
@@ -95,6 +98,7 @@ export const chatService = {
       fileUrl,
       fileName,
       fileSize,
+      sharedContactId,
     });
     return res.data;
   },
@@ -186,6 +190,11 @@ export const chatService = {
 
   async recallMessage(messageId: string) {
     const res = await api.post(`/messages/${messageId}/recall`);
+    return res.data;
+  },
+
+  async editMessage(messageId: string, content: string) {
+    const res = await api.post(`/messages/${messageId}/edit`, { content });
     return res.data;
   },
 

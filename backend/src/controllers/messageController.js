@@ -11,12 +11,12 @@ import { uploadFileToDrive } from "../services/driveService.js";
 
 export const sendDirectMessage = async (req, res) => {
   try {
-    const { recipientId, content, conversationId, audioUrl, expiresIn, isViewOnce, mentions, replyTo, isForwarded, fileUrl, fileName, fileSize } = req.body;
+    const { recipientId, content, conversationId, audioUrl, expiresIn, isViewOnce, mentions, replyTo, isForwarded, fileUrl, fileName, fileSize, sharedContactId } = req.body;
     const senderId = req.user._id;
 
     let conversation;
 
-    if (!content && !audioUrl && !req.body.imgUrl && !fileUrl) {
+    if (!content && !audioUrl && !req.body.imgUrl && !fileUrl && !sharedContactId) {
       return res.status(400).json({ message: "Thiếu nội dung hoặc file đính kèm" });
     }
 
@@ -55,6 +55,7 @@ export const sendDirectMessage = async (req, res) => {
       fileUrl,
       fileName,
       fileSize,
+      sharedContact: sharedContactId,
     });
 
     await updateConversationAfterCreateMessage(conversation, message, senderId);
@@ -62,6 +63,9 @@ export const sendDirectMessage = async (req, res) => {
     await conversation.save();
 
     await message.populate("replyTo", "content senderId imgUrl audioUrl isRecalled");
+    if (sharedContactId) {
+      await message.populate("sharedContact", "_id displayName username avatarUrl");
+    }
 
     const io = req.app.get("io");
     if (io) {
@@ -87,11 +91,11 @@ export const sendDirectMessage = async (req, res) => {
 
 export const sendGroupMessage = async (req, res) => {
   try {
-    const { conversationId, content, audioUrl, imgUrl, expiresIn, isViewOnce, poll, mentions, replyTo, isForwarded, fileUrl, fileName, fileSize } = req.body;
+    const { conversationId, content, audioUrl, imgUrl, expiresIn, isViewOnce, poll, mentions, replyTo, isForwarded, fileUrl, fileName, fileSize, sharedContactId } = req.body;
     const senderId = req.user._id;
     const conversation = req.conversation;
 
-    if (!content && !audioUrl && !imgUrl && !poll && !fileUrl) {
+    if (!content && !audioUrl && !imgUrl && !poll && !fileUrl && !sharedContactId) {
       return res.status(400).json("Thiếu nội dung hoặc file đính kèm hoặc bình chọn");
     }
 
@@ -117,6 +121,7 @@ export const sendGroupMessage = async (req, res) => {
       fileUrl,
       fileName,
       fileSize,
+      sharedContact: sharedContactId,
     });
 
     await updateConversationAfterCreateMessage(conversation, message, senderId);
@@ -124,6 +129,9 @@ export const sendGroupMessage = async (req, res) => {
     await conversation.save();
 
     await message.populate("replyTo", "content senderId imgUrl audioUrl isRecalled");
+    if (sharedContactId) {
+      await message.populate("sharedContact", "_id displayName username avatarUrl");
+    }
 
     const io = req.app.get("io");
     if (io) {
@@ -491,3 +499,66 @@ export const uploadFile = async (req, res) => {
     return res.status(500).json({ message: "Lỗi hệ thống khi tải file lên" });
   }
 };
+
+export const editMessage = async (req, res) => {
+  try {
+    const { messageId } = req.params;
+    const { content } = req.body;
+    const userId = req.user._id;
+
+    if (!content) return res.status(400).json({ message: "Thiếu nội dung tin nhắn" });
+
+    const message = await Message.findById(messageId);
+    if (!message) return res.status(404).json({ message: "Không tìm thấy tin nhắn" });
+
+    if (message.senderId.toString() !== userId.toString()) {
+      return res.status(403).json({ message: "Không có quyền chỉnh sửa tin nhắn này" });
+    }
+
+    if (message.isRecalled) {
+      return res.status(400).json({ message: "Không thể chỉnh sửa tin nhắn đã thu hồi" });
+    }
+    
+    if (message.expiresIn) {
+      return res.status(400).json({ message: "Không thể chỉnh sửa tin nhắn tự hủy" });
+    }
+    
+    if (message.isViewOnce) {
+      return res.status(400).json({ message: "Không thể chỉnh sửa tin nhắn xem một lần" });
+    }
+
+    // Save current content to history
+    message.editHistory.push({
+      content: message.content,
+      editedAt: new Date(),
+    });
+
+    message.content = content;
+    message.isEdited = true;
+
+    await message.save();
+
+    const conversation = await Conversation.findById(message.conversationId);
+    if (conversation) {
+      const io = req.app.get("io");
+      if (io) {
+        conversation.participants.forEach((p) => {
+          io.to(`user:${p.userId}`).emit("message:update", {
+            messageId,
+            conversationId: conversation._id,
+            updates: {
+              content: message.content,
+              isEdited: message.isEdited,
+              editHistory: message.editHistory,
+            }
+          });
+        });
+      }
+    }
+
+    return res.status(200).json({ message: "Chỉnh sửa tin nhắn thành công", data: message });
+  } catch (error) {
+    console.error("Lỗi khi chỉnh sửa tin nhắn:", error);
+    return res.status(500).json({ message: "Lỗi hệ thống khi chỉnh sửa tin nhắn" });
+  }
+};

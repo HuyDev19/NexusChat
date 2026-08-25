@@ -83,6 +83,8 @@ export interface Message {
   isViewOnce?: boolean;
   viewedBy?: string[];
   isRecalled?: boolean;
+  isEdited?: boolean;
+  editHistory?: { content: string; editedAt: string }[];
   updatedAt?: string | null;
   createdAt: string;
   isOwn?: boolean;
@@ -105,4 +107,10 @@ export interface Message {
   };
   isForwarded?: boolean;
   translatedContent?: string;
+  sharedContact?: {
+    _id: string;
+    displayName: string;
+    username: string;
+    avatarUrl?: string | null;
+  };
 }

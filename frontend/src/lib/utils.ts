@@ -133,10 +133,11 @@ export const formatLastActive = (
   const status = getEffectiveStatus(Boolean(isOnline), presenceStatus);
   if (status === "online") return "Đang hoạt động";
   if (status === "busy") return "Đang bận";
+  if (status === "offline") return "";
 
-  if (!dateStrOrDate) return "Ngoại tuyến";
+  if (!dateStrOrDate) return "";
   const date = new Date(dateStrOrDate);
-  if (isNaN(date.getTime())) return "Ngoại tuyến";
+  if (isNaN(date.getTime())) return "";
   const now = new Date();
   const diffMs = now.getTime() - date.getTime();
   const diffMins = Math.floor(diffMs / (1000 * 60));
@@ -147,5 +148,5 @@ export const formatLastActive = (
   if (diffMins < 60) return `Hoạt động ${diffMins} phút trước`;
   if (diffHours < 24) return `Hoạt động ${diffHours} giờ trước`;
   if (diffDays < 7) return `Hoạt động ${diffDays} ngày trước`;
-  return "Không hoạt động gần đây";
+  return "";
 };

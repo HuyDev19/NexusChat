@@ -60,6 +60,7 @@ export interface ChatState {
   drafts: Record<string, string>; // conversationId -> draft message
   replyingToMessage: Message | null;
   forwardingMessage: Message | null;
+  editingMessage: Message | null;
   setSearchQuery: (query: string) => void;
   archiveConversation: (id: string) => void;
   unarchiveConversation: (id: string) => void;
@@ -70,6 +71,7 @@ export interface ChatState {
   setDraft: (conversationId: string, text: string) => void;
   setReplyingToMessage: (message: Message | null) => void;
   setForwardingMessage: (message: Message | null) => void;
+  setEditingMessage: (message: Message | null) => void;
   reset: () => void;
 
   setActiveConversation: (id: string | null) => void;
@@ -134,6 +136,7 @@ export interface ChatState {
   pinMessage: (messageId: string) => Promise<void>;
   markMediaAsViewed: (messageId: string) => Promise<void>;
   recallMessage: (messageId: string) => Promise<void>;
+  editMessage: (messageId: string, content: string) => Promise<void>;
   translateMessage: (conversationId: string, messageId: string) => Promise<void>;
   updateWallpaper: (conversationId: string, data: string | File) => Promise<void>;
   updateNickname: (conversationId: string, targetUserId: string, nickname: string) => Promise<void>;

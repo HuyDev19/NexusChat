@@ -87,7 +87,7 @@ const PreferencesForm = () => {
             >
               <option value="online">Trực tuyến</option>
               <option value="busy">Đang bận</option>
-              <option value="offline">Ngoại tuyến</option>
+              <option value="offline">Tắt trạng thái hoạt động</option>
             </select>
           </div>
         </div>

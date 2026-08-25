@@ -26,7 +26,9 @@ import RenameGroupModal from "../chat/RenameGroupModal";
 import SharedMediaModal from "./SharedMediaModal";
 import SearchMessagesModal from "../chat/SearchMessagesModal";
 import PinnedMessagesModal from "../chat/PinnedMessagesModal";
+import ShareContactModal from "./ShareContactModal";
 import { toast } from "sonner";
+import { Share2 } from "lucide-react";
 
 const ProfileSidebar = () => {
   const { isOpen, profileData, loading, mode, closeProfile } = useProfileStore();
@@ -43,6 +45,7 @@ const ProfileSidebar = () => {
   const [showSearchMessages, setShowSearchMessages] = useState(false);
   const [showPinnedMessages, setShowPinnedMessages] = useState(false);
   const [showSharedMedia, setShowSharedMedia] = useState(false);
+  const [showShareContact, setShowShareContact] = useState(false);
   const [sharedMediaTab, setSharedMediaTab] = useState<"media" | "docs" | "links">("media");
 
   const [showLockDialog, setShowLockDialog] = useState(false);
@@ -433,6 +436,13 @@ const ProfileSidebar = () => {
 
                     {isDirect && (
                       <>
+                        {targetUser && (
+                          <ActionRow
+                            icon={Share2}
+                            label="Chia sẻ liên hệ"
+                            onClick={() => setShowShareContact(true)}
+                          />
+                        )}
                         {isTargetFriend && (
                           <ActionRow
                             icon={UserMinus}
@@ -650,6 +660,14 @@ const ProfileSidebar = () => {
             </DialogContent>
           </Dialog>
         </>
+      )}
+
+      {targetUser && (
+        <ShareContactModal
+          open={showShareContact}
+          onOpenChange={setShowShareContact}
+          sharedContactId={targetUser._id}
+        />
       )}
     </div>
   );
