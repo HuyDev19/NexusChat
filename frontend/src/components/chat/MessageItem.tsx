@@ -149,7 +149,7 @@ const VoiceMessagePlayer = ({ src, isOwn }: { src: string; isOwn?: boolean }) =>
       >
         {isPlaying ? <Pause className="size-4 fill-current" /> : <Play className="size-4 fill-current ml-0.5" />}
       </button>
-      
+
       <div className="flex-1 h-8 relative flex items-center">
         {/* Fake waveform */}
         <div className="absolute inset-0 flex items-center justify-between gap-[2px] opacity-60">
@@ -284,7 +284,7 @@ const MessageItem = ({
   useEffect(() => {
     if (message.expiresAt) {
       const expiresAt = new Date(message.expiresAt).getTime();
-      
+
       const updateTimer = () => {
         const now = new Date().getTime();
         const diff = expiresAt - now;
@@ -294,7 +294,7 @@ const MessageItem = ({
           setTimeLeft(Math.floor(diff / 1000));
         }
       };
-      
+
       updateTimer();
       const interval = setInterval(updateTimer, 1000);
       return () => clearInterval(interval);
@@ -306,8 +306,8 @@ const MessageItem = ({
   const formatTimeLeft = (sec: number | null) => {
     if (sec === null) return "";
     if (sec < 60) return `${sec}s`;
-    if (sec < 3600) return `${Math.floor(sec/60)}m ${sec%60}s`;
-    return `${Math.floor(sec/3600)}h ${Math.floor((sec%3600)/60)}m`;
+    if (sec < 3600) return `${Math.floor(sec / 60)}m ${sec % 60}s`;
+    return `${Math.floor(sec / 3600)}h ${Math.floor((sec % 3600) / 60)}m`;
   };
 
   if (timeLeft === 0) return null;
@@ -363,16 +363,16 @@ const MessageItem = ({
           )}
         >
           {!message.isOwn && selectedConvo.type === "group" && isGroupBreak && (
-             <span 
-               className="text-[11px] text-muted-foreground ml-1 mb-0.5 cursor-pointer hover:underline"
-               onClick={() => {
-                 if (!isAI && senderIdStr) {
-                   useAccountInfoModalStore.getState().openAccountModal(senderIdStr);
-                 }
-               }}
-             >
-               {getDisplayName()}
-             </span>
+            <span
+              className="text-[11px] text-muted-foreground ml-1 mb-0.5 cursor-pointer hover:underline"
+              onClick={() => {
+                if (!isAI && senderIdStr) {
+                  useAccountInfoModalStore.getState().openAccountModal(senderIdStr);
+                }
+              }}
+            >
+              {getDisplayName()}
+            </span>
           )}
 
           {message.replyTo && (
@@ -426,7 +426,7 @@ const MessageItem = ({
                   <Undo2 className="size-4" /> Tin nhắn đã bị thu hồi
                 </div>
               ) : message.isViewOnce && !message.isOwn && !hasViewed ? (
-                <Button 
+                <Button
                   onClick={handleOpenViewOnce}
                   className="flex items-center gap-2"
                   variant="secondary"
@@ -441,11 +441,11 @@ const MessageItem = ({
                 <VoiceMessagePlayer src={message.audioUrl} isOwn={message.isOwn} />
               ) : message.imgUrl ? (
                 <div className="space-y-1.5">
-                  <img 
-                    src={message.imgUrl} 
-                    alt="Image" 
+                  <img
+                    src={message.imgUrl}
+                    alt="Image"
                     onClick={handleOpenImageGallery}
-                    className="rounded-md max-w-full h-auto max-h-[300px] object-cover cursor-pointer hover:opacity-95 hover:brightness-105 transition-all shadow-xs" 
+                    className="rounded-md max-w-full h-auto max-h-[300px] object-cover cursor-pointer hover:opacity-95 hover:brightness-105 transition-all shadow-xs"
                     title="Bấm để xem ảnh phóng to"
                   />
                   {message.content && (
@@ -501,11 +501,11 @@ const MessageItem = ({
                       const totalVotes = message.poll!.options.reduce((sum, o) => sum + (o.votes || []).length, 0);
                       const percentage = totalVotes > 0 ? Math.round((votes.length / totalVotes) * 100) : 0;
                       const hasVoted = votes.includes(user?._id || "");
-                      
+
                       return (
                         <div key={option._id || idx} className="relative group cursor-pointer" onClick={() => voteOnPoll(message._id, idx)}>
                           <div className={cn(
-                            "absolute inset-0 rounded-md transition-all", 
+                            "absolute inset-0 rounded-md transition-all",
                             message.isOwn ? "bg-primary-foreground/20" : "bg-primary/20",
                             hasVoted ? "border border-primary-foreground/50" : ""
                           )} style={{ width: `${percentage}%` }} />
@@ -541,9 +541,9 @@ const MessageItem = ({
                       </span>
                     </div>
                   </div>
-                  <Button 
-                    variant="secondary" 
-                    size="sm" 
+                  <Button
+                    variant="secondary"
+                    size="sm"
                     className="w-full text-xs py-1 h-8"
                     onClick={() => {
                       useAccountInfoModalStore.getState().openAccountModal(message.sharedContact!._id);
@@ -578,15 +578,15 @@ const MessageItem = ({
               <DialogContent className="max-w-2xl bg-black border-none p-1" showCloseButton={false}>
                 <div className="relative w-full h-full min-h-[300px] flex items-center justify-center">
                   {message.audioUrl ? (
-                     <VoiceMessagePlayer src={message.audioUrl} />
+                    <VoiceMessagePlayer src={message.audioUrl} />
                   ) : message.imgUrl ? (
-                     <img src={message.imgUrl} alt="View once" className="max-w-full max-h-[80vh] object-contain rounded-md" />
+                    <img src={message.imgUrl} alt="View once" className="max-w-full max-h-[80vh] object-contain rounded-md" />
                   ) : (
-                     <div className="text-white text-lg p-6 text-center break-words">{message.content}</div>
+                    <div className="text-white text-lg p-6 text-center break-words">{message.content}</div>
                   )}
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
+                  <Button
+                    variant="ghost"
+                    size="icon"
                     className="absolute top-2 right-2 text-white hover:bg-white/20 rounded-full"
                     onClick={() => setShowViewOnceModal(false)}
                   >
@@ -609,15 +609,20 @@ const MessageItem = ({
             {isLastInGroup && (
               <div className="flex items-center gap-1 self-end mb-1 px-1">
                 {message.isEdited && (
-                  <span 
-                    className="text-[10px] text-muted-foreground/60 cursor-pointer hover:underline"
-                    onClick={() => setShowEditHistory(true)}
+                  <span
+                    className={cn(
+                      "text-[10px] text-muted-foreground/60",
+                      message.isOwn && "cursor-pointer hover:underline"
+                    )}
+                    onClick={() => {
+                      if (message.isOwn) setShowEditHistory(true);
+                    }}
                   >
                     (Đã chỉnh sửa)
                   </span>
                 )}
                 <span className="text-[10px] text-muted-foreground/60 whitespace-nowrap">
-                   {formatMessageTime(new Date(message.createdAt))}
+                  {formatMessageTime(new Date(message.createdAt))}
                 </span>
               </div>
             )}
@@ -751,7 +756,7 @@ const MessageItem = ({
                   })}
               </div>
             )}
-            
+
             {message.isOwn && message._id === selectedConvo?.lastMessage?._id && lastMessageStatus !== "đã xem" && (
               <Badge
                 variant="outline"

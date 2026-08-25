@@ -90,11 +90,11 @@ const DirectMessageCard = ({ convo }: { convo: Conversation }) => {
       rightSection={
         isStreakActive(convo.streak) && convo.streak && convo.streak.count >= 1 ? (
           <div className="flex items-center gap-0.5" title={isStreakOnFire(convo.streak) ? "Cả 2 đã cùng giữ chuỗi hôm nay!" : "Đang chờ người kia nhắn lại để thắp sáng chuỗi"}>
-            <Flame 
+            <Flame
               className={cn(
-                "size-4 transition-colors", 
+                "size-4 transition-colors",
                 isStreakOnFire(convo.streak) ? "text-amber-500 fill-amber-500" : "text-zinc-800 dark:text-zinc-400 fill-zinc-800 dark:fill-zinc-400"
-              )} 
+              )}
             />
             <span className={cn("text-xs font-bold", isStreakOnFire(convo.streak) ? "text-amber-500" : "text-zinc-500")}>
               {convo.streak.count}

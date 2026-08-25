@@ -794,10 +794,10 @@ export const useChatStore = create<ChatState>()(
       updateMessageFields: (conversationId, messageId, fields) => {
         set((state) => {
           const currentItems = state.messages[conversationId]?.items;
-          if (!currentItems) return state;
+          const nextState: any = {};
 
-          return {
-            messages: {
+          if (currentItems) {
+            nextState.messages = {
               ...state.messages,
               [conversationId]: {
                 ...state.messages[conversationId],
@@ -805,8 +805,25 @@ export const useChatStore = create<ChatState>()(
                   m._id === messageId ? { ...m, ...fields } : m
                 ),
               },
-            },
-          };
+            };
+          }
+
+          if (fields.content !== undefined || fields.isRecalled !== undefined) {
+            nextState.conversations = state.conversations.map((c) => {
+              if (c._id === conversationId && c.lastMessage?._id === messageId) {
+                return {
+                  ...c,
+                  lastMessage: {
+                    ...c.lastMessage,
+                    content: fields.isRecalled ? "Tin nhắn đã bị thu hồi" : fields.content,
+                  },
+                };
+              }
+              return c;
+            });
+          }
+
+          return Object.keys(nextState).length > 0 ? nextState : state;
         });
       },
       unlockConversation: (conversationId) => {

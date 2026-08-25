@@ -381,6 +381,11 @@ export const recallMessage = async (req, res) => {
 
     const conversation = await Conversation.findById(message.conversationId);
     if (conversation) {
+      if (conversation.lastMessage && conversation.lastMessage._id && conversation.lastMessage._id.toString() === messageId.toString()) {
+        conversation.lastMessage.content = "Tin nhắn đã bị thu hồi";
+        await conversation.save();
+      }
+
       const io = req.app.get("io");
       if (io) {
         conversation.participants.forEach((p) => {
@@ -540,6 +545,12 @@ export const editMessage = async (req, res) => {
 
     const conversation = await Conversation.findById(message.conversationId);
     if (conversation) {
+      // Update lastMessage if it matches the edited message
+      if (conversation.lastMessage && conversation.lastMessage._id && conversation.lastMessage._id.toString() === messageId.toString()) {
+        conversation.lastMessage.content = content;
+        await conversation.save();
+      }
+
       const io = req.app.get("io");
       if (io) {
         conversation.participants.forEach((p) => {
