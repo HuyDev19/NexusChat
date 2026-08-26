@@ -92,15 +92,41 @@ const StoryBar = () => {
     }
   };
 
-  // Filter only online friends who have not hidden their status
-  const onlineFriends = (friends || []).filter(f => onlineUsers.includes(f._id) && f.presenceStatus !== 'offline');
+  // Danh sách hiển thị bạn bè trên Story/Note Bar:
+  // Kết hợp danh sách bạn bè và người trò chuyện trực tiếp
+  const allStoryUsersMap = new Map<string, any>();
 
-  // Sort friends: Friends with active notes come first
-  const validFriends = (onlineFriends || []).filter((f) => Boolean(f && f._id));
-  const sortedFriends = [...validFriends].sort((a, b) => {
+  (friends || []).forEach((f) => {
+    if (f && f._id && f._id !== user?.id && f._id !== user?._id) {
+      allStoryUsersMap.set(f._id, f);
+    }
+  });
+
+  (conversations || [])
+    .filter((c) => c.type === "direct")
+    .forEach((c) => {
+      const otherUser = c.participants?.find((p) => p._id !== user?._id);
+      if (otherUser && otherUser._id && !allStoryUsersMap.has(otherUser._id)) {
+        allStoryUsersMap.set(otherUser._id, otherUser);
+      }
+    });
+
+  const allStoryUsers = Array.from(allStoryUsersMap.values());
+
+  // Sắp xếp thứ tự ưu tiên:
+  // 1. Bạn bè có Ghi chú trạng thái (Cloud Note) còn hạn lên đầu
+  // 2. Bạn bè đang Online
+  // 3. Các bạn bè khác (kèm trạng thái offline/thời gian hoạt động gần nhất)
+  const sortedFriends = allStoryUsers.sort((a, b) => {
     const hasNoteA = !isNoteExpired(a.note) ? 1 : 0;
     const hasNoteB = !isNoteExpired(b.note) ? 1 : 0;
-    return hasNoteB - hasNoteA;
+    if (hasNoteB !== hasNoteA) return hasNoteB - hasNoteA;
+
+    const isOnlineA = (onlineUsers || []).includes(a._id) && a.presenceStatus !== 'offline' ? 1 : 0;
+    const isOnlineB = (onlineUsers || []).includes(b._id) && b.presenceStatus !== 'offline' ? 1 : 0;
+    if (isOnlineB !== isOnlineA) return isOnlineB - isOnlineA;
+
+    return (a.displayName || "").localeCompare(b.displayName || "");
   });
 
   if (!user) return null;

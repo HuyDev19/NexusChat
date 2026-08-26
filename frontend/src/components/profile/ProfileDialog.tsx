@@ -18,6 +18,7 @@ const ProfileDialog = ({ open, setOpen }: ProfileDialogProps) => {
       onOpenChange={setOpen}
     >
       <DialogContent
+        aria-describedby={undefined}
         onPointerDownOutside={(e) => {
           const target = e.target as HTMLElement;
           if (target?.closest?.('.fixed') || target?.closest?.('[role="dialog"]')) {

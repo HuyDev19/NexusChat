@@ -28,10 +28,16 @@ const PrivacySettings = () => {
   const { user, sendOtp, changePassword, deleteAccount, unblockUser } = useAuthStore();
   const { toggleReadReceipts } = useUserStore();
 
+  const isNotificationSupported = typeof window !== "undefined" && "Notification" in window;
+
   // Notification State
   const [notificationsEnabled, setNotificationsEnabled] = useState<boolean>(() => {
-    if (typeof window === "undefined") return false;
-    return localStorage.getItem("desktop_notifications") !== "disabled" && Notification.permission === "granted";
+    if (typeof window === "undefined" || !("Notification" in window)) return false;
+    try {
+      return localStorage.getItem("desktop_notifications") !== "disabled" && window.Notification.permission === "granted";
+    } catch {
+      return false;
+    }
   });
 
   // Modals visibility
@@ -71,14 +77,15 @@ const PrivacySettings = () => {
 
   // Handle Desktop Notification Toggle
   const handleToggleNotifications = async () => {
-    if (typeof window === "undefined" || !("Notification" in window)) {
-      toast.error("Trình duyệt của bạn không hỗ trợ thông báo đẩy!");
+    if (!isNotificationSupported) {
+      toast.error("Trình duyệt hoặc thiết bị của bạn không hỗ trợ thông báo đẩy!");
       return;
     }
 
     if (!notificationsEnabled) {
       if (Notification.permission === "default") {
-        Notification.requestPermission().then((perm) => {
+        try {
+          const perm = await Notification.requestPermission();
           if (perm === "granted") {
             setNotificationsEnabled(true);
             localStorage.setItem("desktop_notifications", "enabled");
@@ -86,7 +93,17 @@ const PrivacySettings = () => {
           } else {
             toast.error("Vui lòng cấp quyền thông báo trong cài đặt trình duyệt!");
           }
-        });
+        } catch {
+          Notification.requestPermission((perm) => {
+            if (perm === "granted") {
+              setNotificationsEnabled(true);
+              localStorage.setItem("desktop_notifications", "enabled");
+              toast.success("Đã bật thông báo trình duyệt");
+            } else {
+              toast.error("Vui lòng cấp quyền thông báo trong cài đặt trình duyệt!");
+            }
+          });
+        }
       } else if (Notification.permission === "denied") {
         toast.error("Vui lòng cấp quyền thông báo trong cài đặt trình duyệt!");
       } else {
@@ -354,10 +371,10 @@ const PrivacySettings = () => {
               <span>Cài đặt thông báo trình duyệt</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <span className={cn("text-[11px] font-medium", notificationsEnabled ? "text-green-400" : "text-muted-foreground")}>
-                {notificationsEnabled ? "Đã bật" : "Đã tắt"}
+              <span className={cn("text-[11px] font-medium", !isNotificationSupported ? "text-muted-foreground" : notificationsEnabled ? "text-green-400" : "text-muted-foreground")}>
+                {!isNotificationSupported ? "Không hỗ trợ" : notificationsEnabled ? "Đã bật" : "Đã tắt"}
               </span>
-              <div className={cn("w-2 h-2 rounded-full", notificationsEnabled ? "bg-green-500 animate-pulse" : "bg-muted-foreground")} />
+              <div className={cn("w-2 h-2 rounded-full", !isNotificationSupported ? "bg-muted-foreground/40" : notificationsEnabled ? "bg-green-500 animate-pulse" : "bg-muted-foreground")} />
             </div>
           </Button>
 
