@@ -388,6 +388,146 @@
   .animate-float-reverse {
     animation: floatReverse 7s ease-in-out infinite;
   }
+
+  /* ========================================================= */
+  /* Landing Page Premium Animations                           */
+  /* ========================================================= */
+
+  /* Word/line clip-mask reveal */
+  @keyframes wordReveal {
+    from {
+      transform: translateY(115%);
+      opacity: 0;
+    }
+    to {
+      transform: translateY(0%);
+      opacity: 1;
+    }
+  }
+
+  @keyframes lineReveal {
+    from {
+      transform: translateY(115%);
+    }
+    to {
+      transform: translateY(0%);
+    }
+  }
+
+  /* Blob pulse animation for hero background */
+  @keyframes blobDrift1 {
+    0%, 100% { transform: translate(0px, 0px) scale(1); }
+    33%       { transform: translate(30px, -30px) scale(1.05); }
+    66%       { transform: translate(-20px, 20px) scale(0.97); }
+  }
+
+  @keyframes blobDrift2 {
+    0%, 100% { transform: translate(0px, 0px) scale(1); }
+    33%       { transform: translate(-25px, 30px) scale(1.04); }
+    66%       { transform: translate(30px, -20px) scale(0.98); }
+  }
+
+  @keyframes blobDrift3 {
+    0%, 100% { transform: translate(0px, 0px) scale(1); }
+    33%       { transform: translate(20px, 20px) scale(1.03); }
+    66%       { transform: translate(-30px, -15px) scale(0.96); }
+  }
+
+  /* Loader curtain slide-up */
+  @keyframes loaderSlideUp {
+    from { transform: translateY(0%); }
+    to   { transform: translateY(-105%); }
+  }
+
+  /* Progress bar fill */
+  @keyframes progressFill {
+    from { transform: scaleX(0); }
+    to   { transform: scaleX(1); }
+  }
+
+  /* InView rise-in (for scroll reveals) */
+  @keyframes inviewRise {
+    from {
+      opacity: 0;
+      transform: translateY(28px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes inviewFadeScale {
+    from {
+      opacity: 0;
+      transform: scale(0.92);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  /* Hover arrow nudge */
+  @keyframes arrowNudge {
+    from { transform: translateX(0); opacity: 0.55; }
+    to   { transform: translateX(8px); opacity: 1; }
+  }
+
+  /* Hover lift for cards */
+  @keyframes cardLift {
+    from { transform: translateY(0); }
+    to   { transform: translateY(-8px); }
+  }
+
+  /* Utility: word clip wrapper */
+  .word-clip {
+    display: inline-block;
+    overflow: hidden;
+    padding-bottom: 0.15em;
+    padding-top: 0.25em;
+    margin-top: -0.25em;
+    vertical-align: bottom;
+  }
+
+  .line-clip {
+    display: block;
+    overflow: hidden;
+    padding-bottom: 0.15em;
+    padding-top: 0.25em;
+    margin-top: -0.25em;
+  }
+
+  /* InView states */
+  .inview-hidden {
+    opacity: 0;
+    transform: translateY(28px);
+  }
+
+  .inview-visible {
+    animation: inviewRise 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+
+  .inview-hidden-scale {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+
+  .inview-visible-scale {
+    animation: inviewFadeScale 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+
+  /* Blob animations */
+  .blob-drift-1 { animation: blobDrift1 12s ease-in-out infinite; }
+  .blob-drift-2 { animation: blobDrift2 15s ease-in-out infinite; }
+  .blob-drift-3 { animation: blobDrift3 18s ease-in-out infinite; }
+
+  /* Progress fill */
+  .loader-progress {
+    transform-origin: left center;
+    animation: progressFill 1.28s cubic-bezier(0.645, 0.045, 0.355, 1.000) 0.12s forwards;
+    transform: scaleX(0);
+  }
 }
 
 :root {
@@ -430,6 +570,7 @@
 
   body {
     @apply bg-background text-foreground;
+    font-family: 'Be Vietnam Pro', system-ui, sans-serif;
   }
 }
 

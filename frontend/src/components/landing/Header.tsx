@@ -1,155 +1,104 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useThemeStore } from "@/stores/useThemeStore";
-import { Button } from "@/components/ui/button";
 import { PenguinIcon } from "@/components/ui/PenguinIcon";
-import {
-  Sun,
-  Moon,
-  LogIn,
-  UserPlus,
-  MessageCircleCode,
-  Menu,
-  X,
-} from "lucide-react";
+import { Sun, Moon, MessageCircleCode } from "lucide-react";
 
-export const Header = () => {
+interface HeaderProps {
+  onOpenContact: () => void;
+  onOpenMenu: () => void;
+}
+
+export const Header = ({ onOpenContact, onOpenMenu }: HeaderProps) => {
   const { accessToken, user } = useAuthStore();
   const { isDark, toggleTheme } = useThemeStore();
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 20);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
   return (
-    <header className="sticky top-0 z-50 backdrop-blur-xl bg-background/80 border-b border-border/50 transition-colors">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-        {/* Logo */}
-        <Link to="/" className="flex items-center gap-2.5 group">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-purple-600 via-indigo-600 to-pink-500 flex items-center justify-center shadow-lg shadow-purple-500/20 group-hover:scale-105 transition-transform p-1.5">
-            <PenguinIcon className="w-6 h-6 text-white drop-shadow-sm" />
-          </div>
-          <div className="flex flex-col">
-            <span className="font-bold text-xl tracking-tight bg-gradient-to-r from-purple-600 via-indigo-600 to-pink-500 bg-clip-text text-transparent">
-              NexusChat
-            </span>
-            <span className="text-[10px] text-muted-foreground uppercase tracking-widest font-semibold -mt-1">
-              Đồ án CNPM
-            </span>
-          </div>
-        </Link>
-
-        {/* Desktop Navigation Links */}
-        <nav className="hidden md:flex items-center gap-8 text-sm font-medium text-muted-foreground">
-          <a href="#features" className="hover:text-primary transition-colors">
+    <header
+      className={`sticky top-0 z-50 transition-all duration-500 ${
+        scrolled
+          ? "bg-white/85 dark:bg-background/85 backdrop-blur-xl border-b border-black/5 dark:border-white/10"
+          : "bg-transparent"
+      }`}
+    >
+      <div className="max-w-7xl mx-auto px-5 sm:px-8 h-16 flex items-center justify-between">
+        {/* Left nav (desktop) */}
+        <nav className="hidden lg:flex items-center gap-8 flex-1">
+          <a
+            href="#features"
+            onClick={(e) => { e.preventDefault(); document.getElementById("features")?.scrollIntoView({ behavior: "smooth" }); }}
+            className="text-sm font-medium text-slate-600 hover:text-slate-900 dark:text-white/80 dark:hover:text-white transition-colors"
+          >
             Tính năng
           </a>
-          <a href="#about" className="hover:text-primary transition-colors">
-            Về dự án
+          <a
+            href="#trust"
+            onClick={(e) => { e.preventDefault(); document.getElementById("trust")?.scrollIntoView({ behavior: "smooth" }); }}
+            className="text-sm font-medium text-slate-600 hover:text-slate-900 dark:text-white/80 dark:hover:text-white transition-colors"
+          >
+            Bảo mật
           </a>
         </nav>
 
-        {/* Actions / Auth Buttons */}
-        <div className="hidden md:flex items-center gap-3">
-          {/* Theme Toggle */}
-          <Button
-            variant="ghost"
-            size="icon"
+        {/* Center brand */}
+        <div className="flex items-center gap-2.5 lg:absolute lg:left-1/2 lg:-translate-x-1/2">
+          <div className="w-8 h-8 rounded-xl bg-primary/10 dark:bg-white/15 flex items-center justify-center backdrop-blur-sm border border-primary/20 dark:border-white/20">
+            <PenguinIcon className="w-4.5 h-4.5 text-primary dark:text-white" />
+          </div>
+          <span className="text-base font-bold uppercase tracking-[0.2em] text-slate-900 dark:text-white transition-colors">
+            NexusChat
+          </span>
+        </div>
+
+        {/* Right actions */}
+        <div className="flex items-center gap-3 flex-1 justify-end">
+          {/* Theme toggle */}
+          <button
             onClick={toggleTheme}
-            className="rounded-full w-9 h-9"
-            title={isDark ? "Chuyển giao diện sáng" : "Chuyển giao diện tối"}
+            className="w-9 h-9 rounded-full flex items-center justify-center bg-black/5 dark:bg-white/10 hover:bg-black/10 dark:hover:bg-white/20 transition-colors text-slate-700 dark:text-white"
+            title={isDark ? "Chế độ sáng" : "Chế độ tối"}
           >
-            {isDark ? (
-              <Sun className="w-4 h-4 text-amber-400" />
-            ) : (
-              <Moon className="w-4 h-4 text-slate-700" />
-            )}
-          </Button>
+            {isDark
+              ? <Sun className="w-4 h-4 text-amber-400" />
+              : <Moon className="w-4 h-4" />
+            }
+          </button>
 
           {accessToken ? (
             <Link to="/chat">
-              <Button className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-medium rounded-full px-5 shadow-md shadow-purple-500/20 gap-2">
+              <button className="hidden sm:flex items-center gap-2 rounded-full bg-primary/10 dark:bg-white/15 hover:bg-primary/20 dark:hover:bg-white/25 border border-primary/20 dark:border-white/20 text-primary dark:text-white text-sm font-medium px-4 py-2 transition-colors backdrop-blur-sm">
                 <MessageCircleCode className="w-4 h-4" />
                 Vào Chat ({user?.username || "Tài khoản"})
-              </Button>
+              </button>
             </Link>
           ) : (
-            <>
-              <Link to="/signin">
-                <Button variant="outline" className="rounded-full border-purple-500/30 hover:border-purple-500 hover:bg-purple-500/10 gap-2">
-                  <LogIn className="w-4 h-4" />
-                  Đăng nhập
-                </Button>
-              </Link>
-              <Link to="/signup">
-                <Button className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-medium rounded-full px-5 shadow-md shadow-purple-500/20 gap-2">
-                  <UserPlus className="w-4 h-4" />
-                  Đăng ký
-                </Button>
-              </Link>
-            </>
+            <button
+              onClick={onOpenContact}
+              className="hidden sm:flex items-center text-sm font-semibold uppercase tracking-wide text-primary dark:text-white/90 hover:text-purple-800 dark:hover:text-white transition-colors underline underline-offset-4"
+            >
+              Đăng ký
+            </button>
           )}
-        </div>
 
-        {/* Mobile Menu Button */}
-        <div className="flex md:hidden items-center gap-2">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={toggleTheme}
-            className="rounded-full w-9 h-9"
+          {/* Burger button */}
+          <button
+            onClick={onOpenMenu}
+            aria-label="Mở menu"
+            className="w-10 h-10 flex flex-col items-center justify-center gap-[5px] rounded-full bg-black/5 dark:bg-white/10 hover:bg-black/10 dark:hover:bg-white/20 transition-colors backdrop-blur-sm"
           >
-            {isDark ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-700" />}
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          >
-            {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-          </Button>
+            <span className="block w-4 h-px bg-slate-800 dark:bg-white rounded-full" />
+            <span className="block w-4 h-px bg-slate-800 dark:bg-white rounded-full" />
+          </button>
         </div>
       </div>
-
-      {/* Mobile Dropdown */}
-      {mobileMenuOpen && (
-        <div className="md:hidden border-b border-border p-4 bg-background/95 backdrop-blur-lg flex flex-col gap-3">
-          <a
-            href="#features"
-            onClick={() => setMobileMenuOpen(false)}
-            className="text-sm font-medium py-2 hover:text-primary"
-          >
-            Tính năng
-          </a>
-          <a
-            href="#about"
-            onClick={() => setMobileMenuOpen(false)}
-            className="text-sm font-medium py-2 hover:text-primary"
-          >
-            Về dự án
-          </a>
-          <div className="pt-2 border-t border-border flex flex-col gap-2">
-            {accessToken ? (
-              <Link to="/chat" onClick={() => setMobileMenuOpen(false)}>
-                <Button className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-xl gap-2">
-                  <MessageCircleCode className="w-4 h-4" /> Vào Chat
-                </Button>
-              </Link>
-            ) : (
-              <>
-                <Link to="/signin" onClick={() => setMobileMenuOpen(false)}>
-                  <Button variant="outline" className="w-full rounded-xl gap-2">
-                    <LogIn className="w-4 h-4" /> Đăng nhập
-                  </Button>
-                </Link>
-                <Link to="/signup" onClick={() => setMobileMenuOpen(false)}>
-                  <Button className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-xl gap-2">
-                    <UserPlus className="w-4 h-4" /> Đăng ký ngay
-                  </Button>
-                </Link>
-              </>
-            )}
-          </div>
-        </div>
-      )}
     </header>
   );
 };

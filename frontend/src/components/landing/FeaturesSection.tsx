@@ -1,82 +1,152 @@
-import { Zap, Users, ShieldCheck, Sparkles, Smile, Lock } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+
+const FEATURES = [
+  {
+    index: "01",
+    name: "Nhắn tin trực tiếp",
+    desc: "Chat 1-1 thời gian thực với typing indicator và trạng thái đã đọc.",
+    href: "#dm",
+  },
+  {
+    index: "02",
+    name: "Kênh & Nhóm",
+    desc: "Tổ chức hội thoại theo chủ đề, dự án, và phòng ban.",
+    href: "#channels",
+  },
+  {
+    index: "03",
+    name: "Gọi Video & Thoại",
+    desc: "Cuộc gọi HD với khử tiếng ồn, tích hợp sẵn không cần plugin.",
+    href: "#calls",
+  },
+  {
+    index: "04",
+    name: "Chia sẻ File & Media",
+    desc: "Kéo thả và chia sẻ bất cứ thứ gì ngay lập tức với preview.",
+    href: "#files",
+  },
+];
+
+function useInView(threshold = 0.15) {
+  const ref = useRef<HTMLElement>(null);
+  const [visible, setVisible] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(([e]) => { if (e.isIntersecting) { setVisible(true); obs.disconnect(); } }, { threshold });
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [threshold]);
+  return { ref, visible };
+}
+
+function useInViewEl(threshold = 0.15) {
+  const ref = useRef<HTMLLIElement>(null);
+  const [visible, setVisible] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(([e]) => { if (e.isIntersecting) { setVisible(true); obs.disconnect(); } }, { threshold });
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [threshold]);
+  return { ref, visible };
+}
+
+const FeatureRow = ({ feat, index }: { feat: typeof FEATURES[number]; index: number }) => {
+  const { ref, visible } = useInViewEl(0.1);
+  const [hovered, setHovered] = useState(false);
+
+  return (
+    <li
+      ref={ref}
+      className="border-t border-border last:border-b"
+      style={{
+        opacity: visible ? 1 : 0,
+        transform: visible ? "translateY(0)" : "translateY(26px)",
+        transition: `opacity 0.6s cubic-bezier(0.16,1,0.3,1) ${index * 90}ms, transform 0.6s cubic-bezier(0.16,1,0.3,1) ${index * 90}ms`,
+      }}
+    >
+      <a
+        href={feat.href}
+        className="flex items-center gap-6 py-7 group focus-visible:bg-muted outline-none"
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
+      >
+        {/* Index */}
+        <span className="w-10 text-sm font-medium text-muted-foreground shrink-0">{feat.index}</span>
+
+        {/* Name + desc */}
+        <div className="flex-1 min-w-0">
+          <h3 className="text-2xl sm:text-3xl font-semibold tracking-tight leading-none mb-1.5 text-slate-900 dark:text-white">{feat.name}</h3>
+          <p className="text-sm text-slate-600 dark:text-muted-foreground">{feat.desc}</p>
+        </div>
+
+        {/* Arrow circle */}
+        <div
+          className="w-11 h-11 rounded-full border border-border grid place-items-center shrink-0 transition-colors group-hover:border-foreground"
+        >
+          <svg
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            style={{
+              transform: hovered ? "translateX(5px)" : "translateX(0)",
+              opacity: hovered ? 1 : 0.55,
+              transition: "transform 0.3s cubic-bezier(0.16,1,0.3,1), opacity 0.3s ease",
+            }}
+          >
+            <path d="M5 12h14M13 6l6 6-6 6"/>
+          </svg>
+        </div>
+      </a>
+    </li>
+  );
+};
 
 export const FeaturesSection = () => {
+  const { ref, visible } = useInView(0.15);
+
   return (
-    <section id="features" className="py-20 bg-muted/30">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center max-w-3xl mx-auto mb-16">
-          <h2 className="text-xs font-semibold uppercase tracking-widest text-purple-600 dark:text-purple-400 mb-2">
-            Tính năng nổi bật
-          </h2>
+    <section
+      id="features"
+      ref={ref as React.RefObject<HTMLElement>}
+      className="py-24 px-6 sm:px-10 bg-slate-50 dark:bg-white/5"
+    >
+      <div className="max-w-4xl mx-auto">
+        {/* Header */}
+        <div className="inline-flex items-center gap-2 text-xs font-medium uppercase tracking-[0.22em] text-muted-foreground mb-4">
+          <span className="w-1.5 h-1.5 rounded-full bg-primary inline-block" />
+          Khả năng cốt lõi
+        </div>
+        <div>
+          {["Xây dựng cho", "mọi đội nhóm"].map((line, i) => (
+            <div key={line} className="line-clip">
+              <h2
+                className="text-5xl font-semibold leading-[1.15] tracking-tight text-slate-900 dark:text-white"
+                style={{
+                  opacity: visible ? 1 : 0,
+                  transform: visible ? "translateY(0)" : "translateY(115%)",
+                  transition: `opacity 0.95s cubic-bezier(0.16,1,0.3,1) ${i * 120}ms, transform 0.95s cubic-bezier(0.16,1,0.3,1) ${i * 120}ms`,
+                }}
+              >
+                {line}
+              </h2>
+            </div>
+          ))}
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {/* Feature 1 */}
-          <div className="p-6 rounded-2xl bg-card border border-border/60 hover:border-purple-500/50 hover:shadow-xl hover:shadow-purple-500/5 transition-all group">
-            <div className="w-12 h-12 rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
-              <Zap className="w-6 h-6" />
-            </div>
-            <h3 className="text-xl font-bold mb-2">Nhắn tin thời gian thực</h3>
-            <p className="text-muted-foreground text-sm leading-relaxed">
-              Tích hợp Socket.io giúp truyền tải tin nhắn tức thì với độ trễ cực thấp. Trạng thái unread và đang gõ phím được đồng bộ liên tục.
-            </p>
-          </div>
-
-          {/* Feature 2 */}
-          <div className="p-6 rounded-2xl bg-card border border-border/60 hover:border-purple-500/50 hover:shadow-xl hover:shadow-purple-500/5 transition-all group">
-            <div className="w-12 h-12 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
-              <Users className="w-6 h-6" />
-            </div>
-            <h3 className="text-xl font-bold mb-2">Quản lý bạn bè & Chat nhóm</h3>
-            <p className="text-muted-foreground text-sm leading-relaxed">
-              Dễ dàng tìm kiếm người dùng, gửi/nhận lời mời kết bạn, tạo các nhóm trò chuyện linh hoạt cho học tập và công việc.
-            </p>
-          </div>
-
-          {/* Feature 3 */}
-          <div className="p-6 rounded-2xl bg-card border border-border/60 hover:border-purple-500/50 hover:shadow-xl hover:shadow-purple-500/5 transition-all group">
-            <div className="w-12 h-12 rounded-xl bg-pink-500/10 text-pink-600 dark:text-pink-400 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
-              <ShieldCheck className="w-6 h-6" />
-            </div>
-            <h3 className="text-xl font-bold mb-2">Bảo mật & Xác thực JWT</h3>
-            <p className="text-muted-foreground text-sm leading-relaxed">
-              Hệ thống xác thực mã hóa token an toàn (Access Token & Refresh Token Cookie), mật khẩu được băm hóa bcrypt bảo mật tối đa.
-            </p>
-          </div>
-
-          {/* Feature 4 */}
-          <div className="p-6 rounded-2xl bg-card border border-border/60 hover:border-purple-500/50 hover:shadow-xl hover:shadow-purple-500/5 transition-all group">
-            <div className="w-12 h-12 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
-              <Sparkles className="w-6 h-6" />
-            </div>
-            <h3 className="text-xl font-bold mb-2">Giao diện Đêm / Sáng</h3>
-            <p className="text-muted-foreground text-sm leading-relaxed">
-              Tùy chọn linh hoạt Light Mode và Dark Mode chuẩn Glassmorphism, chuyển đổi mượt mà bảo vệ mắt người dùng.
-            </p>
-          </div>
-
-          {/* Feature 5 */}
-          <div className="p-6 rounded-2xl bg-card border border-border/60 hover:border-purple-500/50 hover:shadow-xl hover:shadow-purple-500/5 transition-all group">
-            <div className="w-12 h-12 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
-              <Smile className="w-6 h-6" />
-            </div>
-            <h3 className="text-xl font-bold mb-2">Biểu cảm Emoji & Media</h3>
-            <p className="text-muted-foreground text-sm leading-relaxed">
-              Tích hợp bộ chọn Emoji Mart phong phú, dễ dàng chèn biểu cảm và tải ảnh đại diện cá nhân hóa.
-            </p>
-          </div>
-
-          {/* Feature 6 */}
-          <div className="p-6 rounded-2xl bg-card border border-border/60 hover:border-purple-500/50 hover:shadow-xl hover:shadow-purple-500/5 transition-all group">
-            <div className="w-12 h-12 rounded-xl bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
-              <Lock className="w-6 h-6" />
-            </div>
-            <h3 className="text-xl font-bold mb-2">Phân quyền Route Bảo vệ</h3>
-            <p className="text-muted-foreground text-sm leading-relaxed">
-              Các đường dẫn trò chuyện được bảo vệ nghiêm ngặt thông qua ProtectedRoute middleware client-side và backend.
-            </p>
-          </div>
-        </div>
+        {/* Feature list */}
+        <ul className="mt-14">
+          {FEATURES.map((feat, i) => (
+            <FeatureRow key={feat.index} feat={feat} index={i} />
+          ))}
+        </ul>
       </div>
     </section>
   );

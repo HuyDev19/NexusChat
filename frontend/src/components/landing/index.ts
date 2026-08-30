@@ -1,6 +1,13 @@
 export { Header } from "./Header";
 export { HeroSection } from "./HeroSection";
-export { MarqueeTicker } from "./MarqueeTicker";
+export { LoaderOverlay } from "./LoaderOverlay";
+export { TrustSection } from "./TrustSection";
 export { FeaturesSection } from "./FeaturesSection";
-export { CtaBanner } from "./CtaBanner";
+export { AppUISection } from "./AppUISection";
+export { StatsSection } from "./StatsSection";
+export { TestimonialsSection } from "./TestimonialsSection";
 export { Footer } from "./Footer";
+export { ContactModal } from "./ContactModal";
+export { MenuOverlay } from "./MenuOverlay";
+export { MarqueeTicker } from "./MarqueeTicker";
+export { CtaBanner } from "./CtaBanner";
