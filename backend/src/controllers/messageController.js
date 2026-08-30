@@ -41,13 +41,34 @@ export const sendDirectMessage = async (req, res) => {
       });
     }
 
+    let finalExpiresAt = null;
+    let finalExpiresIn = expiresIn;
+
+    if (conversation.incognitoMode && conversation.incognitoMode.isActive) {
+      if (new Date() > new Date(conversation.incognitoMode.expiresAt)) {
+        // Mode expired, turn off
+        conversation.incognitoMode.isActive = false;
+        conversation.incognitoMode.expiresAt = null;
+        conversation.incognitoMode.startedAt = null;
+        conversation.incognitoMode.startedBy = null;
+      } else {
+        finalExpiresAt = conversation.incognitoMode.expiresAt;
+        finalExpiresIn = null; // override
+      }
+    }
+
+    if (!finalExpiresAt && finalExpiresIn) {
+      finalExpiresAt = new Date(Date.now() + finalExpiresIn * 1000);
+    }
+
     const message = await Message.create({
       conversationId: conversation._id,
       senderId,
       content,
       audioUrl,
       imgUrl: req.body.imgUrl,
-      expiresIn,
+      expiresIn: finalExpiresIn,
+      expiresAt: finalExpiresAt,
       isViewOnce,
       mentions,
       replyTo,

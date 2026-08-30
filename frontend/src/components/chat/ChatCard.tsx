@@ -61,7 +61,7 @@ const ChatCard = ({
   const [showCreateGroupModal, setShowCreateGroupModal] = useState(false);
   const [confirmType, setConfirmType] = useState<"clear" | "leave" | "disband" | "leaveChannel" | "deleteChannel" | null>(null);
   const [deleteChannelPassword, setDeleteChannelPassword] = useState("");
-  
+
   const {
     clearChatHistory,
     leaveGroup,
@@ -85,14 +85,13 @@ const ChatCard = ({
     try {
       if (confirmType === "clear") await clearChatHistory(convoId);
       else if (confirmType === "leave" || confirmType === "leaveChannel") await leaveGroup(convoId);
-      else if (confirmType === "disband") await deleteConversation(convoId);
-      else if (confirmType === "deleteChannel") {
+      else if (confirmType === "disband" || confirmType === "deleteChannel") {
         if (!deleteChannelPassword) {
           toast.error("Vui lòng nhập mật khẩu");
           return;
         }
         await deleteConversation(convoId, deleteChannelPassword);
-        toast.success("Đã xóa kênh");
+        toast.success(confirmType === "disband" ? "Đã giải tán nhóm" : "Đã xóa kênh");
       }
       setShowConfirm(false);
       setConfirmType(null);
@@ -108,7 +107,7 @@ const ChatCard = ({
         className={cn(
           "group border-none p-3 cursor-pointer transition-all duration-300 glass hover:bg-muted/40 hover:shadow-md hover:shadow-primary/10 hover:-translate-y-[1px]",
           isActive &&
-            "ring-2 ring-primary/50 bg-gradient-to-tr from-primary-glow/10 to-primary-foreground"
+          "ring-2 ring-primary/50 bg-gradient-to-tr from-primary-glow/10 to-primary-foreground"
         )}
         onClick={() => onSelect(convoId)}
       >
@@ -135,7 +134,7 @@ const ChatCard = ({
 
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-1 flex-1 min-w-0">{subtitle}</div>
-              
+
               <div className="flex items-center gap-1.5 shrink-0">
                 {isMuted && <BellOff className="size-3.5 text-muted-foreground" />}
                 <DropdownMenu>
@@ -144,210 +143,210 @@ const ChatCard = ({
                       <MoreHorizontal className="size-4 hover:size-5" />
                     </div>
                   </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56 rounded-xl p-1.5 shadow-2xl">
-                  {/* 0. Ghim trò chuyện */}
-                  <DropdownMenuItem
-                    className="cursor-pointer rounded-lg"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (isPinned) {
-                        unpinConversation(convoId);
-                        toast.success("Đã bỏ ghim trò chuyện");
-                      } else {
-                        pinConversation(convoId);
-                        toast.success("Đã ghim trò chuyện lên đầu");
-                      }
-                    }}
-                  >
-                    {isPinned ? (
-                      <>
-                        <PinOff className="size-4 mr-2 text-purple-400" />
-                        Bỏ ghim trò chuyện
-                      </>
-                    ) : (
-                      <>
-                        <Pin className="size-4 mr-2 text-purple-400" />
-                        Ghim trò chuyện lên đầu
-                      </>
+                  <DropdownMenuContent align="end" className="w-56 rounded-xl p-1.5 shadow-2xl">
+                    {/* 0. Ghim trò chuyện */}
+                    <DropdownMenuItem
+                      className="cursor-pointer rounded-lg"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (isPinned) {
+                          unpinConversation(convoId);
+                          toast.success("Đã bỏ ghim trò chuyện");
+                        } else {
+                          pinConversation(convoId);
+                          toast.success("Đã ghim trò chuyện lên đầu");
+                        }
+                      }}
+                    >
+                      {isPinned ? (
+                        <>
+                          <PinOff className="size-4 mr-2 text-purple-400" />
+                          Bỏ ghim trò chuyện
+                        </>
+                      ) : (
+                        <>
+                          <Pin className="size-4 mr-2 text-purple-400" />
+                          Ghim trò chuyện lên đầu
+                        </>
+                      )}
+                    </DropdownMenuItem>
+
+                    {/* 0.5. Tạo nhóm với người này */}
+                    {!isGroup && targetUser && (
+                      <DropdownMenuItem
+                        className="cursor-pointer rounded-lg font-medium text-xs text-purple-300 hover:text-purple-200"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShowCreateGroupModal(true);
+                        }}
+                      >
+                        <UserPlus className="size-4 mr-2 text-emerald-400" />
+                        Tạo nhóm với {name}
+                      </DropdownMenuItem>
                     )}
-                  </DropdownMenuItem>
 
-                  {/* 0.5. Tạo nhóm với người này */}
-                  {!isGroup && targetUser && (
-                    <DropdownMenuItem
-                      className="cursor-pointer rounded-lg font-medium text-xs text-purple-300 hover:text-purple-200"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setShowCreateGroupModal(true);
-                      }}
-                    >
-                      <UserPlus className="size-4 mr-2 text-emerald-400" />
-                      Tạo nhóm với {name}
-                    </DropdownMenuItem>
-                  )}
-
-                  {/* 1. Lưu trữ đoạn chat */}
-                  <DropdownMenuItem
-                    className="cursor-pointer rounded-lg"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      archiveConversation(convoId);
-                      toast.success("Đã lưu trữ đoạn chat");
-                    }}
-                  >
-                    <Archive className="size-4 mr-2 text-indigo-400" />
-                    Lưu trữ đoạn chat
-                  </DropdownMenuItem>
-
-                  {/* 2. Tắt thông báo (Sub Menu) */}
-                  {isMuted ? (
+                    {/* 1. Lưu trữ đoạn chat */}
                     <DropdownMenuItem
                       className="cursor-pointer rounded-lg"
                       onClick={(e) => {
                         e.stopPropagation();
-                        unmuteConversation(convoId);
-                        toast.success("Đã bật lại thông báo");
+                        archiveConversation(convoId);
+                        toast.success("Đã lưu trữ đoạn chat");
                       }}
                     >
-                      <Bell className="size-4 mr-2 text-green-400" />
-                      Bật lại thông báo
+                      <Archive className="size-4 mr-2 text-indigo-400" />
+                      Lưu trữ đoạn chat
                     </DropdownMenuItem>
-                  ) : (
-                    <DropdownMenuSub>
-                      <DropdownMenuSubTrigger className="cursor-pointer rounded-lg">
-                        <BellOff className="size-4 mr-2 text-amber-400" />
-                        Tắt thông báo
-                      </DropdownMenuSubTrigger>
-                      <DropdownMenuSubContent className="w-48 rounded-xl p-1 shadow-xl">
-                        <DropdownMenuItem
-                          className="cursor-pointer rounded-lg text-xs"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            muteConversation(convoId, 5 * 60 * 1000);
-                            toast.success("Đã tắt thông báo 5 phút");
-                          }}
-                        >
-                          Tắt 5 phút
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          className="cursor-pointer rounded-lg text-xs"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            muteConversation(convoId, 60 * 60 * 1000);
-                            toast.success("Đã tắt thông báo 1 tiếng");
-                          }}
-                        >
-                          Tắt 1 tiếng
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          className="cursor-pointer rounded-lg text-xs"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            muteConversation(convoId, 6 * 60 * 60 * 1000);
-                            toast.success("Đã tắt thông báo 6 tiếng");
-                          }}
-                        >
-                          Tắt 6 tiếng
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem
-                          className="cursor-pointer rounded-lg text-xs"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            muteConversation(convoId);
-                            toast.success("Đã tắt thông báo cho đến khi mở lại");
-                          }}
-                        >
-                          Cho đến khi mở lại
-                        </DropdownMenuItem>
-                      </DropdownMenuSubContent>
-                    </DropdownMenuSub>
-                  )}
 
-                  {/* 3. Báo cáo xấu */}
-                  <DropdownMenuItem
-                    className="cursor-pointer rounded-lg text-rose-400 focus:text-rose-300"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      toast.success("Đã gửi báo cáo người dùng đến Quản trị viên!");
-                    }}
-                  >
-                    <Flag className="size-4 mr-2" />
-                    Báo cáo xấu người này
-                  </DropdownMenuItem>
+                    {/* 2. Tắt thông báo (Sub Menu) */}
+                    {isMuted ? (
+                      <DropdownMenuItem
+                        className="cursor-pointer rounded-lg"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          unmuteConversation(convoId);
+                          toast.success("Đã bật lại thông báo");
+                        }}
+                      >
+                        <Bell className="size-4 mr-2 text-green-400" />
+                        Bật lại thông báo
+                      </DropdownMenuItem>
+                    ) : (
+                      <DropdownMenuSub>
+                        <DropdownMenuSubTrigger className="cursor-pointer rounded-lg">
+                          <BellOff className="size-4 mr-2 text-amber-400" />
+                          Tắt thông báo
+                        </DropdownMenuSubTrigger>
+                        <DropdownMenuSubContent className="w-48 rounded-xl p-1 shadow-xl">
+                          <DropdownMenuItem
+                            className="cursor-pointer rounded-lg text-xs"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              muteConversation(convoId, 5 * 60 * 1000);
+                              toast.success("Đã tắt thông báo 5 phút");
+                            }}
+                          >
+                            Tắt 5 phút
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            className="cursor-pointer rounded-lg text-xs"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              muteConversation(convoId, 60 * 60 * 1000);
+                              toast.success("Đã tắt thông báo 1 tiếng");
+                            }}
+                          >
+                            Tắt 1 tiếng
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            className="cursor-pointer rounded-lg text-xs"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              muteConversation(convoId, 6 * 60 * 60 * 1000);
+                              toast.success("Đã tắt thông báo 6 tiếng");
+                            }}
+                          >
+                            Tắt 6 tiếng
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            className="cursor-pointer rounded-lg text-xs"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              muteConversation(convoId);
+                              toast.success("Đã tắt thông báo cho đến khi mở lại");
+                            }}
+                          >
+                            Cho đến khi mở lại
+                          </DropdownMenuItem>
+                        </DropdownMenuSubContent>
+                      </DropdownMenuSub>
+                    )}
 
-                  <DropdownMenuSeparator />
+                    {/* 3. Báo cáo xấu */}
+                    <DropdownMenuItem
+                      className="cursor-pointer rounded-lg text-rose-400 focus:text-rose-300"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toast.success("Đã gửi báo cáo người dùng đến Quản trị viên!");
+                      }}
+                    >
+                      <Flag className="size-4 mr-2" />
+                      Báo cáo xấu người này
+                    </DropdownMenuItem>
 
-                  {/* 4. Xóa đoạn chat */}
-                  <DropdownMenuItem
-                    className="cursor-pointer rounded-lg"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setConfirmType("clear");
-                      setShowConfirm(true);
-                    }}
-                  >
-                    <Trash2 className="size-4 mr-2" />
-                    Xóa đoạn chat
-                  </DropdownMenuItem>
+                    <DropdownMenuSeparator />
 
-                  {isGroup && !isChannel && (
+                    {/* 4. Xóa đoạn chat */}
                     <DropdownMenuItem
                       className="cursor-pointer rounded-lg"
                       onClick={(e) => {
                         e.stopPropagation();
-                        setConfirmType("leave");
+                        setConfirmType("clear");
                         setShowConfirm(true);
                       }}
                     >
                       <Trash2 className="size-4 mr-2" />
-                      Rời nhóm
+                      Xóa đoạn chat
                     </DropdownMenuItem>
-                  )}
 
-                  {isGroup && !isChannel && isLeader && (
-                    <DropdownMenuItem
-                      className="text-destructive cursor-pointer rounded-lg"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setConfirmType("disband");
-                        setShowConfirm(true);
-                      }}
-                    >
-                      <Trash2 className="size-4 mr-2" />
-                      Giải tán nhóm
-                    </DropdownMenuItem>
-                  )}
+                    {isGroup && !isChannel && (
+                      <DropdownMenuItem
+                        className="cursor-pointer rounded-lg"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setConfirmType("leave");
+                          setShowConfirm(true);
+                        }}
+                      >
+                        <Trash2 className="size-4 mr-2" />
+                        Rời nhóm
+                      </DropdownMenuItem>
+                    )}
 
-                  {isChannel && !isLeader && (
-                    <DropdownMenuItem
-                      className="cursor-pointer rounded-lg"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setConfirmType("leaveChannel");
-                        setShowConfirm(true);
-                      }}
-                    >
-                      <LogOut className="size-4 mr-2" />
-                      Rời kênh
-                    </DropdownMenuItem>
-                  )}
+                    {isGroup && !isChannel && isLeader && (
+                      <DropdownMenuItem
+                        className="text-destructive cursor-pointer rounded-lg"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setConfirmType("disband");
+                          setShowConfirm(true);
+                        }}
+                      >
+                        <Trash2 className="size-4 mr-2" />
+                        Giải tán nhóm
+                      </DropdownMenuItem>
+                    )}
 
-                  {isChannel && isLeader && (
-                    <DropdownMenuItem
-                      className="text-destructive cursor-pointer rounded-lg"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setConfirmType("deleteChannel");
-                        setShowConfirm(true);
-                      }}
-                    >
-                      <Trash2 className="size-4 mr-2" />
-                      Xóa kênh
-                    </DropdownMenuItem>
-                  )}
-                </DropdownMenuContent>
-              </DropdownMenu>
+                    {isChannel && !isLeader && (
+                      <DropdownMenuItem
+                        className="cursor-pointer rounded-lg"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setConfirmType("leaveChannel");
+                          setShowConfirm(true);
+                        }}
+                      >
+                        <LogOut className="size-4 mr-2" />
+                        Rời kênh
+                      </DropdownMenuItem>
+                    )}
+
+                    {isChannel && isLeader && (
+                      <DropdownMenuItem
+                        className="text-destructive cursor-pointer rounded-lg"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setConfirmType("deleteChannel");
+                          setShowConfirm(true);
+                        }}
+                      >
+                        <Trash2 className="size-4 mr-2" />
+                        Xóa kênh
+                      </DropdownMenuItem>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             </div>
           </div>
@@ -369,10 +368,9 @@ const ChatCard = ({
                 {confirmType === "clear" && <span>Hành động này sẽ xóa/ẩn lịch sử tin nhắn ở phía bạn.</span>}
                 {confirmType === "leave" && <span>Bạn sẽ không thể nhận tin nhắn từ nhóm này nữa trừ khi được thêm lại.</span>}
                 {confirmType === "leaveChannel" && <span>Bạn sẽ không thể xem thông tin kênh này nữa.</span>}
-                {confirmType === "disband" && <span>Hành động này không thể hoàn tác. Nhóm sẽ bị xóa vĩnh viễn với tất cả mọi người.</span>}
-                {confirmType === "deleteChannel" && (
+                {(confirmType === "disband" || confirmType === "deleteChannel") && (
                   <>
-                    <span>Hành động này không thể hoàn tác. Kênh và toàn bộ tin nhắn sẽ bị xóa vĩnh viễn khỏi hệ thống. Vui lòng nhập mật khẩu tài khoản để xác nhận.</span>
+                    <span>Hành động này không thể hoàn tác. {confirmType === "disband" ? "Nhóm" : "Kênh"} và toàn bộ tin nhắn sẽ bị xóa vĩnh viễn khỏi hệ thống. Vui lòng nhập mật khẩu tài khoản để xác nhận.</span>
                     <input
                       type="password"
                       placeholder="Nhập mật khẩu tài khoản của bạn"
@@ -411,11 +409,11 @@ const ChatCard = ({
         preSelectedFriend={
           targetUser
             ? {
-                _id: targetUser._id,
-                displayName: targetUser.displayName,
-                username: targetUser.username || "",
-                avatarUrl: targetUser.avatarUrl || undefined,
-              }
+              _id: targetUser._id,
+              displayName: targetUser.displayName,
+              username: targetUser.username || "",
+              avatarUrl: targetUser.avatarUrl || undefined,
+            }
             : undefined
         }
       />

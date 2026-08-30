@@ -24,6 +24,10 @@ import {
   explorePublicChannels,
   banGroupMember,
   getChannelPreview,
+  createVoiceRoom,
+  updateVoiceRoom,
+  deleteVoiceRoom,
+  toggleIncognitoMode,
 } from "../controllers/conversationController.js";
 import { checkFriendship } from "../middlewares/friendMiddleware.js";
 import upload from "../middlewares/multerMiddleware.js";
@@ -56,6 +60,11 @@ router.delete("/:id/avatar", removeGroupAvatar);
 router.delete("/:id", deleteConversation);
 router.post("/:id/clear", clearChatHistory);
 router.post("/:id/leave", leaveGroup);
+
+router.post("/:id/voice-rooms", createVoiceRoom);
+router.put("/:id/voice-rooms/:roomId", updateVoiceRoom);
+router.delete("/:id/voice-rooms/:roomId", deleteVoiceRoom);
+router.post("/:id/incognito", toggleIncognitoMode);
 router.get("/:id/summarize", aiRateLimiterMiddleware, summarizeConversation);
 
 export default router;

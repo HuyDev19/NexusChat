@@ -90,7 +90,8 @@ export interface ChatState {
     targetConversationId?: string,
     fileUrl?: string | null,
     fileName?: string | null,
-    fileSize?: number | null
+    fileSize?: number | null,
+    sharedContactId?: string
   ) => Promise<void>;
   sendGroupMessage: (
     conversationId: string,
@@ -105,7 +106,8 @@ export interface ChatState {
     isForwarded?: boolean,
     fileUrl?: string | null,
     fileName?: string | null,
-    fileSize?: number | null
+    fileSize?: number | null,
+    sharedContactId?: string
   ) => Promise<void>;
   deleteConversation: (id: string, password?: string) => Promise<void>;
   clearChatHistory: (id: string) => Promise<void>;
@@ -144,6 +146,7 @@ export interface ChatState {
   updateMessageReactions: (conversationId: string, messageId: string, reactions: any[]) => void;
   updateMessagePinStatus: (conversationId: string, messageId: string, isPinned: boolean) => void;
   updateMessageFields: (conversationId: string, messageId: string, fields: Partial<Message>) => void;
+  toggleIncognitoMode: (conversationId: string, isActive: boolean, duration?: number) => Promise<void>;
   unlockConversation: (conversationId: string) => void;
   addGroupMembers: (conversationId: string, memberIds: string[]) => Promise<void>;
   removeGroupMember: (conversationId: string, memberId: string) => Promise<void>;

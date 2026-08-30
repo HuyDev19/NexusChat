@@ -4,7 +4,7 @@
  * @param {import("socket.io").Socket} socket
  */
 export const activeGroupCalls = new Map(); // Map<conversationId, { roomName, isVideo, participants: Set<string> }>
-
+export const activeRoomCalls = new Map(); // Map<conversationId:roomId, Set<userId>>
 export function registerCallSocketHandlers(io, socket) {
   const userId = socket.data.userId;
 
@@ -117,6 +117,65 @@ export function registerCallSocketHandlers(io, socket) {
             active: false
           });
         }
+      }
+    }
+
+    // Xử lý ngắt kết nối cho Voice Rooms
+    for (const [roomKey, participants] of activeRoomCalls.entries()) {
+      if (participants.has(userId)) {
+        participants.delete(userId);
+        const [conversationId, roomId] = roomKey.split(':');
+        
+        io.to(conversationId).emit("room_call:active_update", {
+          conversationId,
+          roomId,
+          participants: Array.from(participants)
+        });
+
+        if (participants.size === 0) {
+          activeRoomCalls.delete(roomKey);
+        }
+      }
+    }
+  });
+
+  // --- VOICE ROOM HANDLERS ---
+  
+  socket.on("room_call:join", ({ conversationId, roomId, roomName }) => {
+    if (!conversationId || !roomId) return;
+    
+    const roomKey = `${conversationId}:${roomId}`;
+    if (!activeRoomCalls.has(roomKey)) {
+      activeRoomCalls.set(roomKey, new Set());
+    }
+    
+    const participants = activeRoomCalls.get(roomKey);
+    participants.add(userId);
+
+    // Bắn sự kiện tới toàn bộ người trong cuộc trò chuyện (hoặc phòng) để update UI
+    io.to(conversationId).emit("room_call:active_update", {
+      conversationId,
+      roomId,
+      participants: Array.from(participants)
+    });
+  });
+
+  socket.on("room_call:leave", ({ conversationId, roomId, roomName }) => {
+    if (!conversationId || !roomId) return;
+    
+    const roomKey = `${conversationId}:${roomId}`;
+    if (activeRoomCalls.has(roomKey)) {
+      const participants = activeRoomCalls.get(roomKey);
+      participants.delete(userId);
+
+      io.to(conversationId).emit("room_call:active_update", {
+        conversationId,
+        roomId,
+        participants: Array.from(participants)
+      });
+
+      if (participants.size === 0) {
+        activeRoomCalls.delete(roomKey);
       }
     }
   });

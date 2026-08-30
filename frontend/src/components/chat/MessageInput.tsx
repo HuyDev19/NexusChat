@@ -684,16 +684,34 @@ const MessageInput = ({ selectedConvo }: { selectedConvo: Conversation }) => {
         ]
       : [];
 
+    const isIncognito = selectedConvo?.type === "direct" && selectedConvo?.incognitoMode?.isActive;
     const convoParticipants = selectedConvo?.participants || [];
     const queryLower = (mentionQuery || "").toLowerCase();
     const users = convoParticipants
       .filter((p) => {
         const pId = (p?._id || (p as any)?.userId?._id)?.toString();
         if (!pId || pId === user?._id?.toString()) return false;
+        
+        if (isIncognito) {
+          const ghostName = "nguoi la".toLowerCase();
+          return ghostName.includes(queryLower) || "người lạ".includes(queryLower);
+        }
+        
         const uName = (p?.username || "").toLowerCase();
         const dName = (p?.displayName || "").toLowerCase();
         const nName = (selectedConvo?.nicknames && selectedConvo.nicknames[pId] ? selectedConvo.nicknames[pId] : "").toLowerCase();
         return uName.includes(queryLower) || dName.includes(queryLower) || nName.includes(queryLower);
+      })
+      .map(p => {
+        if (isIncognito) {
+          return {
+            ...p,
+            displayName: "Người Lạ",
+            avatarUrl: "https://cdn-icons-png.flaticon.com/512/868/1236413.png",
+            username: "nguoila"
+          };
+        }
+        return p;
       })
       .slice(0, 5);
 
@@ -1260,7 +1278,9 @@ const MessageInput = ({ selectedConvo }: { selectedConvo: Conversation }) => {
                           insertMention(
                             p.isAllOption
                               ? "All"
-                              : selectedConvo.nicknames?.[p._id] || p.displayName
+                              : selectedConvo?.type === "direct" && selectedConvo?.incognitoMode?.isActive
+                                ? "Người Lạ"
+                                : (selectedConvo.nicknames?.[p._id] || p.displayName)
                           )
                         }
                         className={`flex items-center gap-2 px-3 py-2 cursor-pointer transition-colors ${
@@ -1287,12 +1307,16 @@ const MessageInput = ({ selectedConvo }: { selectedConvo: Conversation }) => {
                           <span className="text-sm font-semibold truncate leading-tight">
                             {p.isAllOption
                               ? p.displayName
-                              : selectedConvo.nicknames?.[p._id] || p.displayName || "Unknown User"}
+                              : selectedConvo?.type === "direct" && selectedConvo?.incognitoMode?.isActive 
+                                ? "Người Lạ" 
+                                : (selectedConvo.nicknames?.[p._id] || p.displayName || "Unknown User")}
                           </span>
                           <span className="text-xs text-muted-foreground truncate leading-tight">
                             {p.isAllOption
                               ? "Nhắc tất cả mọi người trong nhóm"
-                              : `Tên gốc: ${p.displayName || "Unknown"}`}
+                              : selectedConvo?.type === "direct" && selectedConvo?.incognitoMode?.isActive 
+                                ? "Ẩn danh"
+                                : `Tên gốc: ${p.displayName || "Unknown"}`}
                           </span>
                         </div>
                       </div>

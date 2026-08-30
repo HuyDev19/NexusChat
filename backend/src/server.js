@@ -9,7 +9,7 @@ import friendRoute from "./routes/friendRoute.js";
 import messageRoute from "./routes/messageRoute.js";
 import conversationRoute from "./routes/conversationRoute.js";
 import callRoute from "./routes/callRoute.js";
-import { registerCallSocketHandlers, activeGroupCalls } from "./libs/callSocket.js";
+import { registerCallSocketHandlers, activeGroupCalls, activeRoomCalls } from "./libs/callSocket.js";
 import cookieParser from "cookie-parser";
 import { protectedRoute } from "./middlewares/authMiddleware.js";
 import cors from "cors";
@@ -76,7 +76,7 @@ io.on("connection", (socket) => {
     console.log(`Socket ${socket.id} joined personal room user:${userId}`);
 
     onlineUsers.add(userId);
-    User.findByIdAndUpdate(userId, { lastActiveAt: new Date() }).catch(() => {});
+    User.findByIdAndUpdate(userId, { lastActiveAt: new Date() }).catch(() => { });
     io.emit("online-users", Array.from(onlineUsers));
   }
 
@@ -94,6 +94,18 @@ io.on("connection", (socket) => {
           isVideo: activeCall.isVideo,
           active: true
         });
+      }
+
+      // Gửi trạng thái các phòng thoại (Voice Rooms) đang hoạt động
+      for (const [roomKey, participants] of activeRoomCalls.entries()) {
+        const [cId, roomId] = roomKey.split(':');
+        if (cId === conversationId && participants.size > 0) {
+          socket.emit("room_call:active_update", {
+            conversationId,
+            roomId,
+            participants: Array.from(participants)
+          });
+        }
       }
     }
   });

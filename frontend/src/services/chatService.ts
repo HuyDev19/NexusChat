@@ -307,4 +307,25 @@ export const chatService = {
     const res = await api.put(`/messages/scheduled/${id}`, payload);
     return res.data;
   },
+
+  // Voice Rooms
+  createVoiceRoom: async (conversationId: string, name: string) => {
+    const response = await api.post(`/conversations/${conversationId}/voice-rooms`, { name });
+    return response.data;
+  },
+
+  updateVoiceRoom: async (conversationId: string, roomId: string, name: string) => {
+    const response = await api.put(`/conversations/${conversationId}/voice-rooms/${roomId}`, { name });
+    return response.data;
+  },
+
+  deleteVoiceRoom: async (conversationId: string, roomId: string) => {
+    const response = await api.delete(`/conversations/${conversationId}/voice-rooms/${roomId}`);
+    return response.data;
+  },
+
+  toggleIncognitoMode: async (conversationId: string, isActive: boolean, duration?: number) => {
+    const response = await api.post(`/conversations/${conversationId}/incognito`, { isActive, duration });
+    return response.data;
+  },
 };

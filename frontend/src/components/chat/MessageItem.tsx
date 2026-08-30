@@ -218,17 +218,21 @@ const MessageItem = ({
   const isChannel = selectedConvo?.type === "channel";
   const currentUserParticipant = participants.find((p: Participant) => p?._id?.toString() === user?._id?.toString());
   const isChannelAdmin = isChannel && (currentUserParticipant?.role === "leader" || currentUserParticipant?.role === "deputy");
-  const canPin = (!isChannel || isChannelAdmin) && !message.isViewOnce;
+  const isIncognito = selectedConvo?.type === "direct" && selectedConvo?.incognitoMode?.isActive;
+  
+  const canPin = (!isChannel || isChannelAdmin) && !message.isViewOnce && !isIncognito;
   const canReply = (!isChannel || isChannelAdmin) && !message.isViewOnce;
 
   const getDisplayName = (): string => {
     if (isAI) return "NexusAI";
+    if (isIncognito && !message.isOwn) return "Người Lạ";
     if (!participant) return "Unknown";
     return (selectedConvo?.nicknames?.[participant._id] || participant.displayName || "Unknown");
   };
 
   const getAvatarUrl = (): string | undefined => {
     if (isAI) return "https://cdn-icons-png.flaticon.com/512/826/826963.png";
+    if (isIncognito && !message.isOwn) return "https://cdn-icons-png.flaticon.com/512/868/1236413.png";
     return participant?.avatarUrl || undefined;
   };
 
@@ -338,9 +342,12 @@ const MessageItem = ({
           <div className="w-8">
             {isGroupBreak && (
               <div
-                className="cursor-pointer hover:opacity-80 transition-opacity"
+                className={cn(
+                  "transition-opacity",
+                  !isIncognito && "cursor-pointer hover:opacity-80"
+                )}
                 onClick={() => {
-                  if (!isAI && senderIdStr) {
+                  if (!isIncognito && !isAI && senderIdStr) {
                     useAccountInfoModalStore.getState().openAccountModal(senderIdStr);
                   }
                 }}
@@ -364,9 +371,12 @@ const MessageItem = ({
         >
           {!message.isOwn && selectedConvo.type === "group" && isGroupBreak && (
             <span
-              className="text-[11px] text-muted-foreground ml-1 mb-0.5 cursor-pointer hover:underline"
+              className={cn(
+                "text-[11px] text-muted-foreground ml-1 mb-0.5",
+                !isIncognito && "cursor-pointer hover:underline"
+              )}
               onClick={() => {
-                if (!isAI && senderIdStr) {
+                if (!isIncognito && !isAI && senderIdStr) {
                   useAccountInfoModalStore.getState().openAccountModal(senderIdStr);
                 }
               }}
@@ -418,8 +428,14 @@ const MessageItem = ({
               className={cn(
                 "p-3 relative select-none transition-all duration-300 hover:shadow-md hover:shadow-primary/10 hover:-translate-y-[1px]",
                 message.isOwn ? "chat-bubble-sent border-0" : "chat-bubble-received",
-                message.isRecalled ? "bg-muted/50 border border-border" : ""
+                message.isRecalled ? "bg-muted/50 border border-border" : "",
+                isIncognito ? "select-none pointer-events-auto" : ""
               )}
+              onCopy={(e) => {
+                if (isIncognito) {
+                  e.preventDefault();
+                }
+              }}
             >
               {message.isRecalled ? (
                 <div className="text-sm italic text-muted-foreground break-words whitespace-pre-wrap flex items-center gap-2">
@@ -666,7 +682,7 @@ const MessageItem = ({
                         Dịch sang tiếng Việt
                       </DropdownMenuItem>
                     )}
-                    {!message.isViewOnce && (
+                    {!message.isViewOnce && !isIncognito && (
                       <DropdownMenuItem
                         onClick={() => setForwardingMessage(message)}
                         className="cursor-pointer font-medium flex items-center gap-2"
@@ -744,13 +760,21 @@ const MessageItem = ({
                   .map((vid) => {
                     const p = participants.find((part) => part._id?.toString() === vid);
                     if (!p) return null;
+                    
+                    const finalAvatar = isIncognito 
+                          ? "https://cdn-icons-png.flaticon.com/512/868/1236413.png" 
+                          : (p.avatarUrl || "https://cdn-icons-png.flaticon.com/512/847/847969.png");
+                    const finalTitle = isIncognito
+                          ? "Đã xem bởi Người Lạ"
+                          : `Đã xem bởi ${p.displayName}`;
+                          
                     return (
                       <img
                         key={vid}
-                        src={p.avatarUrl || "https://cdn-icons-png.flaticon.com/512/847/847969.png"}
-                        alt={p.displayName}
+                        src={finalAvatar}
+                        alt={isIncognito ? "Người Lạ" : p.displayName}
                         className="size-3.5 rounded-full border border-background shadow-sm"
-                        title={`Đã xem bởi ${p.displayName}`}
+                        title={finalTitle}
                       />
                     );
                   })}

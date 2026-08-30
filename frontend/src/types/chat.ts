@@ -21,11 +21,18 @@ export interface SeenUser {
   avatarUrl?: string | null;
 }
 
+export interface VoiceRoom {
+  _id: string;
+  name: string;
+  createdAt: string;
+}
+
 export interface Group {
   name: string;
   createdBy: string;
   description?: string;
   avatar?: string;
+  voiceRooms?: VoiceRoom[];
 }
 
 export interface LastMessage {
@@ -58,6 +65,12 @@ export interface Conversation {
     isBothMessaged?: boolean;
   };
   nicknames?: Record<string, string>;
+  incognitoMode?: {
+    isActive: boolean;
+    expiresAt: string | null;
+    startedAt: string | null;
+    startedBy: string | null;
+  };
   createdAt: string;
   updatedAt: string;
 }
@@ -104,6 +117,7 @@ export interface Message {
     imgUrl?: string | null;
     audioUrl?: string | null;
     isRecalled?: boolean;
+    isViewOnce?: boolean;
   };
   isForwarded?: boolean;
   translatedContent?: string;

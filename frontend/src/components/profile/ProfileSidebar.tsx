@@ -8,7 +8,7 @@ import {
   X, Calendar, Phone, Image as ImageIcon, CaseSensitive, Ban, Settings,
   FileText, File, ChevronRight, UserMinus, Search, Pin, Lock, Unlock, MessageSquare,
   ShieldAlert,
-  LogOut, Trash2,
+  LogOut, Trash2, Ghost,
 } from "lucide-react";
 import UserAvatar from "../chat/UserAvatar";
 import StatusBadge from "../chat/StatusBadge";
@@ -58,6 +58,10 @@ const ProfileSidebar = () => {
 
   const [showDeleteChannelDialog, setShowDeleteChannelDialog] = useState(false);
   const [deleteChannelPassword, setDeleteChannelPassword] = useState("");
+
+  const [showIncognitoModal, setShowIncognitoModal] = useState(false);
+  const [incognitoDuration, setIncognitoDuration] = useState("10");
+  const [incognitoUnit, setIncognitoUnit] = useState<"minutes" | "hours">("minutes");
 
   const { fetchMe } = useAuthStore();
   const { unlockConversation } = useChatStore();
@@ -124,6 +128,29 @@ const ProfileSidebar = () => {
     } catch (error: any) {
       toast.error(error.response?.data?.message || "Lỗi khi xóa kênh");
     }
+  };
+
+  const handleToggleIncognito = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!chat?._id) return;
+    
+    try {
+      const durationNum = parseInt(incognitoDuration, 10);
+      if (isNaN(durationNum) || durationNum <= 0) {
+        toast.error("Vui lòng nhập thời gian hợp lệ");
+        return;
+      }
+      const durationMs = incognitoUnit === "hours" ? durationNum * 3600000 : durationNum * 60000;
+      await useChatStore.getState().toggleIncognitoMode(chat._id, true, durationMs);
+      setShowIncognitoModal(false);
+    } catch (err: any) {
+      // toast is handled in store
+    }
+  };
+
+  const handleTurnOffIncognito = async () => {
+    if (!chat?._id) return;
+    await useChatStore.getState().toggleIncognitoMode(chat._id, false);
   };
 
   const handleSetLock = async (e: React.FormEvent) => {
@@ -425,6 +452,15 @@ const ProfileSidebar = () => {
                         )}
                         <ActionRow icon={Pin} label="Tin nhắn đã ghim" onClick={() => setShowPinnedMessages(true)} />
                         
+                        {isDirect && (
+                          <ActionRow 
+                            icon={Ghost} 
+                            label={chat?.incognitoMode?.isActive ? "Tắt Chat Ẩn Danh" : "Bật Chat Ẩn Danh"} 
+                            onClick={() => chat?.incognitoMode?.isActive ? handleTurnOffIncognito() : setShowIncognitoModal(true)} 
+                            success={chat?.incognitoMode?.isActive}
+                          />
+                        )}
+
                         {(!isChannel || isChannelAdmin) && !isLocked && (
                           <ActionRow icon={Lock} label="Khóa cuộc trò chuyện" onClick={() => setShowLockDialog(true)} />
                         )}
@@ -655,6 +691,45 @@ const ProfileSidebar = () => {
                 />
                 <Button type="submit" variant="destructive" className="w-full" disabled={!deleteChannelPassword}>
                   Xóa kênh <Trash2 className="ml-2 size-4" />
+                </Button>
+              </form>
+            </DialogContent>
+          </Dialog>
+
+          <Dialog open={showIncognitoModal} onOpenChange={setShowIncognitoModal}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <Ghost className="w-5 h-5 text-rose-500" />
+                  Cài đặt Chat Ẩn Danh
+                </DialogTitle>
+              </DialogHeader>
+              <form onSubmit={handleToggleIncognito} className="space-y-4 pt-4">
+                <p className="text-sm text-muted-foreground">
+                  Chế độ này sẽ ẩn tên, hình đại diện và không cho phép sao chép/chuyển tiếp tin nhắn.
+                  Tin nhắn sẽ tự động biến mất khi hết thời gian.
+                </p>
+                <div className="flex gap-2">
+                  <Input
+                    type="number"
+                    min="1"
+                    required
+                    value={incognitoDuration}
+                    onChange={(e) => setIncognitoDuration(e.target.value)}
+                    className="flex-1"
+                    placeholder="Nhập thời gian"
+                  />
+                  <select
+                    className="flex h-10 w-32 items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                    value={incognitoUnit}
+                    onChange={(e) => setIncognitoUnit(e.target.value as "minutes" | "hours")}
+                  >
+                    <option value="minutes">Phút</option>
+                    <option value="hours">Giờ</option>
+                  </select>
+                </div>
+                <Button type="submit" className="w-full bg-rose-500 hover:bg-rose-600 text-white">
+                  Bật Chat Ẩn Danh
                 </Button>
               </form>
             </DialogContent>

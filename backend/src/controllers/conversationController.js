@@ -50,6 +50,7 @@ export const createConversation = async (req, res) => {
         group: {
           name,
           createdBy: userId,
+          voiceRooms: [{ name: "Phòng chung" }], // Phòng mặc định
         },
         lastMessageAt: new Date(),
       });
@@ -1384,6 +1385,209 @@ export const getChannelPreview = async (req, res) => {
     });
   } catch (error) {
     console.error("Lỗi getChannelPreview:", error);
+    return res.status(500).json({ message: "Lỗi hệ thống" });
+  }
+};
+
+export const createVoiceRoom = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name } = req.body;
+    const userId = req.user._id;
+
+    if (!name || name.trim() === "") {
+      return res.status(400).json({ message: "Tên phòng không hợp lệ" });
+    }
+
+    const conversation = await Conversation.findById(id);
+    if (!conversation || conversation.type !== "group") {
+      return res.status(404).json({ message: "Không tìm thấy nhóm" });
+    }
+
+    const currentUser = conversation.participants.find(p => p.userId.toString() === userId.toString());
+    if (!currentUser || (currentUser.role !== "leader" && currentUser.role !== "deputy")) {
+      return res.status(403).json({ message: "Chỉ trưởng/phó nhóm mới có quyền tạo phòng thoại" });
+    }
+
+    if (conversation.group.voiceRooms.length >= 10) {
+      return res.status(400).json({ message: "Số lượng phòng thoại tối đa là 10" });
+    }
+
+    const newRoom = { name: name.trim(), createdAt: new Date() };
+    conversation.group.voiceRooms.push(newRoom);
+    await conversation.save();
+
+    const io = req.app.get("io");
+    if (io) {
+      conversation.participants.forEach((p) => {
+        io.to(`user:${p.userId}`).emit("conversation:update", {
+          conversationId: conversation._id,
+          updates: { group: conversation.group }
+        });
+      });
+    }
+
+    return res.status(201).json({ message: "Tạo phòng thoại thành công", voiceRooms: conversation.group.voiceRooms });
+  } catch (error) {
+    console.error("Lỗi createVoiceRoom:", error);
+    return res.status(500).json({ message: "Lỗi hệ thống" });
+  }
+};
+
+export const updateVoiceRoom = async (req, res) => {
+  try {
+    const { id, roomId } = req.params;
+    const { name } = req.body;
+    const userId = req.user._id;
+
+    if (!name || name.trim() === "") {
+      return res.status(400).json({ message: "Tên phòng không hợp lệ" });
+    }
+
+    const conversation = await Conversation.findById(id);
+    if (!conversation || conversation.type !== "group") {
+      return res.status(404).json({ message: "Không tìm thấy nhóm" });
+    }
+
+    const currentUser = conversation.participants.find(p => p.userId.toString() === userId.toString());
+    if (!currentUser || (currentUser.role !== "leader" && currentUser.role !== "deputy")) {
+      return res.status(403).json({ message: "Chỉ trưởng/phó nhóm mới có quyền sửa phòng thoại" });
+    }
+
+    const room = conversation.group.voiceRooms.id(roomId);
+    if (!room) {
+      return res.status(404).json({ message: "Không tìm thấy phòng thoại" });
+    }
+
+    room.name = name.trim();
+    await conversation.save();
+
+    const io = req.app.get("io");
+    if (io) {
+      conversation.participants.forEach((p) => {
+        io.to(`user:${p.userId}`).emit("conversation:update", {
+          conversationId: conversation._id,
+          updates: { group: conversation.group }
+        });
+      });
+    }
+
+    return res.status(200).json({ message: "Cập nhật tên phòng thành công", voiceRooms: conversation.group.voiceRooms });
+  } catch (error) {
+    console.error("Lỗi updateVoiceRoom:", error);
+    return res.status(500).json({ message: "Lỗi hệ thống" });
+  }
+};
+
+export const deleteVoiceRoom = async (req, res) => {
+  try {
+    const { id, roomId } = req.params;
+    const userId = req.user._id;
+
+    const conversation = await Conversation.findById(id);
+    if (!conversation || conversation.type !== "group") {
+      return res.status(404).json({ message: "Không tìm thấy nhóm" });
+    }
+
+    const currentUser = conversation.participants.find(p => p.userId.toString() === userId.toString());
+    if (!currentUser || (currentUser.role !== "leader" && currentUser.role !== "deputy")) {
+      return res.status(403).json({ message: "Chỉ trưởng/phó nhóm mới có quyền xóa phòng thoại" });
+    }
+
+    const room = conversation.group.voiceRooms.id(roomId);
+    if (!room) {
+      return res.status(404).json({ message: "Không tìm thấy phòng thoại" });
+    }
+    if (room.name === "Phòng chung") {
+      return res.status(400).json({ message: "Không thể xóa phòng mặc định" });
+    }
+
+    conversation.group.voiceRooms.pull({ _id: roomId });
+    await conversation.save();
+
+    const io = req.app.get("io");
+    if (io) {
+      conversation.participants.forEach((p) => {
+        io.to(`user:${p.userId}`).emit("conversation:update", {
+          conversationId: conversation._id,
+          updates: { group: conversation.group }
+        });
+      });
+    }
+
+    return res.status(200).json({ message: "Phòng thoại đã được xóa", voiceRooms: conversation.group.voiceRooms });
+  } catch (error) {
+    console.error("Lỗi xóa phòng thoại:", error);
+    return res.status(500).json({ message: "Lỗi hệ thống" });
+  }
+};
+
+export const toggleIncognitoMode = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { isActive, duration } = req.body;
+    const userId = req.user._id;
+
+    const conversation = await Conversation.findById(id);
+    if (!conversation) {
+      return res.status(404).json({ message: "Không tìm thấy cuộc trò chuyện" });
+    }
+
+    if (conversation.type !== "direct") {
+      return res.status(400).json({ message: "Chat ẩn danh chỉ hỗ trợ chat 1:1" });
+    }
+
+    const isMember = conversation.participants.some(p => p.userId.toString() === userId.toString());
+    if (!isMember) {
+      return res.status(403).json({ message: "Bạn không ở trong cuộc trò chuyện này" });
+    }
+
+    if (isActive) {
+      if (!duration || duration <= 0) {
+        return res.status(400).json({ message: "Thời gian không hợp lệ" });
+      }
+      conversation.incognitoMode = {
+        isActive: true,
+        expiresAt: new Date(Date.now() + duration),
+        startedAt: new Date(),
+        startedBy: userId,
+      };
+    } else {
+      conversation.incognitoMode = {
+        isActive: false,
+        expiresAt: null,
+        startedAt: null,
+        startedBy: null,
+      };
+
+      // Xóa tất cả tin nhắn đã gửi trong lúc bật chế độ ẩn danh (có expiresAt)
+      await Message.deleteMany({
+        conversationId: id,
+        expiresAt: { $ne: null }
+      });
+
+    }
+
+    await conversation.save();
+
+    const io = req.app.get("io");
+    if (io) {
+      conversation.participants.forEach((p) => {
+        io.to(`user:${p.userId}`).emit("conversation:update", {
+          conversationId: id,
+          updates: { incognitoMode: conversation.incognitoMode }
+        });
+        
+        // Cập nhật lại UI client sau khi xóa tin nhắn (nếu tắt)
+        if (!isActive) {
+          io.to(`user:${p.userId}`).emit("conversation:clear", { conversationId: id });
+        }
+      });
+    }
+
+    return res.status(200).json({ message: isActive ? "Đã bật chat ẩn danh" : "Đã tắt chat ẩn danh", incognitoMode: conversation.incognitoMode });
+  } catch (error) {
+    console.error("Lỗi toggleIncognitoMode:", error);
     return res.status(500).json({ message: "Lỗi hệ thống" });
   }
 };

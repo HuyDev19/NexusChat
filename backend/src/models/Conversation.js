@@ -25,6 +25,12 @@ const participantSchema = new mongoose.Schema(
 );
 
 
+// Cấu trúc phòng thoại
+const voiceRoomSchema = new mongoose.Schema({
+  name: { type: String, required: true },
+  createdAt: { type: Date, default: Date.now },
+});
+
 // Cấu trúc nhóm trong cuộc trò chuyện nhóm
 const groupSchema = new mongoose.Schema(
   {
@@ -47,6 +53,10 @@ const groupSchema = new mongoose.Schema(
     description: {
       type: String,
       default: null,
+    },
+    voiceRooms: {
+      type: [voiceRoomSchema],
+      default: () => [{ name: "Phòng chung" }]
     },
   },
   {
@@ -134,6 +144,12 @@ const conversationSchema = new mongoose.Schema(
       type: Map,
       of: Date,
       default: {},
+    },
+    incognitoMode: {
+      isActive: { type: Boolean, default: false },
+      expiresAt: { type: Date, default: null },
+      startedAt: { type: Date, default: null },
+      startedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
     },
     bannedUsers: [
       {

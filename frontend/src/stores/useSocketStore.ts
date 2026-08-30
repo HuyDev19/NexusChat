@@ -109,6 +109,22 @@ export const useSocketStore = create<SocketState>((set, get) => ({
       });
     });
 
+    // message clear
+    socket.on("conversation:clear", ({ conversationId }) => {
+      import("./useChatStore").then((mod) => {
+        mod.useChatStore.setState((state) => {
+          const newMessages = { ...state.messages };
+          if (newMessages[conversationId]) {
+              newMessages[conversationId] = {
+                  ...newMessages[conversationId],
+                  items: newMessages[conversationId].items.filter(m => !m.expiresAt && !m.expiresIn),
+              };
+          }
+          return { messages: newMessages };
+        });
+      });
+    });
+
     // new message
     socket.on("new-message", ({ message, conversation, unreadCounts }) => {
       useChatStore.getState().addMessage(message);
@@ -280,6 +296,12 @@ export const useSocketStore = create<SocketState>((set, get) => ({
       });
     });
 
+    socket.on("room_call:active_update", (data) => {
+      import("./useCallStore").then((store) => {
+        store.useCallStore.getState().setActiveVoiceRoom(data.conversationId, data.roomId, data.participants);
+      });
+    });
+
     socket.on("call:ended", ({ roomName }) => {
       import("./useCallStore").then((store) => {
         const activeCall = store.useCallStore.getState().activeCall;
@@ -305,6 +327,7 @@ export const useSocketStore = create<SocketState>((set, get) => ({
       socket.off("call:declined");
       socket.off("call:ended");
       socket.off("call:active_update");
+      socket.off("room_call:active_update");
       socket.off("user:updated");
       socket.off("typing-start");
       socket.off("typing-end");

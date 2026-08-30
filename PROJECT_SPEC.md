@@ -213,16 +213,20 @@ The project is organized as a monorepo with two main parts:
 - **Recall Messages**
 - **Disappearing Messages** with customizable expiration timers (5 mins, 1 hour, 24 hours)
 - **View Once Media** for images and voice messages
-- **Voice Messages** with built-in audio recording
-- **Chat Lock** using a 4-digit PIN for sensitive conversations
-- **Chat Wallpapers** allowing custom backgrounds for each conversation
-- **Shared Nicknames** for participants in a conversation
-- **Block/Unblock Users** in direct conversations
-- **Real-time synchronization**: Instant message delivery and conversation list updates via Socket.IO
+- **Voice Messages & Speech-to-Text**: Voice recording with real-time transcription capability.
+- **Chat Lock**: 4-digit PIN for sensitive conversations.
+- **Chat Wallpapers & Shared Nicknames**: Custom backgrounds and aliases.
+- **Block/Unblock Users**: Manage communication in direct conversations.
+- **Scheduled Messages**: Schedule messages to be sent automatically at a future time.
+- **Share Contact**: Easily share a friend's contact card directly inside a chat.
+- **Translation Integration**: In-app translation for messages using Google Translate API.
+- **Advanced Media Viewer & Image Editor**: Dedicated modals to view, zoom, and apply basic edits to images before sending.
+- **Offline Sync & Banner**: Graceful handling of network disconnects with an offline banner and sync store.
+- **Real-time synchronization**: Instant message delivery and conversation list updates via Socket.IO.
 - **@NexusAI Chatbot & Summarization**: Tích hợp trợ lý ảo thông minh sử dụng Gemini API (`@google/genai`).
   - Cho phép người dùng gọi `@NexusAI` trong chat để trò chuyện, hỏi đáp. Bot sẽ đọc ngữ cảnh 15 tin nhắn gần nhất và tự động phản hồi lại vào đoạn chat.
   - Cung cấp nút **Tóm tắt (Summarize)** sử dụng AI để phân tích và tóm tắt nhanh nội dung quan trọng của cuộc trò chuyện.
-- **Rich Text & Markdown**: Hỗ trợ hiển thị Markdown (`in đậm`, `in nghiêng`, `danh sách`, `code block`) giúp cho các tin nhắn (đặc biệt là tin nhắn từ AI) trở nên rõ ràng và dễ đọc.
+- **Rich Text & Markdown**: Hỗ trợ hiển thị Markdown (`in đậm`, `in nghiêng`, `danh sách`, `code block`) giúp cho các tin nhắn trở nên rõ ràng và dễ đọc.
 
 ### Group Management
 - **Role Management**: Distinguish between `leader` (Admin), `deputy`, and `member`.

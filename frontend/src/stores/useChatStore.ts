@@ -734,16 +734,6 @@ export const useChatStore = create<ChatState>()(
           toast.error("Không thể cập nhật biệt danh.");
         }
       },
-      updateParticipantData: (userUpdate) => {
-        set((state) => ({
-          conversations: state.conversations.map((convo) => ({
-            ...convo,
-            participants: (convo.participants || []).map((p) =>
-              p._id === userUpdate._id ? { ...p, ...userUpdate } : p
-            ),
-          })),
-        }));
-      },
       updateConversationFields: (conversationId, fields) => {
         set((state) => {
           const index = state.conversations.findIndex(c => c._id === conversationId);
@@ -825,6 +815,18 @@ export const useChatStore = create<ChatState>()(
 
           return Object.keys(nextState).length > 0 ? nextState : state;
         });
+      },
+      toggleIncognitoMode: async (conversationId: string, isActive: boolean, duration?: number) => {
+        try {
+          const res = await chatService.toggleIncognitoMode(conversationId, isActive, duration);
+          if (res.incognitoMode) {
+            get().updateConversationFields(conversationId, { incognitoMode: res.incognitoMode });
+            toast.success(isActive ? "Đã bật chế độ Chat Ẩn Danh" : "Đã tắt chế độ Chat Ẩn Danh");
+          }
+        } catch (error) {
+          console.error("Lỗi khi chuyển đổi chế độ ẩn danh:", error);
+          toast.error("Không thể thay đổi chế độ ẩn danh");
+        }
       },
       unlockConversation: (conversationId) => {
         set((state) => ({

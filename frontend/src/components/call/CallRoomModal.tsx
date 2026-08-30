@@ -14,10 +14,16 @@ import ChatWindowBody from "../chat/ChatWindowBody";
 import MessageInput from "../chat/MessageInput";
 
 // Component con để phát nhạc chuông khi đang chờ người khác nghe máy
-const OutgoingCallRinger = () => {
+const OutgoingCallRinger = ({ isGroup }: { isGroup: boolean }) => {
   const participants = useParticipants();
   
   useEffect(() => {
+    // Không phát chuông chờ nếu là phòng nhóm (voice room)
+    if (isGroup) {
+      stopRingtone();
+      return;
+    }
+
     // Nếu chỉ có 1 người (chính mình) trong phòng -> đang chờ máy
     if (participants.length === 1) {
       startRingtone();
@@ -26,7 +32,7 @@ const OutgoingCallRinger = () => {
     }
     
     return () => stopRingtone();
-  }, [participants.length]);
+  }, [participants.length, isGroup]);
 
   return null;
 };
@@ -46,8 +52,10 @@ const CallRoomModal = () => {
 
   // Tạo tên hiển thị cho cuộc gọi dựa trên loại nhóm hoặc tên người dùng
   let displayRoomName = activeCall.roomName;
+  const isGroup = selectedConvo?.type === 'group' || selectedConvo?.type === 'community';
+  
   if (selectedConvo) {
-    if (selectedConvo.type === 'group' || selectedConvo.type === 'community') {
+    if (isGroup) {
       displayRoomName = selectedConvo.group?.name || "Cuộc gọi Nhóm";
     } else {
       const otherParticipant = selectedConvo.participants?.find((p) => p._id !== user?._id);
@@ -157,7 +165,7 @@ const CallRoomModal = () => {
             )}
             {/* Tự động phát âm thanh của mọi người trong phòng */}
             <RoomAudioRenderer />
-            <OutgoingCallRinger />
+            <OutgoingCallRinger isGroup={!!isGroup} />
           </LiveKitRoom>
         </div>
       </div>

@@ -17,10 +17,42 @@ import { Button } from "../ui/button";
 import { userService } from "@/services/userService";
 import { chatService } from "@/services/chatService";
 import { toast } from "sonner";
-import { Settings, Ban, Flame, Pencil, Edit3, Sparkles, Loader2, UserPlus } from "lucide-react";
+import { Settings, Ban, Flame, Pencil, Edit3, Sparkles, Loader2, UserPlus, PowerOff } from "lucide-react";
 import { isNoteExpired, isStreakActive, isStreakOnFire, formatLastActive, getEffectiveStatus, cn } from "@/lib/utils";
 import { Label } from "../ui/label";
 import { useProfileStore } from "@/stores/useProfileStore";
+import VoiceRoomListPopover from "./VoiceRoomListPopover";
+import { useEffect } from "react";
+import { Ghost } from "lucide-react";
+
+const IncognitoTimer = ({ expiresAt, onExpire }: { expiresAt: string, onExpire: () => void }) => {
+  const [timeLeft, setTimeLeft] = useState("");
+  
+  useEffect(() => {
+    const updateTimer = () => {
+      const diff = new Date(expiresAt).getTime() - Date.now();
+      if (diff <= 0) {
+        setTimeLeft("00:00");
+        onExpire();
+        return true; // expired
+      }
+      const m = Math.floor(diff / 60000);
+      const s = Math.floor((diff % 60000) / 1000);
+      setTimeLeft(`${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`);
+      return false;
+    };
+    
+    if (updateTimer()) return;
+    
+    const timer = setInterval(() => {
+      if (updateTimer()) clearInterval(timer);
+    }, 1000);
+    
+    return () => clearInterval(timer);
+  }, [expiresAt, onExpire]);
+  
+  return <span className="text-rose-500 font-mono font-bold text-sm tracking-widest">{timeLeft}</span>;
+};
 
 const ChatWindowHeader = ({ chat }: { chat?: Conversation }) => {
   const { conversations, activeConversationId } = useChatStore();
@@ -128,8 +160,16 @@ const ChatWindowHeader = ({ chat }: { chat?: Conversation }) => {
     return chat?.nicknames?.[userObj._id] || userObj.displayName;
   };
 
+  const isIncognito = chat?.type === "direct" && chat?.incognitoMode?.isActive;
+
+  const handleIncognitoExpire = () => {
+    if (chat?._id) {
+      chatService.toggleIncognitoMode(chat._id, false).catch(() => {});
+    }
+  };
+
   return (
-    <header className="sticky top-0 z-10 flex flex-col w-full bg-background border-b border-border/50">
+    <header className={cn("sticky top-0 z-10 flex flex-col w-full border-b border-border/50 transition-colors duration-500", isIncognito ? "bg-zinc-950/90 backdrop-blur-md" : "bg-background")}>
       <div className="px-4 py-2 flex items-center gap-2 w-full justify-between overflow-hidden">
         <div className="flex items-center gap-2 min-w-0">
           <SidebarTrigger className="-ml-1 text-foreground shrink-0" />
@@ -143,8 +183,12 @@ const ChatWindowHeader = ({ chat }: { chat?: Conversation }) => {
             <div className="relative shrink-0">
               {chat.type === "direct" ? (
                 <div
-                  className="cursor-pointer hover:opacity-80 transition-opacity"
+                  className={cn(
+                    "transition-opacity",
+                    !isIncognito && "cursor-pointer hover:opacity-80"
+                  )}
                   onClick={() => {
+                    if (isIncognito) return;
                     if (isProfileOpen && profileMode === "chat") {
                       closeProfile();
                     } else {
@@ -154,15 +198,17 @@ const ChatWindowHeader = ({ chat }: { chat?: Conversation }) => {
                 >
                   <UserAvatar
                     type={"sidebar"}
-                    name={chat?.nicknames?.[otherUser?._id ?? ""] || otherUser?.displayName || ""}
-                    avatarUrl={otherUser?.avatarUrl ?? undefined}
-                    note={isNoteExpired(typeof otherUser?.note === 'string' ? null : otherUser?.note) ? undefined : (typeof otherUser?.note === "string" ? otherUser.note : otherUser?.note?.content)}
+                    name={isIncognito ? "Người Lạ" : chat?.nicknames?.[otherUser?._id ?? ""] || otherUser?.displayName || ""}
+                    avatarUrl={isIncognito ? "https://cdn-icons-png.flaticon.com/512/868/1236413.png" : otherUser?.avatarUrl ?? undefined}
+                    note={isIncognito || isNoteExpired(typeof otherUser?.note === 'string' ? null : otherUser?.note) ? undefined : (typeof otherUser?.note === "string" ? otherUser.note : otherUser?.note?.content)}
                     userId={otherUser?._id}
                   />
-                  <StatusBadge
-                    status={effectiveStatus}
-                    lastActiveAt={userLastActive}
-                  />
+                  {!isIncognito && (
+                    <StatusBadge
+                      status={effectiveStatus}
+                      lastActiveAt={userLastActive}
+                    />
+                  )}
                 </div>
               ) : (
                 <div
@@ -189,8 +235,12 @@ const ChatWindowHeader = ({ chat }: { chat?: Conversation }) => {
             <div className="flex flex-col justify-center min-w-0">
               <div className="flex items-center gap-1.5 flex-wrap">
                 <h2
-                  className="font-semibold text-foreground truncate max-w-[220px] leading-snug cursor-pointer hover:underline"
+                  className={cn(
+                    "font-semibold text-foreground truncate max-w-[220px] leading-snug",
+                    !isIncognito && "cursor-pointer hover:underline"
+                  )}
                   onClick={() => {
+                    if (isIncognito) return;
                     if (isProfileOpen && profileMode === "chat") {
                       closeProfile();
                     } else {
@@ -198,12 +248,16 @@ const ChatWindowHeader = ({ chat }: { chat?: Conversation }) => {
                     }
                   }}
                 >
-                  {chat?.type === "direct"
+                  {isIncognito ? (
+                    <span className="flex items-center gap-2 text-rose-500 drop-shadow-sm">
+                      <Ghost className="w-4 h-4 animate-pulse" /> Chat Ẩn Danh
+                    </span>
+                  ) : chat?.type === "direct"
                     ? getDisplayName(otherUser)
                     : chat?.group?.name || "Nhóm"}
                 </h2>
 
-                {chat?.type === "direct" && otherUser && !isFriend && (
+                {chat?.type === "direct" && otherUser && !isFriend && !isIncognito && (
                   <span className="bg-zinc-700/80 text-zinc-200 text-[10px] font-bold px-2 py-0.5 rounded tracking-wide uppercase shrink-0">
                     NGƯỜI LẠ
                   </span>
@@ -224,7 +278,9 @@ const ChatWindowHeader = ({ chat }: { chat?: Conversation }) => {
                 )}
               </div>
 
-              {chat?.type === "direct" && otherUser ? (
+              {isIncognito && chat?.incognitoMode?.expiresAt ? (
+                <IncognitoTimer expiresAt={chat.incognitoMode.expiresAt} onExpire={handleIncognitoExpire} />
+              ) : chat?.type === "direct" && otherUser ? (
                 !isFriend ? (
                   <span className="text-[11px] font-medium text-rose-500 dark:text-rose-400 leading-tight">
                     Chưa kết bạn với người này
@@ -253,7 +309,22 @@ const ChatWindowHeader = ({ chat }: { chat?: Conversation }) => {
 
         {/* Call Actions */}
         {!activeCall && (
-          chat?.type !== 'direct' && chat?._id && activeGroupCalls?.[chat._id] ? (
+          isIncognito ? (
+            <div className="flex items-center pr-2 shrink-0">
+              <button
+                onClick={handleIncognitoExpire}
+                className="px-3 py-1.5 rounded-full bg-rose-500/10 hover:bg-rose-500 hover:text-white text-rose-500 border border-rose-500/20 font-medium text-xs flex items-center gap-1.5 transition-all shadow-sm"
+                title="Tắt khẩn cấp Chat Ẩn Danh"
+              >
+                <PowerOff className="size-4" />
+                <span className="hidden sm:inline">Tắt khẩn cấp</span>
+              </button>
+            </div>
+          ) : chat?.type === 'group' ? (
+            <div className="pr-2 shrink-0">
+              <VoiceRoomListPopover chat={chat} />
+            </div>
+          ) : chat?.type !== 'direct' && chat?._id && activeGroupCalls?.[chat._id] ? (
             <div className="pr-2 shrink-0">
               <button
                 onClick={() => joinExistingCall(chat._id, activeGroupCalls[chat._id].roomName, activeGroupCalls[chat._id].isVideo)}

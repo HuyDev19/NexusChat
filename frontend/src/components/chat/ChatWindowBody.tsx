@@ -1,4 +1,5 @@
 import { useChatStore } from "@/stores/useChatStore";
+import { toast } from "sonner";
 import ChatWelcomeScreen from "./ChatWelcomeScreen";
 import MessageItem from "./MessageItem";
 import UserAvatar from "./UserAvatar";
@@ -11,6 +12,7 @@ import { THEMES } from "./WallpaperModal";
 import { useSocketStore } from "@/stores/useSocketStore";
 import { useAuthStore } from "@/stores/useAuthStore";
 import ForwardMessageModal from "./ForwardMessageModal";
+import { Ghost } from "lucide-react";
 
 const ChatWindowBody = () => {
     const {
@@ -61,6 +63,51 @@ const ChatWindowBody = () => {
             setLastMessageStatus(isAnyOnline ? "đã nhận" : "đã gửi");
         }
     }, [selectedConvo, onlineUsers, user]);
+
+    // screen capture protection for incognito mode
+    const [isBlurred, setIsBlurred] = useState(false);
+
+    useEffect(() => {
+        const isIncognito = selectedConvo?.type === "direct" && selectedConvo?.incognitoMode?.isActive;
+        const handleVisibilityChange = () => {
+            if (document.hidden && isIncognito) setIsBlurred(true);
+            else setIsBlurred(false);
+        };
+        const handleBlur = () => {
+            if (isIncognito) setIsBlurred(true);
+        };
+        const handleFocus = () => setIsBlurred(false);
+        
+        const handleKeyUp = (e: KeyboardEvent) => {
+            if (!isIncognito) return;
+            if (e.key === "PrintScreen" || (e.metaKey && e.shiftKey && ["s", "S", "3", "4"].includes(e.key))) {
+                toast.error("Phát hiện hành động chụp ảnh màn hình!");
+                
+                const user = useAuthStore.getState().user;
+                const otherUser = selectedConvo?.participants?.find((p: any) => (p._id || p) !== user?._id);
+                
+                if (otherUser && activeConversationId) {
+                    const recipientId = typeof otherUser === "string" ? otherUser : otherUser._id;
+                    useChatStore.getState().sendDirectMessage(
+                        recipientId as string, 
+                        "📸 Người lạ đã chụp màn hình"
+                    ).catch(() => {});
+                }
+            }
+        };
+
+        document.addEventListener("visibilitychange", handleVisibilityChange);
+        window.addEventListener("blur", handleBlur);
+        window.addEventListener("focus", handleFocus);
+        window.addEventListener("keyup", handleKeyUp);
+
+        return () => {
+            document.removeEventListener("visibilitychange", handleVisibilityChange);
+            window.removeEventListener("blur", handleBlur);
+            window.removeEventListener("focus", handleFocus);
+            window.removeEventListener("keyup", handleKeyUp);
+        };
+    }, [selectedConvo?.type, selectedConvo?.incognitoMode?.isActive, activeConversationId]);
 
     // kéo xuống dưới khi load convo
     useLayoutEffect(() => {
@@ -149,6 +196,14 @@ const ChatWindowBody = () => {
                 <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px] z-0 pointer-events-none"></div>
             )}
 
+            {isBlurred && (
+                <div className="absolute inset-0 bg-background/80 backdrop-blur-xl z-[100] flex flex-col items-center justify-center pointer-events-none transition-all duration-300">
+                    <Ghost className="w-12 h-12 text-rose-500 mb-4 animate-bounce" />
+                    <h3 className="text-xl font-bold text-foreground">Chat Ẩn Danh Đang Bật</h3>
+                    <p className="text-muted-foreground mt-2">Nội dung đã bị ẩn để bảo vệ quyền riêng tư.</p>
+                </div>
+            )}
+
             {pinnedMessages.length > 0 && (
                 <div className="px-4 pt-3 pb-1 z-20">
                     <Popover>
@@ -206,8 +261,13 @@ const ChatWindowBody = () => {
                     const typingUser = selectedConvo?.participants?.find(p => p?._id?.toString() === typingUserId?.toString());
                     if (!typingUser && !isAI) return null;
                     
-                    const avatarUrl = isAI ? "https://cdn-icons-png.flaticon.com/512/826/826963.png" : (typingUser as any)?.avatarUrl;
-                    const displayName = isAI ? "NexusAI" : (selectedConvo?.nicknames?.[typingUserId] || (typingUser as any)?.displayName || "User");
+                    const isIncognito = selectedConvo?.type === "direct" && selectedConvo?.incognitoMode?.isActive;
+                    const avatarUrl = isIncognito 
+                        ? "https://cdn-icons-png.flaticon.com/512/868/1236413.png" 
+                        : (isAI ? "https://cdn-icons-png.flaticon.com/512/826/826963.png" : (typingUser as any)?.avatarUrl);
+                    const displayName = isIncognito 
+                        ? "Người Lạ" 
+                        : (isAI ? "NexusAI" : (selectedConvo?.nicknames?.[typingUserId] || (typingUser as any)?.displayName || "User"));
 
                     return (
                         <div key={typingUserId} className="flex items-end mb-2 mt-1 opacity-70 transition-opacity justify-start w-full gap-2">
