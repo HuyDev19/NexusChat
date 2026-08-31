@@ -88,85 +88,96 @@ const FormattedText = ({
   );
 };
 
+import WaveSurfer from 'wavesurfer.js';
+
 const VoiceMessagePlayer = ({ src, isOwn }: { src: string; isOwn?: boolean }) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const waveSurferRef = useRef<WaveSurfer | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [progress, setProgress] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [currentTime, setCurrentTime] = useState(0);
   const [speed, setSpeed] = useState(1);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
-    const audio = new Audio(src);
-    audioRef.current = audio;
+    if (!containerRef.current) return;
 
-    const handleTimeUpdate = () => {
-      if (audio.duration) {
-        setProgress((audio.currentTime / audio.duration) * 100);
-      }
-    };
-    const handleEnded = () => {
-      setIsPlaying(false);
-      setProgress(0);
-    };
+    const ws = WaveSurfer.create({
+      container: containerRef.current,
+      waveColor: isOwn ? 'rgba(255,255,255,0.4)' : '#d1d5db',
+      progressColor: isOwn ? '#ffffff' : '#3b82f6',
+      cursorColor: 'transparent',
+      barWidth: 2,
+      barGap: 2,
+      barRadius: 2,
+      height: 24,
+      url: src,
+    });
+    waveSurferRef.current = ws;
 
-    audio.addEventListener("timeupdate", handleTimeUpdate);
-    audio.addEventListener("ended", handleEnded);
+    ws.on('play', () => setIsPlaying(true));
+    ws.on('pause', () => setIsPlaying(false));
+    ws.on('timeupdate', (time) => setCurrentTime(time));
+    ws.on('ready', (dur) => {
+      setDuration(dur);
+      setIsReady(true);
+    });
+    ws.on('finish', () => setIsPlaying(false));
 
     return () => {
-      audio.removeEventListener("timeupdate", handleTimeUpdate);
-      audio.removeEventListener("ended", handleEnded);
-      audio.pause();
+      ws.destroy();
     };
-  }, [src]);
+  }, [src, isOwn]);
 
   useEffect(() => {
-    if (audioRef.current) {
-      audioRef.current.playbackRate = speed;
+    if (waveSurferRef.current && isReady) {
+      waveSurferRef.current.setPlaybackRate(speed);
     }
-  }, [speed]);
+  }, [speed, isReady]);
 
   const togglePlay = () => {
-    if (audioRef.current) {
-      if (isPlaying) {
-        audioRef.current.pause();
-      } else {
-        audioRef.current.play();
-      }
-      setIsPlaying(!isPlaying);
-    }
+    waveSurferRef.current?.playPause();
   };
 
   const toggleSpeed = () => {
     setSpeed((s) => (s === 1 ? 1.5 : s === 1.5 ? 2 : 1));
   };
 
+  const formatTime = (time: number) => {
+    if (!time || isNaN(time)) return '0:00';
+    const min = Math.floor(time / 60);
+    const sec = Math.floor(time % 60);
+    return `${min}:${sec < 10 ? '0' : ''}${sec}`;
+  };
+
   return (
-    <div className={cn("flex items-center gap-3 w-48 lg:w-56", isOwn ? "text-primary-foreground" : "")}>
-      <button
-        onClick={togglePlay}
-        className={cn("shrink-0 size-8 flex items-center justify-center rounded-full transition-colors",
-          isOwn ? "bg-white/20 hover:bg-white/30" : "bg-primary/10 hover:bg-primary/20 text-primary"
-        )}
-      >
-        {isPlaying ? <Pause className="size-4 fill-current" /> : <Play className="size-4 fill-current ml-0.5" />}
-      </button>
-
-      <div className="flex-1 h-8 relative flex items-center">
-        {/* Fake waveform */}
-        <div className="absolute inset-0 flex items-center justify-between gap-[2px] opacity-60">
-          {[...Array(20)].map((_, i) => (
-            <div key={i} className={cn("w-1 rounded-full", isOwn ? "bg-white" : "bg-primary")} style={{ height: `${20 + Math.random() * 80}%` }} />
-          ))}
-        </div>
-        {/* Progress overlay */}
-        <div className="absolute inset-0 bg-black/20" style={{ clipPath: `inset(0 ${100 - progress}% 0 0)` }} />
+    <div className={cn("flex flex-col gap-1 w-48 lg:w-56", isOwn ? "text-primary-foreground" : "")}>
+      <div className="flex items-center gap-3">
+        <button
+          onClick={togglePlay}
+          className={cn("shrink-0 size-8 flex items-center justify-center rounded-full transition-colors",
+            isOwn ? "bg-white/20 hover:bg-white/30" : "bg-primary/10 hover:bg-primary/20 text-primary"
+          )}
+        >
+          {isPlaying ? <Pause className="size-4 fill-current" /> : <Play className="size-4 fill-current ml-0.5" />}
+        </button>
+        
+        <div className="flex-1 w-full min-w-0" ref={containerRef} />
+        
+        <button
+          onClick={toggleSpeed}
+          className={cn("shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded transition-colors",
+            isOwn ? "bg-white/20 hover:bg-white/30" : "bg-primary/10 hover:bg-primary/20 text-primary"
+          )}
+        >
+          {speed}x
+        </button>
       </div>
-
-      <button
-        onClick={toggleSpeed}
-        className="shrink-0 text-xs font-semibold px-1 py-0.5 rounded opacity-80 hover:opacity-100 transition-opacity"
-      >
-        {speed}x
-      </button>
+      
+      <div className="flex justify-between items-center text-[10px] px-1 opacity-70">
+        <span>{formatTime(currentTime)}</span>
+        <span>{formatTime(duration)}</span>
+      </div>
     </div>
   );
 };

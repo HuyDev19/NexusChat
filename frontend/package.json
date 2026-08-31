@@ -59,6 +59,7 @@
     "tailwind-scrollbar": "^4.0.2",
     "tailwindcss": "^4.1.17",
     "tailwindcss-animate": "^1.0.7",
+    "wavesurfer.js": "^7.12.11",
     "zod": "^4.1.13",
     "zustand": "^5.0.9"
   },

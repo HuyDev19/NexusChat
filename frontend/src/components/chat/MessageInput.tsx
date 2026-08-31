@@ -3,6 +3,7 @@ import type { Conversation } from "@/types/chat";
 import { useState, useRef, useEffect } from "react";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
+import LiveAudioRecorder from "./LiveAudioRecorder";
 import EmojiPicker from "./EmojiPicker";
 import CreatePollModal from "./CreatePollModal";
 import ImageEditorModal, { type ImageEditResult } from "./ImageEditorModal";
@@ -600,38 +601,9 @@ const MessageInput = ({ selectedConvo }: { selectedConvo: Conversation }) => {
     }
   };
 
-    const startRecording = async () => {
-    try {
-      isCancelledRef.current = false;
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream);
-      mediaRecorderRef.current = mediaRecorder;
-      chunksRef.current = [];
-
-      mediaRecorder.ondataavailable = (e) => {
-        if (e.data.size > 0) chunksRef.current.push(e.data);
-      };
-
-      mediaRecorder.onstop = () => {
-        if (!isCancelledRef.current) {
-          const audioBlob = new Blob(chunksRef.current, { type: "audio/webm" });
-          sendMessage(audioBlob);
-        }
-        stream.getTracks().forEach((track) => track.stop());
-      };
-
-      mediaRecorder.start();
+    const startRecording = () => {
       setIsRecording(true);
-      setRecordingTime(0);
-
-      timerRef.current = setInterval(() => {
-        setRecordingTime((prev) => prev + 1);
-      }, 1000);
-    } catch (error) {
-      console.error("Microphone access denied:", error);
-      toast.error("Không thể truy cập microphone.");
-    }
-  };
+    };
 
   const stopRecording = () => {
     if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
@@ -1229,43 +1201,17 @@ const MessageInput = ({ selectedConvo }: { selectedConvo: Conversation }) => {
           >
             <Pencil className="size-5" />
           </Button>
-        ) : (
-          <div className="flex items-center gap-1.5">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="shrink-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10 cursor-pointer"
-              onClick={cancelRecording}
-              title="Hủy ghi âm"
-            >
-              <Trash2 className="size-4" />
-            </Button>
-            <Button
-              variant="destructive"
-              size="icon"
-              className="shrink-0 animate-pulse cursor-pointer shadow-md"
-              onClick={stopRecording}
-              title="Dừng và gửi ghi âm"
-            >
-              <Square className="size-4 fill-current" />
-            </Button>
-          </div>
-        )}
+        ) : null}
 
         <div className="flex-1 relative flex items-center">
-          {isRecording ? (
-            <div className="flex-1 h-9 flex items-center justify-between px-3 bg-red-500/10 text-red-500 rounded-xl border border-red-500/30">
-              <div className="flex items-center gap-2">
-                <span className="animate-pulse h-2.5 w-2.5 bg-red-500 rounded-full"></span>
-                <span className="text-xs font-semibold">
-                  Đang ghi âm... {Math.floor(recordingTime / 60)}:
-                  {(recordingTime % 60).toString().padStart(2, "0")}
-                </span>
-              </div>
-              <div className="flex items-center gap-1">
-                <span className="animate-pulse text-xs opacity-75">Bấm nút đỏ để gửi</span>
-              </div>
-            </div>
+            {isRecording ? (
+            <LiveAudioRecorder 
+              onSend={(blob) => {
+                sendMessage(blob);
+                setIsRecording(false);
+              }}
+              onCancel={() => setIsRecording(false)}
+            />
           ) : (
             <>
               {mentionQuery !== null && filteredParticipants.length > 0 && (
