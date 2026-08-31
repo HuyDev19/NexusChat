@@ -100,6 +100,11 @@ const messageSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    gameEvent: {
+      action: { type: String, enum: ["invite", "start", "end"] },
+      gameType: { type: String, enum: ["chess", "sudoku"] },
+      gameId: { type: mongoose.Schema.Types.ObjectId, ref: "Game" }
+    },
     sharedContact: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",

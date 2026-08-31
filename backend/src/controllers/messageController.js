@@ -398,6 +398,12 @@ export const recallMessage = async (req, res) => {
     message.imgUrl = undefined;
     message.audioUrl = undefined;
 
+    if (message.gameEvent && message.gameEvent.gameId) {
+      const Game = (await import("../models/Game.js")).default;
+      await Game.findByIdAndDelete(message.gameEvent.gameId);
+      message.gameEvent = undefined; // Xóa luôn data game khỏi tin nhắn
+    }
+
     await message.save();
 
     const conversation = await Conversation.findById(message.conversationId);

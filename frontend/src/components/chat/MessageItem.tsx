@@ -582,6 +582,51 @@ const MessageItem = ({
                     {message.poll.options.reduce((sum, o) => sum + (o.votes || []).length, 0)} lượt bình chọn
                   </div>
                 </div>
+              ) : message.gameEvent ? (
+                <div className="flex flex-col gap-3 min-w-[200px] max-w-[280px]">
+                  <div className="flex items-center gap-3 p-3 bg-background/50 rounded-lg border border-border/50 shadow-sm">
+                    <div className="size-10 rounded-lg bg-primary/20 flex flex-shrink-0 items-center justify-center text-xl">
+                      {message.gameEvent.gameType === "chess" ? "♟️" : "🔢"}
+                    </div>
+                    <div className="flex flex-col flex-1 min-w-0">
+                      <span className="text-sm font-bold text-foreground">
+                        Thử thách {message.gameEvent.gameType === "chess" ? "Cờ Vua" : "Sudoku"}
+                      </span>
+                      <span className="text-[11px] text-muted-foreground mt-0.5">
+                        Nhấn để tham gia hoặc xem trận đấu
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex gap-2 w-full">
+                    <Button 
+                      size="sm" 
+                      className="flex-1 font-bold shadow-md"
+                      onClick={() => {
+                        import("@/stores/useGameStore").then(mod => {
+                          const { openGame, joinGame } = mod.useGameStore.getState();
+                          if (message.gameEvent?.action === "invite") {
+                            // Nếu là lời mời, click vào sẽ tự động joinGame
+                            joinGame(message.gameEvent.gameId).catch(() => openGame(message.gameEvent!.gameId));
+                          } else {
+                            openGame(message.gameEvent!.gameId);
+                          }
+                        });
+                      }}
+                    >
+                      {message.gameEvent.action === "invite" && !message.isOwn ? "Tham gia" : "Xem trận đấu"}
+                    </Button>
+                    {message.isOwn && (
+                      <Button 
+                        size="sm"
+                        variant="destructive"
+                        className="font-bold shadow-md"
+                        onClick={() => recallMessage(message._id)}
+                      >
+                        Hủy
+                      </Button>
+                    )}
+                  </div>
+                </div>
               ) : message.sharedContact ? (
                 <div className="flex flex-col gap-2 min-w-[200px]">
                   <div className="flex items-center gap-3 p-3 bg-background/50 rounded-lg border border-border/50">

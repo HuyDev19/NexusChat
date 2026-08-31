@@ -138,6 +138,26 @@ export const useSocketStore = create<SocketState>((set, get) => ({
       });
     });
 
+    // game events
+    socket.on("game:started", (game) => {
+      import("./useGameStore").then((store) => {
+        store.useGameStore.getState().updateGameFromSocket(game);
+      });
+    });
+
+    socket.on("game:moved", (data) => {
+      import("./useGameStore").then((store) => {
+        store.useGameStore.getState().updateGameFromSocket(data);
+      });
+    });
+
+    socket.on("game:ended", (data) => {
+      import("./useGameStore").then((store) => {
+        const payload = { ...data, status: "finished" };
+        store.useGameStore.getState().updateGameFromSocket(payload);
+      });
+    });
+
     // message clear
     socket.on("conversation:clear", ({ conversationId }) => {
       import("./useChatStore").then((mod) => {

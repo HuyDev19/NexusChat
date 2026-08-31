@@ -98,6 +98,11 @@ export interface Message {
   isRecalled?: boolean;
   isEdited?: boolean;
   editHistory?: { content: string; editedAt: string }[];
+  gameEvent?: {
+    action: "invite" | "start" | "end";
+    gameType: "chess" | "sudoku";
+    gameId: string;
+  };
   updatedAt?: string | null;
   createdAt: string;
   isOwn?: boolean;

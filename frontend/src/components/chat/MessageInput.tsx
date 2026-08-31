@@ -42,6 +42,7 @@ import {
   Trash2,
   CalendarClock,
   Sparkles,
+  Gamepad2,
 } from "lucide-react";
 import { Dialog, DialogContent } from "../ui/dialog";
 import { cn } from "@/lib/utils";
@@ -600,6 +601,17 @@ const MessageInput = ({ selectedConvo }: { selectedConvo: Conversation }) => {
     }
   };
 
+  const handleCreateGame = async () => {
+    try {
+      const { useGameStore } = await import("@/stores/useGameStore");
+      await useGameStore.getState().inviteGame(selectedConvo._id, "chess");
+      setShowPlusMenu(false);
+      toast.success("Đã gửi lời mời chơi Cờ Vua! ♟️");
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || "Lỗi tạo lời mời chơi");
+    }
+  };
+
   const startRecording = async () => {
     try {
       isCancelledRef.current = false;
@@ -1097,6 +1109,15 @@ const MessageInput = ({ selectedConvo }: { selectedConvo: Conversation }) => {
                 </div>
                 <div className="flex flex-col">
                   <span className="font-medium text-sm">Tệp tài liệu</span>
+                </div>
+              </DropdownMenuItem>
+
+              <DropdownMenuItem onClick={handleCreateGame} className="cursor-pointer gap-3 p-2 rounded-lg">
+                <div className="bg-yellow-500/10 p-2 rounded-full text-yellow-500">
+                  <Gamepad2 className="size-4" />
+                </div>
+                <div className="flex flex-col">
+                  <span className="font-medium text-sm">Chơi Cờ Vua</span>
                 </div>
               </DropdownMenuItem>
 

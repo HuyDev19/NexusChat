@@ -10,6 +10,7 @@ import messageRoute from "./routes/messageRoute.js";
 import conversationRoute from "./routes/conversationRoute.js";
 import callRoute from "./routes/callRoute.js";
 import storyRoute from "./routes/storyRoute.js";
+import gameRoute from "./routes/gameRoute.js";
 import { registerCallSocketHandlers, activeGroupCalls, activeRoomCalls } from "./libs/callSocket.js";
 import cookieParser from "cookie-parser";
 import { protectedRoute } from "./middlewares/authMiddleware.js";
@@ -51,6 +52,7 @@ app.use("/api/messages", messageRoute);
 app.use("/api/conversations", conversationRoute);
 app.use("/api/calls", callRoute);
 app.use("/api/stories", storyRoute);
+app.use("/api/games", gameRoute);
 
 const onlineUsers = new Set();
 
@@ -134,6 +136,39 @@ io.on("connection", (socket) => {
 
   // Đăng ký handlers cho cuộc gọi
   registerCallSocketHandlers(io, socket);
+
+    // Game socket handlers
+    socket.on("game:move", async ({ gameId, fen, pgn, move, turn, conversationId }) => {
+      try {
+        const Game = (await import("./models/Game.js")).default;
+        const game = await Game.findById(gameId);
+        if (game) {
+          game.fen = fen;
+          game.pgn = pgn;
+          game.turn = turn;
+          await game.save();
+          io.to(conversationId.toString()).emit("game:moved", { gameId, fen, pgn, move, turn });
+        }
+      } catch (error) {
+        console.error("Lỗi khi update game move:", error);
+      }
+    });
+
+    socket.on("game:end", async ({ gameId, winnerId, isDraw, conversationId }) => {
+      try {
+        const Game = (await import("./models/Game.js")).default;
+        const game = await Game.findById(gameId);
+        if (game) {
+          game.status = "finished";
+          game.winner = winnerId || null;
+          game.isDraw = isDraw || false;
+          await game.save();
+          io.to(conversationId.toString()).emit("game:ended", { gameId, winnerId, isDraw });
+        }
+      } catch (error) {
+        console.error("Lỗi khi kết thúc game:", error);
+      }
+    });
 
   socket.on("disconnect", async (reason) => {
     console.log(`Socket disconnected: ${socket.id} (${reason})`);
