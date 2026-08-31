@@ -146,8 +146,18 @@ export const useChatStore = create<ChatState>()(
       },
       sendDirectMessage: async (recipientId, content, imgUrl, audioUrl, expiresIn, isViewOnce, mentions, replyTo, isForwarded, targetConversationId, fileUrl, fileName, fileSize, sharedContactId) => {
         try {
-          const { activeConversationId } = get();
-          const convoIdToUse = targetConversationId || activeConversationId || undefined;
+          const { activeConversationId, conversations } = get();
+          let convoIdToUse = targetConversationId;
+          if (!convoIdToUse && activeConversationId) {
+            const activeConvo = conversations.find((c) => c._id === activeConversationId);
+            const isRecipientInActive = activeConvo?.participants?.some(
+              (p: any) => (p._id?.toString() || p.userId?.toString() || p.userId?._id?.toString()) === recipientId?.toString()
+            );
+            if (isRecipientInActive) {
+              convoIdToUse = activeConversationId;
+            }
+          }
+
           const data: any = await chatService.sendDirectMessage(
             recipientId,
             content,
@@ -183,6 +193,33 @@ export const useChatStore = create<ChatState>()(
             set((state) => {
               const prevItems = state.messages[conversationId]?.items ?? [];
               const exists = prevItems.some((m) => m._id === sentMessage._id);
+              const conversationExists = state.conversations.some((c) => c._id === conversationId);
+              let newConvos = state.conversations;
+
+              if (conversationExists) {
+                newConvos = state.conversations.map((c) =>
+                  c._id === conversationId
+                    ? {
+                        ...c,
+                        ...(updatedConvo ? { streak: updatedConvo.streak } : {}),
+                        lastMessage: {
+                          _id: sentMessage._id,
+                          content: finalContent,
+                          createdAt: sentMessage.createdAt,
+                          sender: {
+                            _id: sentMessage.senderId,
+                            displayName: "",
+                            avatarUrl: null,
+                          },
+                        },
+                        lastMessageAt: sentMessage.createdAt,
+                        seenBy: [],
+                      }
+                    : c
+                );
+              } else if (updatedConvo) {
+                newConvos = [updatedConvo, ...state.conversations];
+              }
 
               return {
                 messages: {
@@ -193,26 +230,7 @@ export const useChatStore = create<ChatState>()(
                     nextCursor: state.messages[conversationId]?.nextCursor ?? null,
                   },
                 },
-                conversations: state.conversations.map((c) =>
-                  c._id === conversationId
-                    ? {
-                      ...c,
-                      ...(updatedConvo ? { streak: updatedConvo.streak } : {}),
-                      lastMessage: {
-                        _id: sentMessage._id,
-                        content: finalContent,
-                        createdAt: sentMessage.createdAt,
-                        sender: {
-                          _id: sentMessage.senderId,
-                          displayName: "",
-                          avatarUrl: null,
-                        },
-                      },
-                      lastMessageAt: sentMessage.createdAt,
-                      seenBy: [],
-                    }
-                    : c
-                ),
+                conversations: newConvos,
                 replyingToMessage: null
               };
             });

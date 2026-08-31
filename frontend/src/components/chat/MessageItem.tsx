@@ -270,6 +270,23 @@ const MessageItem = ({
     return (selectedConvo?.nicknames?.[participant._id] || participant.displayName || "Unknown");
   };
 
+  const otherParticipant = participants.find(
+    (p: Participant) => {
+      const pId = p?._id?.toString() || (p as any)?.userId?._id?.toString() || (p as any)?.userId?.toString();
+      return pId && pId !== user?._id?.toString();
+    }
+  );
+
+  const getRecipientDisplayName = (): string => {
+    if (!otherParticipant) return "bạn";
+    const pId = otherParticipant._id || (otherParticipant as any)?.userId?._id || (otherParticipant as any)?.userId;
+    return (
+      (pId && selectedConvo?.nicknames?.[pId]) ||
+      otherParticipant.displayName ||
+      "bạn"
+    );
+  };
+
   const getAvatarUrl = (): string | undefined => {
     if (isAI) return "https://cdn-icons-png.flaticon.com/512/826/826963.png";
     if (isIncognito && !message.isOwn) return "https://cdn-icons-png.flaticon.com/512/868/1236413.png";
@@ -366,8 +383,9 @@ const MessageItem = ({
   };
 
   const isStoryReply = message.content?.startsWith("[STORY_REPLY] ");
+  const isImageReply = !isStoryReply && !!message.replyTo?.imgUrl && !message.replyTo?.isViewOnce && !message.replyTo?.isRecalled;
   const actualContent = isStoryReply 
-    ? message.content!.replace("[STORY_REPLY] ", "").replace("Đã trả lời tin của bạn: ", "").trim() 
+    ? message.content!.replace("[STORY_REPLY] ", "").replace(/^Đã trả lời tin( của bạn| của [^:]+)?: /i, "").trim() 
     : message.content;
 
   const replyImgUrl = isStoryReply ? message.imgUrl : undefined;
@@ -435,19 +453,74 @@ const MessageItem = ({
             </span>
           )}
 
-          {message.replyTo && !isStoryReply && (() => {
+          {message.replyTo && !isStoryReply && !message.isRecalled && (() => {
             const replySenderId = typeof message.replyTo?.senderId === "object"
               ? (message.replyTo.senderId as any)?._id || String(message.replyTo.senderId)
               : message.replyTo?.senderId
               ? String(message.replyTo.senderId)
               : undefined;
 
-            const replySenderName = replySenderId === user?._id
+            const isReplyToOwn = replySenderId === user?._id;
+            const replyParticipant = selectedConvo.participants.find((p) => {
+              const pId = p._id || (p as any).userId?._id || (p as any).userId;
+              return pId?.toString() === replySenderId;
+            });
+            const replySenderName = isReplyToOwn
               ? "Bạn"
-              : selectedConvo.participants.find((p) => {
-                  const pId = p._id || (p as any).userId?._id || (p as any).userId;
-                  return pId?.toString() === replySenderId;
-                })?.displayName || "người dùng";
+              : replyParticipant?.displayName || "người dùng";
+            const replySenderAvatar = !isReplyToOwn ? replyParticipant?.avatarUrl : undefined;
+
+            if (isImageReply && message.replyTo?.imgUrl) {
+              const replyHeaderText = isReplyToOwn ? "Bạn đã trả lời" : `${replySenderName} đã trả lời bạn`;
+              return (
+                <div className={cn("flex flex-col gap-1 mb-0 max-w-[200px]", message.isOwn ? "items-end" : "items-start")}>
+                  <div className="flex items-center gap-1.5 text-xs text-foreground/80 mb-0.5 ml-0.5">
+                    {!isReplyToOwn && (
+                      <UserAvatar
+                        type="chat"
+                        name={replySenderName}
+                        avatarUrl={replySenderAvatar}
+                        className="!size-4 !text-[8px] ring-1 ring-border/40"
+                      />
+                    )}
+                    <Reply className="size-3 shrink-0 opacity-90" />
+                    <span className="text-[11.5px] font-medium truncate">
+                      {replyHeaderText}
+                    </span>
+                  </div>
+                  <div 
+                    className="relative overflow-hidden rounded-2xl max-w-[150px] sm:max-w-[180px] max-h-[140px] cursor-pointer shadow-xs border border-border/40 hover:opacity-95 hover:brightness-105 transition-all group/replyimg bg-muted/30 flex items-center justify-center shrink-0"
+                    onClick={() => {
+                      if (message.replyTo?._id) {
+                        const el = document.querySelector(`.message-${message.replyTo._id}`);
+                        if (el) {
+                          el.scrollIntoView({ behavior: "smooth", block: "center" });
+                          el.classList.add("bg-primary/20", "transition-colors", "duration-500");
+                          setTimeout(() => el.classList.remove("bg-primary/20"), 1500);
+                          return;
+                        }
+                      }
+                      if (message.replyTo?.imgUrl) {
+                        useMediaViewerStore.getState().openSingle(
+                          message.replyTo.imgUrl,
+                          "Hình ảnh",
+                          replySenderName,
+                          replySenderAvatar || null,
+                          message.replyTo.createdAt || message.createdAt
+                        );
+                      }
+                    }}
+                    title="Bấm để xem ảnh hoặc chuyển đến tin nhắn gốc"
+                  >
+                    <img 
+                      src={message.replyTo.imgUrl} 
+                      alt="Hình ảnh trả lời" 
+                      className="w-auto h-auto max-w-full max-h-[140px] rounded-2xl object-cover" 
+                    />
+                  </div>
+                </div>
+              );
+            }
 
             return (
               <div
@@ -472,48 +545,51 @@ const MessageItem = ({
                         ? "Tin nhắn đã thu hồi"
                         : message.replyTo.audioUrl
                         ? "🎵 Tin nhắn thoại"
-                        : message.replyTo.imgUrl
-                        ? (message.replyTo.content || "Hình ảnh")
                         : message.replyTo.fileUrl
                         ? `📎 ${message.replyTo.fileName || "Tệp đính kèm"}`
                         : message.replyTo.content}
                     </span>
                   </div>
                 </div>
-
-                {message.replyTo.imgUrl && (
-                  <img
-                    src={message.replyTo.imgUrl}
-                    alt="Hình ảnh trả lời"
-                    className="size-10 rounded-lg object-cover border border-border/50 shrink-0 shadow-xs"
-                  />
-                )}
               </div>
             );
           })()}
 
-          {isStoryReply && (
-            <div className={cn("flex flex-col gap-1 mb-1", message.isOwn ? "items-end" : "items-start")}>
-               <span className="text-[11px] text-muted-foreground flex items-center gap-1 mb-0.5">
-                  <Reply className="size-3" /> {replyHeaderName}
-               </span>
-               <div 
-                  className="relative overflow-hidden rounded-2xl w-32 h-48 cursor-pointer shadow-sm border border-border/50"
-                  onClick={() => {
-                     if (message.replyTo) {
-                        const el = document.querySelector(`.message-${message.replyTo._id}`);
-                        el?.scrollIntoView({ behavior: "smooth", block: "center" });
-                        el?.classList.add("bg-primary/20", "transition-colors", "duration-500");
-                        setTimeout(() => el?.classList.remove("bg-primary/20"), 1500);
-                     }
-                  }}
-               >
-                 {replyImgUrl?.match(/\.(mp4|webm)$/i) || replyImgUrl?.includes("video") ? (
-                    <video src={replyImgUrl} className="w-full h-full object-cover" />
-                 ) : (
-                    <img src={replyImgUrl} className="w-full h-full object-cover" />
-                 )}
-               </div>
+          {isStoryReply && !message.isRecalled && (
+            <div className={cn("flex flex-col gap-1 mb-0 max-w-[180px] sm:max-w-[200px]", message.isOwn ? "items-end" : "items-start")}>
+              <div className="flex items-center gap-1.5 text-xs text-foreground/80 mb-0.5 ml-0.5">
+                {!message.isOwn && (
+                  <UserAvatar
+                    type="chat"
+                    name={getDisplayName()}
+                    avatarUrl={getAvatarUrl()}
+                    className="!size-5 !text-[9px] ring-1 ring-border/40"
+                  />
+                )}
+                <Reply className="size-3.5 shrink-0 opacity-90" />
+                <span className="text-[12px] font-medium truncate">{replyHeaderName}</span>
+              </div>
+              <div 
+                className="relative overflow-hidden rounded-2xl w-40 sm:w-44 aspect-[3/4] cursor-pointer shadow-sm border border-border/40 hover:opacity-95 hover:brightness-105 transition-all group/storyimg bg-muted shrink-0"
+                onClick={() => {
+                  if (replyImgUrl) {
+                    useMediaViewerStore.getState().openSingle(
+                      replyImgUrl,
+                      "Tin (Story)",
+                      message.isOwn ? "Bạn" : getDisplayName(),
+                      getAvatarUrl() || null,
+                      message.createdAt
+                    );
+                  }
+                }}
+                title="Bấm để xem ảnh/tin"
+              >
+                {replyImgUrl?.match(/\.(mp4|webm)$/i) || replyImgUrl?.includes("video") ? (
+                  <video src={replyImgUrl} className="w-full h-full object-cover" />
+                ) : (
+                  <img src={replyImgUrl} alt="Story" className="w-full h-full object-cover" />
+                )}
+              </div>
             </div>
           )}
 
@@ -532,15 +608,15 @@ const MessageItem = ({
             )}
           </div>
 
-          <div className={cn("relative flex items-center gap-2", message.isOwn ? "flex-row-reverse" : "flex-row", isStoryReply ? "z-10" : "")}>
+          <div className={cn("relative flex items-center gap-2", message.isOwn ? "flex-row-reverse" : "flex-row", (isStoryReply || isImageReply) ? "z-10 -mt-5" : "")}>
             <Card
               onDoubleClick={() => !message.isRecalled && reactToMessage(message._id, '❤️')}
               className={cn(
                 "p-3 relative select-none transition-all duration-300 hover:shadow-md hover:shadow-primary/10 hover:-translate-y-[1px]",
-                message.isOwn ? "chat-bubble-sent border-0" : "chat-bubble-received",
+                message.isOwn ? "chat-bubble-sent border-0 !bg-primary" : "chat-bubble-received !bg-card",
                 message.isRecalled ? "bg-muted/50 border border-border" : "",
                 isIncognito ? "select-none pointer-events-auto" : "",
-                isStoryReply ? "-mt-3" : ""
+                (isStoryReply || isImageReply) ? "rounded-[20px] px-3.5 py-2 shadow-md ring-2 ring-background opacity-100" : ""
               )}
               onCopy={(e) => {
                 if (isIncognito) {
@@ -681,7 +757,25 @@ const MessageItem = ({
                 </div>
               ) : (
                 <div className="flex flex-col">
-                  <FormattedText content={message.translatedContent || actualContent} participants={participants} nicknames={selectedConvo.nicknames} isOwn={message.isOwn} />
+                  {isStoryReply ? (
+                    <div className="text-[13.5px] leading-relaxed">
+                      <span className="font-normal">
+                        {message.isOwn 
+                          ? `Đã trả lời tin của ${getRecipientDisplayName()}: ` 
+                          : "Đã trả lời tin của bạn: "}
+                      </span>
+                      <span className="font-medium">
+                        <FormattedText
+                          content={message.translatedContent || actualContent}
+                          participants={participants}
+                          nicknames={selectedConvo.nicknames}
+                          isOwn={message.isOwn}
+                        />
+                      </span>
+                    </div>
+                  ) : (
+                    <FormattedText content={message.translatedContent || actualContent} participants={participants} nicknames={selectedConvo.nicknames} isOwn={message.isOwn} />
+                  )}
                   {message.translatedContent && (
                     <span className="text-[10px] opacity-70 italic mt-1">(Đã dịch)</span>
                   )}

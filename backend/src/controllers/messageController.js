@@ -20,13 +20,19 @@ export const sendDirectMessage = async (req, res) => {
       return res.status(400).json({ message: "Thiếu nội dung hoặc file đính kèm" });
     }
 
-    if (conversationId) {
-      conversation = await Conversation.findById(conversationId);
-    } else {
+    if (recipientId) {
       conversation = await Conversation.findOne({
         type: "direct",
         "participants.userId": { $all: [senderId, new mongoose.Types.ObjectId(recipientId)] }
       });
+      if (!conversation && conversationId) {
+        const checkConvo = await Conversation.findById(conversationId);
+        if (checkConvo && checkConvo.participants.some(p => p.userId.toString() === recipientId.toString())) {
+          conversation = checkConvo;
+        }
+      }
+    } else if (conversationId) {
+      conversation = await Conversation.findById(conversationId);
     }
 
     if (!conversation) {

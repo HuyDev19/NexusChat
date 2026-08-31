@@ -3,7 +3,7 @@ import {
   Dialog,
   DialogContent,
 } from "../ui/dialog";
-import { X, ChevronLeft, ChevronRight, Music, Trash2, Loader2, Heart, Send } from "lucide-react";
+import { X, ChevronLeft, ChevronRight, Music, Trash2, Loader2, Heart, Send, Eye } from "lucide-react";
 import { useStoryStore } from "@/stores/useStoryStore";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useChatStore } from "@/stores/useChatStore";
@@ -363,15 +363,37 @@ export default function StoryViewerModal({ open, onOpenChange, initialGroupIndex
               <div className="flex justify-between items-center">
                 <button 
                   onClick={() => { setShowViewers(true); showViewersRef.current = true; }}
-                  className="flex items-center gap-2 bg-black/40 backdrop-blur-md hover:bg-black/60 px-4 py-2 rounded-full border border-white/10 transition-colors"
+                  className="flex items-center gap-2 bg-black/40 backdrop-blur-md hover:bg-black/60 px-4 py-2 rounded-full border border-white/10 transition-colors cursor-pointer"
                 >
-                  <div className="flex -space-x-2">
-                    {otherViewers.slice(0, 3).map((v: any, i: number) => (
-                      <div key={i} className="w-6 h-6 rounded-full border border-black/50 overflow-hidden bg-muted">
-                        <img src={v.avatarUrl || "/avatar-default.svg"} alt="" className="w-full h-full object-cover" />
-                      </div>
-                    ))}
-                  </div>
+                  {otherViewers.length > 0 ? (
+                    <div className="flex -space-x-2">
+                      {otherViewers.slice(0, 3).map((v: any, i: number) => {
+                        const initial = (v?.displayName || v?.username || "U").charAt(0).toUpperCase();
+                        return (
+                          <div key={v?._id || i} className="size-6 rounded-full border border-black/50 overflow-hidden bg-primary/40 flex items-center justify-center text-[10px] font-semibold text-white">
+                            {v?.avatarUrl ? (
+                              <img 
+                                src={v.avatarUrl} 
+                                alt={v.displayName || ""} 
+                                className="w-full h-full object-cover" 
+                                onError={(e) => {
+                                  (e.currentTarget as HTMLElement).style.display = "none";
+                                  const parent = (e.currentTarget as HTMLElement).parentElement;
+                                  if (parent) {
+                                    parent.innerText = initial;
+                                  }
+                                }}
+                              />
+                            ) : (
+                              <span>{initial}</span>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <Eye className="size-4 text-white/80" />
+                  )}
                   <span className="text-white font-medium text-sm">
                     {otherViewers.length} người xem
                   </span>
