@@ -107,6 +107,35 @@ export const useSocketStore = create<SocketState>((set, get) => ({
           modalStore.updatePhotoReactions(photoId, reactions);
         }
       });
+
+      import("./useAuthStore").then((mod) => {
+        const authStore = mod.useAuthStore.getState();
+        if (authStore.user && authStore.user._id === userId) {
+          const updatedPhotos = authStore.user.photos?.map(p => 
+            p._id === photoId ? { ...p, reactions } : p
+          );
+          authStore.setUser({ ...authStore.user, photos: updatedPhotos });
+        }
+      });
+    });
+
+    // stories
+    socket.on("story:new", ({ userId, storyId, story }) => {
+      import("./useStoryStore").then((store) => {
+        store.useStoryStore.getState().addOrUpdateStoryFromSocket(story);
+      });
+    });
+
+    socket.on("story:viewed", ({ storyId, viewer }) => {
+      import("./useStoryStore").then((store) => {
+        store.useStoryStore.getState().addStoryViewer(storyId, viewer);
+      });
+    });
+
+    socket.on("story:reacted", ({ storyId, reaction }) => {
+      import("./useStoryStore").then((store) => {
+        store.useStoryStore.getState().addStoryReaction(storyId, reaction);
+      });
     });
 
     // message clear
@@ -331,6 +360,9 @@ export const useSocketStore = create<SocketState>((set, get) => ({
       socket.off("user:updated");
       socket.off("typing-start");
       socket.off("typing-end");
+      socket.off("story:new");
+      socket.off("story:viewed");
+      socket.off("story:reacted");
       socket.disconnect();
       set({ socket: null });
     }

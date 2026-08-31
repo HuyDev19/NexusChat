@@ -56,7 +56,9 @@ export const getUserProfile = async (req, res) => {
       return res.status(400).json({ message: "Thiếu ID người dùng" });
     }
 
-    const user = await User.findById(id).select("_id username displayName email avatarUrl coverUrl note bio phone gender dob presenceStatus lastActiveAt createdAt photos");
+    const user = await User.findById(id)
+      .select("_id username displayName email avatarUrl coverUrl note bio phone gender dob presenceStatus lastActiveAt createdAt photos")
+      .populate("photos.reactions.userId", "displayName avatarUrl");
 
     if (!user) {
       return res.status(404).json({ message: "Không tìm thấy người dùng" });
@@ -511,6 +513,7 @@ export const addProfilePhoto = async (req, res) => {
     if (!user.photos) user.photos = [];
     user.photos.unshift(newPhoto);
     await user.save();
+    await user.populate("photos.reactions.userId", "displayName avatarUrl");
 
     req.app.get("io").emit("user:photo-added", { userId: user._id, photo: newPhoto });
 
@@ -600,16 +603,20 @@ export const reactProfilePhoto = async (req, res) => {
 
     targetUser.markModified("photos");
     await targetUser.save();
+    await targetUser.populate("photos.reactions.userId", "displayName avatarUrl");
+
+    // Lấy lại photo sau khi populate để phát event đầy đủ
+    const populatedPhoto = targetUser.photos.find((p) => p._id.toString() === photoId);
 
     req.app.get("io").emit("user:photo-reacted", {
       userId: targetUser._id,
       photoId,
-      reactions: photo.reactions
+      reactions: populatedPhoto.reactions
     });
 
     return res.status(200).json({
       message: "Cập nhật cảm xúc thành công",
-      reactions: photo.reactions,
+      reactions: populatedPhoto.reactions,
       photos: targetUser.photos
     });
   } catch (error) {

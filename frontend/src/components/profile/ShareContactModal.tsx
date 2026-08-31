@@ -146,7 +146,7 @@ const ShareContactModal = ({ open, onOpenChange, sharedContactId }: ShareContact
                     {isGroup ? (
                       <GroupChatAvatar
                         groupName={convo.group?.name}
-                        avatarUrl={convo.group?.avatar}
+                        groupAvatar={convo.group?.avatar}
                         participants={convo.participants}
                         type="chat"
                       />
@@ -160,7 +160,7 @@ const ShareContactModal = ({ open, onOpenChange, sharedContactId }: ShareContact
                     )}
                   </div>
                   <span className="font-medium text-sm">
-                    {isGroup ? convo.group?.name : (convo.nicknames?.[otherUser?._id || ""] || otherUser?.displayName)}
+                    {isGroup ? (convo.group?.name || "Nhóm") : (convo.nicknames?.[otherUser?._id || ""] || otherUser?.displayName)}
                   </span>
                 </div>
 

@@ -24,7 +24,9 @@ export const protectedRoute = (req, res, next) => {
       }
 
       // tìm user
-      const user = await User.findById(decodedUser.userId).select("-hashedPassword");
+      const user = await User.findById(decodedUser.userId)
+        .select("-hashedPassword")
+        .populate("photos.reactions.userId", "displayName avatarUrl");
 
       if (!user) {
         return res.status(404).json({ message: "người dùng không tồn tại." });

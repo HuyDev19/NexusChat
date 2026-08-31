@@ -309,8 +309,18 @@ const ChatWindowHeader = ({ chat }: { chat?: Conversation }) => {
 
         {/* Call Actions */}
         {!activeCall && (
-          isIncognito ? (
-            <div className="flex items-center pr-2 shrink-0">
+          <div className="flex items-center gap-1 sm:gap-2 pr-2 shrink-0">
+            {!isIncognito && (
+              <button
+                onClick={handleSummarize}
+                className="p-2 rounded-full hover:bg-purple-500/10 text-purple-400 hover:text-purple-300 transition-colors duration-200"
+                title="Tóm tắt đoạn chat bằng AI"
+              >
+                <Sparkles size={20} />
+              </button>
+            )}
+            
+            {isIncognito ? (
               <button
                 onClick={handleIncognitoExpire}
                 className="px-3 py-1.5 rounded-full bg-rose-500/10 hover:bg-rose-500 hover:text-white text-rose-500 border border-rose-500/20 font-medium text-xs flex items-center gap-1.5 transition-all shadow-sm"
@@ -319,13 +329,22 @@ const ChatWindowHeader = ({ chat }: { chat?: Conversation }) => {
                 <PowerOff className="size-4" />
                 <span className="hidden sm:inline">Tắt khẩn cấp</span>
               </button>
-            </div>
-          ) : chat?.type === 'group' ? (
-            <div className="pr-2 shrink-0">
+            ) : chat?.type === 'group' ? (
               <VoiceRoomListPopover chat={chat} />
-            </div>
-          ) : chat?.type !== 'direct' && chat?._id && activeGroupCalls?.[chat._id] ? (
-            <div className="pr-2 shrink-0">
+            ) : chat?.type === 'channel' ? (
+              <button
+                onClick={() => {
+                  const link = `${window.location.origin}/chat?join=${chat._id}`;
+                  navigator.clipboard.writeText(link);
+                  toast.success("Đã sao chép liên kết kênh!");
+                }}
+                className="px-3 py-1.5 rounded-xl bg-orange-500/10 hover:bg-orange-500/20 text-orange-500 font-medium text-xs flex items-center gap-1.5 transition-colors border border-orange-500/20"
+                title="Sao chép liên kết mời"
+              >
+                <span className="hidden sm:inline">Copy Link</span>
+                <span className="sm:hidden">Link</span>
+              </button>
+            ) : chat?.type !== 'direct' && chat?._id && activeGroupCalls?.[chat._id] ? (
               <button
                 onClick={() => joinExistingCall(chat._id, activeGroupCalls[chat._id].roomName, activeGroupCalls[chat._id].isVideo)}
                 className="px-3 py-1.5 rounded-full bg-green-500 hover:bg-green-600 text-white font-medium text-sm flex items-center gap-1.5 transition-colors shadow-md animate-pulse"
@@ -333,49 +352,25 @@ const ChatWindowHeader = ({ chat }: { chat?: Conversation }) => {
                 {activeGroupCalls[chat._id].isVideo ? <Video size={16} /> : <Phone size={16} />}
                 Tham gia
               </button>
-            </div>
-          ) : (
-            <div className="flex items-center gap-1 sm:gap-2 pr-2 shrink-0">
-              <button
-                onClick={handleSummarize}
-                className="p-2 rounded-full hover:bg-purple-500/10 text-purple-400 hover:text-purple-300 transition-colors duration-200"
-                title="Tóm tắt đoạn chat bằng AI"
-              >
-                <Sparkles size={20} />
-              </button>
-              {chat?.type === "channel" ? (
+            ) : (
+              <>
                 <button
-                  onClick={() => {
-                    const link = `${window.location.origin}/chat?join=${chat._id}`;
-                    navigator.clipboard.writeText(link);
-                    toast.success("Đã sao chép liên kết kênh!");
-                  }}
-                  className="px-3 py-1.5 rounded-xl bg-orange-500/10 hover:bg-orange-500/20 text-orange-500 font-medium text-xs flex items-center gap-1.5 transition-colors border border-orange-500/20"
-                  title="Sao chép liên kết mời"
+                  onClick={() => handleStartCall(false)}
+                  className="p-2 rounded-full hover:bg-accent text-muted-foreground hover:text-foreground transition-colors duration-200"
+                  title="Bắt đầu cuộc gọi thoại"
                 >
-                  <span className="hidden sm:inline">Copy Link</span>
-                  <span className="sm:hidden">Link</span>
+                  <Phone size={20} />
                 </button>
-              ) : (
-                <>
-                  <button
-                    onClick={() => handleStartCall(false)}
-                    className="p-2 rounded-full hover:bg-accent text-muted-foreground hover:text-foreground transition-colors duration-200"
-                    title="Bắt đầu cuộc gọi thoại"
-                  >
-                    <Phone size={20} />
-                  </button>
-                  <button
-                    onClick={() => handleStartCall(true)}
-                    className="p-2 rounded-full hover:bg-accent text-muted-foreground hover:text-foreground transition-colors duration-200"
-                    title="Bắt đầu cuộc gọi video"
-                  >
-                    <Video size={20} />
-                  </button>
-                </>
-              )}
-            </div>
-          )
+                <button
+                  onClick={() => handleStartCall(true)}
+                  className="p-2 rounded-full hover:bg-accent text-muted-foreground hover:text-foreground transition-colors duration-200"
+                  title="Bắt đầu cuộc gọi video"
+                >
+                  <Video size={20} />
+                </button>
+              </>
+            )}
+          </div>
         )}
       </div>
 

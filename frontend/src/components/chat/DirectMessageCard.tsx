@@ -29,7 +29,12 @@ const DirectMessageCard = ({ convo }: { convo: Conversation }) => {
       : otherUser.displayName ?? "";
 
   const unreadCount = convo.unreadCounts && user._id ? (convo.unreadCounts[user._id] || 0) : 0;
-  const lastMessage = convo.lastMessage?.content ?? "";
+  const lastMessageRaw = convo.lastMessage?.content ?? "";
+  let lastMessage = lastMessageRaw;
+  if (lastMessageRaw.startsWith("[STORY_REPLY] ")) {
+    const cleanText = lastMessageRaw.replace("[STORY_REPLY] ", "").replace("Đã trả lời tin của bạn: ", "").trim();
+    lastMessage = "Đã trả lời tin: " + cleanText;
+  }
 
   const isOnline = otherUserId ? (onlineUsers || []).includes(otherUserId) : false;
   const effectiveStatus = getEffectiveStatus(isOnline, otherUser?.presenceStatus);

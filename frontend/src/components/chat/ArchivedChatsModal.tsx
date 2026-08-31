@@ -92,7 +92,9 @@ const ArchivedChatsModal = ({ open, setOpen }: ArchivedChatsModalProps) => {
                     <div className="flex flex-col min-w-0 flex-1">
                       <span className="font-semibold text-xs truncate">{name}</span>
                       <span className="text-[11px] text-muted-foreground truncate">
-                        {convo.lastMessage?.content || (isGroup ? `${convo.participants?.length} thành viên` : "Đã bắt đầu đoạn chat")}
+                        {convo.lastMessage?.content?.startsWith("[STORY_REPLY] ") 
+                          ? "Đã trả lời tin: " + convo.lastMessage.content.replace("[STORY_REPLY] ", "").replace("Đã trả lời tin của bạn: ", "").trim()
+                          : convo.lastMessage?.content || (isGroup ? `${convo.participants?.length} thành viên` : "Đã bắt đầu đoạn chat")}
                       </span>
                     </div>
                   </div>

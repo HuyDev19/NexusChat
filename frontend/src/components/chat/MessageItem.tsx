@@ -325,6 +325,22 @@ const MessageItem = ({
     setShowViewOnceModal(true);
   };
 
+  const isStoryReply = message.content?.startsWith("[STORY_REPLY] ");
+  const actualContent = isStoryReply 
+    ? message.content!.replace("[STORY_REPLY] ", "").replace("Đã trả lời tin của bạn: ", "").trim() 
+    : message.content;
+
+  const isImageOrVideoReply = isStoryReply || !!(message.replyTo && message.replyTo.imgUrl);
+  const replyImgUrl = isStoryReply ? message.imgUrl : message.replyTo?.imgUrl;
+  
+  let replyHeaderName = "";
+  if (isStoryReply) {
+      replyHeaderName = message.isOwn ? "Bạn đã trả lời tin" : `${getDisplayName()} đã trả lời tin`;
+  } else if (message.replyTo) {
+      const targetName = message.replyTo.senderId === user?._id ? "bạn" : (selectedConvo.participants.find(p => p._id === message.replyTo?.senderId)?.displayName || "người dùng");
+      replyHeaderName = message.isOwn ? `Bạn đã trả lời ${targetName}` : `${getDisplayName()} đã trả lời ${targetName}`;
+  }
+
   return (
     <>
       {/* time */}
@@ -385,7 +401,7 @@ const MessageItem = ({
             </span>
           )}
 
-          {message.replyTo && (
+          {message.replyTo && !isImageOrVideoReply && (
             <div
               className="flex items-center gap-2 mb-1 px-3 py-1.5 bg-muted/40 rounded-lg border-l-2 border-primary cursor-pointer hover:bg-muted/60 transition-colors max-w-full"
               onClick={() => {
@@ -407,6 +423,31 @@ const MessageItem = ({
             </div>
           )}
 
+          {isImageOrVideoReply && (
+            <div className={cn("flex flex-col gap-1 mb-1", message.isOwn ? "items-end" : "items-start")}>
+               <span className="text-[11px] text-muted-foreground flex items-center gap-1 mb-0.5">
+                  <Reply className="size-3" /> {replyHeaderName}
+               </span>
+               <div 
+                  className="relative overflow-hidden rounded-2xl w-32 h-48 cursor-pointer shadow-sm border border-border/50"
+                  onClick={() => {
+                     if (message.replyTo) {
+                        const el = document.querySelector(`.message-${message.replyTo._id}`);
+                        el?.scrollIntoView({ behavior: "smooth", block: "center" });
+                        el?.classList.add("bg-primary/20", "transition-colors", "duration-500");
+                        setTimeout(() => el?.classList.remove("bg-primary/20"), 1500);
+                     }
+                  }}
+               >
+                 {replyImgUrl?.match(/\.(mp4|webm)$/i) || replyImgUrl?.includes("video") ? (
+                    <video src={replyImgUrl} className="w-full h-full object-cover" />
+                 ) : (
+                    <img src={replyImgUrl} className="w-full h-full object-cover" />
+                 )}
+               </div>
+            </div>
+          )}
+
           {message.isForwarded && (
             <div className="flex items-center gap-1 text-[11px] text-muted-foreground italic mb-0.5 ml-1">
               <Forward className="size-3" />
@@ -422,14 +463,15 @@ const MessageItem = ({
             )}
           </div>
 
-          <div className={cn("relative flex items-center gap-2", message.isOwn ? "flex-row-reverse" : "flex-row")}>
+          <div className={cn("relative flex items-center gap-2", message.isOwn ? "flex-row-reverse" : "flex-row", isImageOrVideoReply ? "z-10" : "")}>
             <Card
               onDoubleClick={() => !message.isRecalled && reactToMessage(message._id, '❤️')}
               className={cn(
                 "p-3 relative select-none transition-all duration-300 hover:shadow-md hover:shadow-primary/10 hover:-translate-y-[1px]",
                 message.isOwn ? "chat-bubble-sent border-0" : "chat-bubble-received",
                 message.isRecalled ? "bg-muted/50 border border-border" : "",
-                isIncognito ? "select-none pointer-events-auto" : ""
+                isIncognito ? "select-none pointer-events-auto" : "",
+                isImageOrVideoReply ? "-mt-3" : ""
               )}
               onCopy={(e) => {
                 if (isIncognito) {
@@ -455,7 +497,7 @@ const MessageItem = ({
                 </div>
               ) : message.audioUrl ? (
                 <VoiceMessagePlayer src={message.audioUrl} isOwn={message.isOwn} />
-              ) : message.imgUrl ? (
+              ) : message.imgUrl && !isStoryReply ? (
                 <div className="space-y-1.5">
                   <img
                     src={message.imgUrl}
@@ -464,9 +506,9 @@ const MessageItem = ({
                     className="rounded-md max-w-full h-auto max-h-[300px] object-cover cursor-pointer hover:opacity-95 hover:brightness-105 transition-all shadow-xs"
                     title="Bấm để xem ảnh phóng to"
                   />
-                  {message.content && (
+                  {actualContent && (
                     <div className="pt-0.5 flex flex-col">
-                      <FormattedText content={message.translatedContent || message.content} participants={participants} nicknames={selectedConvo.nicknames} isOwn={message.isOwn} />
+                      <FormattedText content={message.translatedContent || actualContent} participants={participants} nicknames={selectedConvo.nicknames} isOwn={message.isOwn} />
                       {message.translatedContent && (
                         <span className="text-[10px] opacity-70 italic mt-0.5">(Đã dịch)</span>
                       )}
@@ -499,9 +541,9 @@ const MessageItem = ({
                       <Download className="size-4 text-primary" />
                     </a>
                   </div>
-                  {message.content && (
+                  {actualContent && (
                     <div className="pt-0.5 flex flex-col">
-                      <FormattedText content={message.translatedContent || message.content} participants={participants} nicknames={selectedConvo.nicknames} isOwn={message.isOwn} />
+                      <FormattedText content={message.translatedContent || actualContent} participants={participants} nicknames={selectedConvo.nicknames} isOwn={message.isOwn} />
                       {message.translatedContent && (
                         <span className="text-[10px] opacity-70 italic mt-0.5">(Đã dịch)</span>
                       )}
@@ -570,7 +612,7 @@ const MessageItem = ({
                 </div>
               ) : (
                 <div className="flex flex-col">
-                  <FormattedText content={message.translatedContent || message.content} participants={participants} nicknames={selectedConvo.nicknames} isOwn={message.isOwn} />
+                  <FormattedText content={message.translatedContent || actualContent} participants={participants} nicknames={selectedConvo.nicknames} isOwn={message.isOwn} />
                   {message.translatedContent && (
                     <span className="text-[10px] opacity-70 italic mt-1">(Đã dịch)</span>
                   )}

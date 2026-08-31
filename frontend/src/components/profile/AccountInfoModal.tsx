@@ -243,6 +243,15 @@ const AccountInfoModal = () => {
 
   const profilePhotos = profileUser?.photos || [];
 
+  useEffect(() => {
+    if (selectedPhoto) {
+      const updatedPhoto = profilePhotos.find((p: any) => p._id === selectedPhoto._id);
+      if (updatedPhoto) {
+        setSelectedPhoto(updatedPhoto);
+      }
+    }
+  }, [profilePhotos]);
+
   return (
     <>
       <Dialog open={isOpen} onOpenChange={closeAccountModal}>
@@ -682,25 +691,41 @@ const AccountInfoModal = () => {
                 <div className="flex items-center gap-1.5 sm:gap-2">
                   {EMOJI_REACTIONS.map((emoji) => {
                     const isMyReaction = (selectedPhoto.reactions || []).some(
-                      (r) => r.userId?.toString() === currentUser?._id && r.emoji === emoji
+                      (r) => (r.userId?._id || r.userId)?.toString() === currentUser?._id && r.emoji === emoji
                     );
-                    const count = (selectedPhoto.reactions || []).filter((r) => r.emoji === emoji).length;
+                    const reactionsForEmoji = (selectedPhoto.reactions || []).filter((r) => r.emoji === emoji);
+                    const count = reactionsForEmoji.length;
 
                     return (
-                      <button
-                        key={emoji}
-                        onClick={() => handleReactPhoto(selectedPhoto._id, emoji)}
-                        className={cn(
-                          "px-3 py-1.5 rounded-full flex items-center gap-1.5 text-base transition-all duration-200 hover:scale-110 active:scale-95",
-                          isMyReaction
-                            ? "bg-primary text-primary-foreground ring-2 ring-primary/60 font-bold shadow-md shadow-primary/30"
-                            : "bg-white/10 hover:bg-white/20 text-white"
+                      <div key={emoji} className="relative group/reaction">
+                        <button
+                          onClick={() => handleReactPhoto(selectedPhoto._id, emoji)}
+                          className={cn(
+                            "px-3 py-1.5 rounded-full flex items-center gap-1.5 text-base transition-all duration-200 hover:scale-110 active:scale-95",
+                            isMyReaction
+                              ? "bg-primary text-primary-foreground ring-2 ring-primary/60 font-bold shadow-md shadow-primary/30"
+                              : "bg-white/10 hover:bg-white/20 text-white"
+                          )}
+                          title={`Thả cảm xúc ${emoji}`}
+                        >
+                          <span>{emoji}</span>
+                          {count > 0 && <span className="text-xs font-semibold">{count}</span>}
+                        </button>
+                        
+                        {count > 0 && (
+                          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover/reaction:flex flex-col gap-1.5 bg-black/90 backdrop-blur-md p-2 rounded-xl border border-white/20 shadow-xl min-w-[140px] z-50">
+                            <span className="text-[10px] text-zinc-400 font-semibold px-1 uppercase tracking-wider">Đã thả {emoji}</span>
+                            <div className="flex flex-col gap-1 max-h-32 overflow-y-auto beautiful-scrollbar">
+                              {reactionsForEmoji.map((r, i) => (
+                                <div key={i} className="flex items-center gap-2 text-xs text-white bg-white/5 p-1 rounded-md">
+                                  <img src={r.userId?.avatarUrl || "https://github.com/shadcn.png"} alt="avatar" className="size-4 rounded-full object-cover" />
+                                  <span className="truncate max-w-[90px]">{r.userId?.displayName || "Người dùng"}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
                         )}
-                        title={`Thả cảm xúc ${emoji}`}
-                      >
-                        <span>{emoji}</span>
-                        {count > 0 && <span className="text-xs font-semibold">{count}</span>}
-                      </button>
+                      </div>
                     );
                   })}
                 </div>

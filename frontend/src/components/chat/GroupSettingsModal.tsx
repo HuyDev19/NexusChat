@@ -34,6 +34,7 @@ import UserAvatar from "./UserAvatar";
 import { Camera, Edit2, LogOut, Save, Trash2, UserPlus, ShieldAlert, Shield, ArrowDown, X, MoreHorizontal } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { useFriendStore } from "@/stores/useFriendStore";
+import { useAccountInfoModalStore } from "@/stores/useAccountInfoModalStore";
 import { Input } from "../ui/input";
 import GroupChatAvatar from "./GroupChatAvatar";
 
@@ -57,6 +58,7 @@ export default function GroupSettingsModal({
     updateChannelVisibility,
     convoLoading,
   } = useChatStore();
+  const { openAccountModal } = useAccountInfoModalStore();
 
   const [memberSearch, setMemberSearch] = useState("");
   const [isAddingMember, setIsAddingMember] = useState(false);
@@ -172,7 +174,7 @@ export default function GroupSettingsModal({
                       groupAvatar={conversation.group?.avatar}
                       groupName={conversation.group?.name}
                     />
-                    {(isLeader || isDeputy) && (
+                    {(isLeader || isDeputy || !conversation.group?.avatar) && (
                       <div
                         className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer z-20"
                         onClick={() => !convoLoading && fileInputRef.current?.click()}
@@ -273,7 +275,10 @@ export default function GroupSettingsModal({
             <div className="space-y-2 max-h-[300px] overflow-y-auto">
               {filteredParticipants.map((p) => (
                 <div key={p._id} className="flex items-center justify-between bg-secondary p-2 rounded-md">
-                  <div className="flex items-center gap-3">
+                  <div 
+                    className="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity"
+                    onClick={() => openAccountModal(p._id)}
+                  >
                     <UserAvatar type="chat" name={p.displayName as string} avatarUrl={p.avatarUrl || undefined} />
                     <div>
                       <p className="text-sm font-medium">

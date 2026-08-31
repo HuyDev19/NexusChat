@@ -1,6 +1,6 @@
 import type { Participant } from "@/types/chat";
 import UserAvatar from "./UserAvatar";
-import { Ellipsis } from "lucide-react";
+import { Camera } from "lucide-react";
 
 interface GroupChatAvatarProps {
   participants: Participant[];
@@ -10,40 +10,32 @@ interface GroupChatAvatarProps {
 }
 
 const GroupChatAvatar = ({ participants, type, groupAvatar, groupName }: GroupChatAvatarProps) => {
-  if (groupAvatar || type === "profile") {
+  if (groupAvatar) {
     return (
       <UserAvatar
         type={type}
         name={groupName || "Nhóm"}
-        avatarUrl={groupAvatar ?? undefined}
+        avatarUrl={groupAvatar}
       />
     );
   }
-  const avatars = [];
-  const limit = Math.min(participants.length, 4);
+  
+  // Default fallback when no group avatar is set
+  const sizeClasses = {
+    chat: "size-10",
+    sidebar: "size-12",
+    profile: "size-24"
+  };
 
-  for (let i = 0; i < limit; i++) {
-    const member = participants[i];
-    avatars.push(
-      <UserAvatar
-        key={i}
-        type={type}
-        name={member.displayName}
-        avatarUrl={member.avatarUrl ?? undefined}
-      />
-    );
-  }
+  const iconSizes = {
+    chat: "size-5",
+    sidebar: "size-6",
+    profile: "size-10"
+  };
 
   return (
-    <div className="relative flex -space-x-2 *:data-[slot=avatar]:ring-background *:data-[slot=avatar]:ring-2">
-      {avatars}
-
-      {/* nếu nhiều hơn 4 avatar thì render dấu ... */}
-      {participants.length > limit && (
-        <div className="flex items-center z-10 justify-center size-8 rounded-full bg-muted ring-2 ring-background text-muted-foreground">
-          <Ellipsis className="size-4" />
-        </div>
-      )}
+    <div className={`relative flex items-center justify-center rounded-full bg-muted/80 border border-border/50 shadow-sm shrink-0 overflow-hidden ${sizeClasses[type]}`}>
+      <Camera className={`text-muted-foreground/70 ${iconSizes[type]}`} />
     </div>
   );
 };

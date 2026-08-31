@@ -9,6 +9,7 @@ import friendRoute from "./routes/friendRoute.js";
 import messageRoute from "./routes/messageRoute.js";
 import conversationRoute from "./routes/conversationRoute.js";
 import callRoute from "./routes/callRoute.js";
+import storyRoute from "./routes/storyRoute.js";
 import { registerCallSocketHandlers, activeGroupCalls, activeRoomCalls } from "./libs/callSocket.js";
 import cookieParser from "cookie-parser";
 import { protectedRoute } from "./middlewares/authMiddleware.js";
@@ -49,6 +50,7 @@ app.use("/api/friends", friendRoute);
 app.use("/api/messages", messageRoute);
 app.use("/api/conversations", conversationRoute);
 app.use("/api/calls", callRoute);
+app.use("/api/stories", storyRoute);
 
 const onlineUsers = new Set();
 

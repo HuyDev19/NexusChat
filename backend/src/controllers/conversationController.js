@@ -139,11 +139,16 @@ export const getConversations = async (req, res) => {
         role: p.role,
       }));
 
+      const nicknamesObj = convo.nicknames instanceof Map 
+        ? Object.fromEntries(convo.nicknames) 
+        : convo.nicknames || {};
+
       return {
         ...convo.toObject(),
         streak: getEffectiveStreak(convo.streak),
         unreadCounts: convo.unreadCounts || {},
         participants,
+        nicknames: nicknamesObj,
       };
     }).filter(convo => {
       // Direct conversations are always kept so friends are never lost on reload
@@ -795,7 +800,10 @@ export const updateGroupAvatar = async (req, res) => {
     }
 
     const currentUser = conversation.participants.find(p => p.userId.toString() === userId.toString());
-    if (!currentUser || (currentUser.role !== "leader" && currentUser.role !== "deputy")) {
+    const isLeaderOrDeputy = currentUser && (currentUser.role === "leader" || currentUser.role === "deputy");
+    const isSettingInitialAvatar = !conversation.group.avatar && currentUser;
+
+    if (!isLeaderOrDeputy && !isSettingInitialAvatar) {
       return res.status(403).json({ message: "Chỉ trưởng hoặc phó nhóm mới có quyền thay đổi ảnh nhóm" });
     }
 
@@ -820,6 +828,7 @@ export const updateGroupAvatar = async (req, res) => {
     conversation.group.avatarId = result.public_id;
     await conversation.save();
 
+    const io = req.app.get("io");
     if (io) {
       conversation.participants.forEach((p) => {
         io.to(`user:${p.userId}`).emit("conversation:update", {

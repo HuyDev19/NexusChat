@@ -11,7 +11,7 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
 import CreateNewChat from "../chat/CreateNewChat";
-import StoryBar from "../chat/StoryBar";
+import StoryTray from "../chat/StoryTray";
 import ConversationList from "../chat/ConversationList";
 import { useAuthStore } from "@/stores/useAuthStore";
 import ConversationSkeleton from "../skeleton/ConversationSkeleton";
@@ -55,9 +55,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         </SidebarGroup>
 
         {/* 2. Story / Status Notes Bar (Fixed Top, Horizontal Only) */}
-        <SidebarGroup className="px-2 py-0 shrink-0">
+        <SidebarGroup className="px-2 py-0 shrink-0 border-b border-border/50">
           <SidebarGroupContent>
-            <StoryBar />
+            <StoryTray />
           </SidebarGroupContent>
         </SidebarGroup>
 

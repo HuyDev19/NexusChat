@@ -1,12 +1,17 @@
 import { useState, useEffect } from "react";
+import { useStoryStore } from "@/stores/useStoryStore";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useFriendStore } from "@/stores/useFriendStore";
 import { useSocketStore } from "@/stores/useSocketStore";
 import { useChatStore } from "@/stores/useChatStore";
 import { useUserStore } from "@/stores/useUserStore";
 import { useProfileStore } from "@/stores/useProfileStore";
+
 import UserAvatar from "./UserAvatar";
 import StatusBadge from "./StatusBadge";
+import StoryCreatorModal from "./StoryCreatorModal";
+import StoryViewerModal from "./StoryViewerModal";
+
 import {
   Dialog,
   DialogContent,
@@ -14,20 +19,33 @@ import {
   DialogTitle,
   DialogFooter,
 } from "../ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "../ui/dropdown-menu";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
-import { Plus, Sparkles, Trash2, Smile, Loader2 } from "lucide-react";
+import { Plus, Sparkles, Trash2, Smile, Loader2, ImagePlus, Type } from "lucide-react";
 import { toast } from "sonner";
 import { cn, isNoteExpired, getEffectiveStatus } from "@/lib/utils";
 
-const StoryBar = () => {
+const StoryTray = () => {
   const { user } = useAuthStore();
   const { friends, getFriends } = useFriendStore();
   const { onlineUsers, lastActiveMap } = useSocketStore();
   const { conversations, setActiveConversation, createConversation } = useChatStore();
   const { updateNote } = useUserStore();
   const { openProfile } = useProfileStore();
+  const { storyGroups, fetchStories } = useStoryStore();
 
+  // Story modals
+  const [creatorOpen, setCreatorOpen] = useState(false);
+  const [viewerOpen, setViewerOpen] = useState(false);
+  const [selectedGroupIndex, setSelectedGroupIndex] = useState(0);
+
+  // Note modals
   const [openNoteModal, setOpenNoteModal] = useState(false);
   const [noteInput, setNoteInput] = useState("");
   const [expiresIn, setExpiresIn] = useState<number>(24);
@@ -35,8 +53,12 @@ const StoryBar = () => {
 
   useEffect(() => {
     getFriends();
-  }, [getFriends]);
+    fetchStories();
+  }, [getFriends, fetchStories]);
 
+  if (!user) return null;
+
+  // --- Note Logic ---
   const activeUserNote = isNoteExpired(user?.note) ? null : user?.note?.content;
 
   const handleOpenMyNote = () => {
@@ -75,11 +97,36 @@ const StoryBar = () => {
     }
   };
 
-  const handleSelectFriend = async (friendId: string) => {
-    // Mở Profile thông tin của bạn bè
-    await openProfile(friendId);
+  // --- Story Logic ---
+  const myGroup = storyGroups.find(g => g.user._id === user._id);
+  const otherStoryGroups = storyGroups.filter(g => g.user._id !== user._id);
 
-    // Mở đồng thời đoạn chat nếu đã có
+  const handleOpenMyStory = () => {
+    if (myGroup && myGroup.stories.length > 0) {
+      const idx = storyGroups.findIndex(g => g.user._id === user._id);
+      setSelectedGroupIndex(idx);
+      setViewerOpen(true);
+    } else {
+      // Nếu nhấn vào avatar mà chưa có story thì làm gì?
+      // Mở dropdown hoặc mở luôn creator? Ở đây ta mở dropdown bằng trigger ở dấu cộng rồi,
+      // nên nhấn vào avatar mà k có story thì ta có thể mở creator mặc định hoặc dropdown.
+      setCreatorOpen(true);
+    }
+  };
+
+  // --- Friends Logic ---
+  const handleSelectFriend = async (friendId: string, hasStory: boolean) => {
+    if (hasStory) {
+      const idx = storyGroups.findIndex(g => g.user._id === friendId);
+      if (idx >= 0) {
+        setSelectedGroupIndex(idx);
+        setViewerOpen(true);
+      }
+      return;
+    }
+
+    // Nếu không có story, mở Profile và Chat như cũ
+    await openProfile(friendId);
     const directConvo = conversations.find(
       (c) => c.type === "direct" && c.participants?.some((p) => p._id === friendId)
     );
@@ -87,13 +134,11 @@ const StoryBar = () => {
     if (directConvo) {
       setActiveConversation(directConvo._id);
     } else {
-      // Nếu chưa có, tạo cuộc trò chuyện mới để bắt đầu chat
       await createConversation("direct", "", [friendId]);
     }
   };
 
-  // Danh sách hiển thị bạn bè trên Story/Note Bar:
-  // Kết hợp danh sách bạn bè và người trò chuyện trực tiếp
+  // Merge list of friends and users in direct conversations
   const allStoryUsersMap = new Map<string, any>();
 
   (friends || []).forEach((f) => {
@@ -113,11 +158,23 @@ const StoryBar = () => {
 
   const allStoryUsers = Array.from(allStoryUsersMap.values());
 
-  // Sắp xếp thứ tự ưu tiên:
-  // 1. Bạn bè có Ghi chú trạng thái (Cloud Note) còn hạn lên đầu
-  // 2. Bạn bè đang Online
-  // 3. Các bạn bè khác (kèm trạng thái offline/thời gian hoạt động gần nhất)
+  // Merge stories and notes logic for sorting
+  // 1. Has unseen story
+  // 2. Has seen story
+  // 3. Has note
+  // 4. Online
   const sortedFriends = allStoryUsers.sort((a, b) => {
+    const storyGroupA = otherStoryGroups.find(g => g.user._id === a._id);
+    const storyGroupB = otherStoryGroups.find(g => g.user._id === b._id);
+    
+    const hasUnseenStoryA = storyGroupA && !storyGroupA.allViewed ? 1 : 0;
+    const hasUnseenStoryB = storyGroupB && !storyGroupB.allViewed ? 1 : 0;
+    if (hasUnseenStoryB !== hasUnseenStoryA) return hasUnseenStoryB - hasUnseenStoryA;
+
+    const hasSeenStoryA = storyGroupA && storyGroupA.allViewed ? 1 : 0;
+    const hasSeenStoryB = storyGroupB && storyGroupB.allViewed ? 1 : 0;
+    if (hasSeenStoryB !== hasSeenStoryA) return hasSeenStoryB - hasSeenStoryA;
+
     const hasNoteA = !isNoteExpired(a.note) ? 1 : 0;
     const hasNoteB = !isNoteExpired(b.note) ? 1 : 0;
     if (hasNoteB !== hasNoteA) return hasNoteB - hasNoteA;
@@ -129,13 +186,11 @@ const StoryBar = () => {
     return (a.displayName || "").localeCompare(b.displayName || "");
   });
 
-  if (!user) return null;
-
   return (
     <>
-      <div className="w-full px-2 py-1.5 overflow-hidden">
+      <div className="w-full px-2 py-2 overflow-hidden bg-background">
         <div
-          className="flex items-start gap-3.5 overflow-x-auto beautiful-scrollbar pb-1.5 pt-1 px-1 scroll-smooth"
+          className="flex items-start gap-3.5 overflow-x-auto beautiful-scrollbar pb-2 pt-1 px-1 scroll-smooth"
           onWheel={(e) => {
             if (e.deltaY !== 0) {
               e.currentTarget.scrollLeft += e.deltaY;
@@ -145,30 +200,38 @@ const StoryBar = () => {
           {/* ========================================================= */}
           {/* 1. Tin của bạn (Current User)                             */}
           {/* ========================================================= */}
-          <div
-            onClick={handleOpenMyNote}
-            className="flex flex-col items-center shrink-0 cursor-pointer group w-[64px]"
-          >
+          <div className="flex flex-col items-center shrink-0 group w-[64px] relative">
             {/* Speech Bubble on top */}
-            <div className="h-[28px] flex items-center justify-center mb-1 relative">
+            <div 
+              onClick={handleOpenMyNote}
+              className="h-[28px] flex items-center justify-center mb-1 relative cursor-pointer"
+            >
               {activeUserNote ? (
                 <div className="relative max-w-[70px] bg-card text-foreground text-[10px] font-medium px-2 py-0.5 rounded-full shadow-md border border-purple-500/30 truncate text-center animate-in fade-in zoom-in-95 duration-200">
                   <span className="truncate block max-w-[54px]">{activeUserNote}</span>
-                  {/* Bubble Tail */}
                   <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 bg-card border-r border-b border-purple-500/30 rotate-45" />
                 </div>
               ) : (
                 <div className="relative bg-muted/80 text-muted-foreground text-[9px] px-1.5 py-0.5 rounded-full border border-border/40 shadow-xs text-center group-hover:text-purple-400 group-hover:border-purple-500/40 transition-colors">
                   <span>Nghĩ gì?</span>
-                  {/* Bubble Tail */}
                   <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 bg-muted/80 border-r border-b border-border/40 rotate-45" />
                 </div>
               )}
             </div>
 
-            {/* Avatar with Plus Badge */}
+            {/* Avatar with Plus Badge Dropdown */}
             <div className="relative">
-              <div className="w-12 h-12 rounded-full p-0.5 bg-gradient-to-tr from-purple-600 via-pink-500 to-indigo-600 group-hover:scale-105 group-hover:shadow-md group-hover:shadow-primary/30 group-hover:-translate-y-[2px] transition-all duration-300 shadow-sm shadow-purple-500/20">
+              <div 
+                onClick={handleOpenMyStory}
+                className={cn(
+                  "w-12 h-12 rounded-full p-0.5 cursor-pointer transition-all duration-300 group-hover:scale-105 group-hover:shadow-md group-hover:-translate-y-[2px]",
+                  myGroup && myGroup.stories.length > 0
+                    ? myGroup.allViewed 
+                        ? "bg-border/60" 
+                        : "bg-gradient-to-tr from-yellow-400 via-orange-500 to-pink-500 shadow-sm shadow-pink-500/20"
+                    : "bg-transparent border-2 border-dashed border-border"
+                )}
+              >
                 <div className="w-full h-full rounded-full overflow-hidden bg-background">
                   <UserAvatar
                     type="sidebar"
@@ -179,23 +242,41 @@ const StoryBar = () => {
                 </div>
               </div>
 
-              {/* Plus Badge */}
-              <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-purple-600 text-white flex items-center justify-center border-2 border-background shadow-xs">
-                <Plus className="w-2.5 h-2.5" />
-              </div>
+              {/* Plus Badge with Dropdown */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-purple-600 text-white flex items-center justify-center border-2 border-background shadow-xs hover:scale-110 transition-transform cursor-pointer outline-none z-10">
+                    <Plus className="w-2.5 h-2.5" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-40 rounded-xl">
+                  <DropdownMenuItem onClick={() => setCreatorOpen(true)} className="cursor-pointer gap-2 py-2">
+                    <ImagePlus className="w-4 h-4 text-pink-500" />
+                    <span>Đăng tin</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleOpenMyNote} className="cursor-pointer gap-2 py-2">
+                    <Type className="w-4 h-4 text-purple-500" />
+                    <span>Đăng ghi chú</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
 
-            {/* Label */}
             <span className="text-[11px] font-medium text-muted-foreground group-hover:text-foreground mt-1.5 text-center truncate max-w-[62px]">
               Tin của bạn
             </span>
           </div>
 
           {/* ========================================================= */}
-          {/* 2. Danh sách Bạn bè & Trạng thái Note                     */}
+          {/* 2. Danh sách Bạn bè & Trạng thái Note / Story             */}
           {/* ========================================================= */}
           {sortedFriends.map((friend) => {
             if (!friend || !friend._id) return null;
+            
+            const storyGroup = otherStoryGroups.find(g => g.user._id === friend._id);
+            const hasStory = !!storyGroup;
+            const hasUnseenStory = hasStory && !storyGroup.allViewed;
+            
             const hasNote = !isNoteExpired(friend.note);
             const isOnline = (onlineUsers || []).includes(friend._id);
             const effectiveStatus = getEffectiveStatus(isOnline, friend.presenceStatus);
@@ -204,7 +285,7 @@ const StoryBar = () => {
             return (
               <div
                 key={friend._id}
-                onClick={() => handleSelectFriend(friend._id)}
+                onClick={() => handleSelectFriend(friend._id, hasStory)}
                 className="flex flex-col items-center shrink-0 cursor-pointer group w-[64px]"
               >
                 {/* Speech Bubble on top */}
@@ -212,20 +293,23 @@ const StoryBar = () => {
                   {hasNote && friend.note ? (
                     <div className="relative max-w-[70px] bg-card text-foreground text-[10px] font-medium px-2 py-0.5 rounded-full shadow-md border border-purple-500/30 truncate text-center animate-in fade-in zoom-in-95 duration-200">
                       <span className="truncate block max-w-[54px]">{friend.note.content}</span>
-                      {/* Bubble Tail */}
                       <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 bg-card border-r border-b border-purple-500/30 rotate-45" />
                     </div>
                   ) : null}
                 </div>
 
-                {/* Avatar with Online Dot */}
+                {/* Avatar with Online Dot or Story Gradient */}
                 <div className="relative">
                   <div
                     className={cn(
-                      "w-12 h-12 rounded-full p-0.5 transition-all duration-300 group-hover:scale-105 group-hover:shadow-md group-hover:shadow-primary/30 group-hover:-translate-y-[2px]",
-                      hasNote
-                        ? "bg-gradient-to-tr from-purple-600 via-indigo-600 to-pink-500 shadow-sm shadow-purple-500/20"
-                        : "bg-border/60"
+                      "w-12 h-12 rounded-full p-0.5 transition-all duration-300 group-hover:scale-105 group-hover:shadow-md group-hover:-translate-y-[2px]",
+                      hasUnseenStory
+                        ? "bg-gradient-to-tr from-yellow-400 via-orange-500 to-pink-500 shadow-sm shadow-pink-500/20"
+                        : hasStory 
+                          ? "bg-border/60"
+                          : hasNote
+                            ? "bg-gradient-to-tr from-purple-600 via-indigo-600 to-pink-500 shadow-sm shadow-purple-500/20"
+                            : "bg-border/60"
                     )}
                   >
                     <div className="w-full h-full rounded-full overflow-hidden bg-background">
@@ -238,7 +322,9 @@ const StoryBar = () => {
                     </div>
                   </div>
 
-                  {/* Status Badge */}
+                  {/* Only show online status badge if they don't have an active unseen story (to avoid clutter), or maybe always show it? 
+                      Instagram doesn't show online dots on story avatars, but this is a chat app. Let's keep the StatusBadge.
+                   */}
                   <StatusBadge
                     status={effectiveStatus}
                     lastActiveAt={lastActiveMap?.[friend._id] || friend.lastActiveAt}
@@ -246,7 +332,6 @@ const StoryBar = () => {
                   />
                 </div>
 
-                {/* Friend Name */}
                 <span className="text-[11px] font-medium text-muted-foreground group-hover:text-foreground mt-1.5 text-center truncate max-w-[62px]">
                   {shortName}
                 </span>
@@ -255,6 +340,15 @@ const StoryBar = () => {
           })}
         </div>
       </div>
+
+      <StoryCreatorModal open={creatorOpen} onOpenChange={setCreatorOpen} />
+      {storyGroups.length > 0 && (
+        <StoryViewerModal 
+          open={viewerOpen} 
+          onOpenChange={setViewerOpen} 
+          initialGroupIndex={selectedGroupIndex} 
+        />
+      )}
 
       {/* ========================================================= */}
       {/* Modal Chia sẻ Trạng thái Ghi chú (Cloud Note 24h)          */}
@@ -363,4 +457,4 @@ const StoryBar = () => {
   );
 };
 
-export default StoryBar;
+export default StoryTray;
