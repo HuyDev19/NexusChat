@@ -42,9 +42,8 @@ import {
   Trash2,
   CalendarClock,
   Sparkles,
-  Gamepad2,
 } from "lucide-react";
-import { Dialog, DialogContent } from "../ui/dialog";
+import { Dialog, DialogContent, DialogTitle } from "../ui/dialog";
 import { cn } from "@/lib/utils";
 
 interface StagedImage {
@@ -601,18 +600,7 @@ const MessageInput = ({ selectedConvo }: { selectedConvo: Conversation }) => {
     }
   };
 
-  const handleCreateGame = async () => {
-    try {
-      const { useGameStore } = await import("@/stores/useGameStore");
-      await useGameStore.getState().inviteGame(selectedConvo._id, "chess");
-      setShowPlusMenu(false);
-      toast.success("Đã gửi lời mời chơi Cờ Vua! ♟️");
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || "Lỗi tạo lời mời chơi");
-    }
-  };
-
-  const startRecording = async () => {
+    const startRecording = async () => {
     try {
       isCancelledRef.current = false;
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -1112,16 +1100,7 @@ const MessageInput = ({ selectedConvo }: { selectedConvo: Conversation }) => {
                 </div>
               </DropdownMenuItem>
 
-              <DropdownMenuItem onClick={handleCreateGame} className="cursor-pointer gap-3 p-2 rounded-lg">
-                <div className="bg-yellow-500/10 p-2 rounded-full text-yellow-500">
-                  <Gamepad2 className="size-4" />
-                </div>
-                <div className="flex flex-col">
-                  <span className="font-medium text-sm">Chơi Cờ Vua</span>
-                </div>
-              </DropdownMenuItem>
-
-              <DropdownMenuItem onClick={startRecording} className="cursor-pointer gap-3 p-2 rounded-lg">
+                <DropdownMenuItem onClick={startRecording} className="cursor-pointer gap-3 p-2 rounded-lg">
                 <div className="bg-orange-500/10 p-2 rounded-full text-orange-500">
                   <Mic className="size-4" />
                 </div>
@@ -1425,6 +1404,7 @@ const MessageInput = ({ selectedConvo }: { selectedConvo: Conversation }) => {
           className="max-w-[95vw] w-auto max-h-[95vh] p-0 bg-transparent border-none shadow-none flex items-center justify-center overflow-visible"
           showCloseButton={false}
         >
+          <DialogTitle className="sr-only">Xem trước hình ảnh</DialogTitle>
           <div className="relative inline-flex flex-col items-center justify-center max-w-[92vw] max-h-[90vh]">
             <div className="absolute top-3 right-3 z-50 flex items-center gap-1.5 bg-black/75 backdrop-blur-md p-1.5 rounded-full border border-white/20 shadow-xl">
               <button

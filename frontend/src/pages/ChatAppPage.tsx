@@ -11,7 +11,7 @@ import { useFriendStore } from "@/stores/useFriendStore";
 
 import MediaViewerModal from "@/components/chat/MediaViewerModal";
 import ScheduleMessageModal from "@/components/chat/ScheduleMessageModal";
-import ChessGameModal from "@/components/chat/game/ChessGameModal";
+
 
 const ChatAppPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -53,7 +53,7 @@ const ChatAppPage = () => {
       <AccountInfoModal />
       <MediaViewerModal />
       <ScheduleMessageModal />
-      <ChessGameModal />
+
       <ChannelPreviewModal 
         isOpen={!!previewChannelId} 
         onOpenChange={(open) => !open && handleClosePreview()} 
