@@ -31,20 +31,20 @@ const ProfileDialog = ({ open, setOpen }: ProfileDialogProps) => {
             e.preventDefault();
           }
         }}
-        className="overflow-y-auto max-h-[95vh] p-0 bg-transparent border-0 shadow-2xl"
+        className="max-w-4xl w-full p-0 bg-transparent border-0 shadow-2xl rounded-2xl sm:rounded-3xl overflow-hidden"
       >
-        <div className="bg-gradient-glass">
-          <div className="max-w-4xl mx-auto p-4">
+        <div className="bg-gradient-glass rounded-2xl sm:rounded-3xl border border-border/40 overflow-hidden">
+          <div className="max-w-4xl mx-auto p-4 sm:p-6 max-h-[85vh] overflow-y-auto beautiful-scrollbar">
             {/* heading */}
-            <DialogHeader className="mb-6">
-              <DialogTitle className="text-2xl font-bold text-foreground">
+            <DialogHeader className="mb-5">
+              <DialogTitle className="text-xl sm:text-2xl font-bold text-foreground">
                 Hồ sơ cá nhân
               </DialogTitle>
             </DialogHeader>
 
             <ProfileCard user={user} />
 
-            <div className="mt-6">
+            <div className="mt-5">
               <PersonalInfoForm userInfo={user} />
             </div>
           </div>

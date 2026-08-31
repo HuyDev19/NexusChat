@@ -29,7 +29,19 @@ export const protectedRoute = (req, res, next) => {
         .populate("photos.reactions.userId", "displayName avatarUrl");
 
       if (!user) {
-        return res.status(404).json({ message: "người dùng không tồn tại." });
+        return res.status(404).json({ message: "Người dùng không tồn tại." });
+      }
+
+      // Kiểm tra phiên đăng nhập: nếu tokenVersion không khớp (đã đăng nhập ở thiết bị khác)
+      if (
+        decodedUser.tokenVersion !== undefined &&
+        user.tokenVersion !== undefined &&
+        decodedUser.tokenVersion !== user.tokenVersion
+      ) {
+        return res.status(401).json({
+          code: "SESSION_TERMINATED",
+          message: "Phiên đăng nhập đã bị đăng xuất do tài khoản được đăng nhập ở thiết bị khác.",
+        });
       }
 
       // trả user về trong req

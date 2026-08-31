@@ -244,8 +244,24 @@ export const signIn = async (req, res) => {
         .json({ message: "Tên đăng nhập hoặc mật khẩu không chính xác" });
     }
 
+    // Tăng tokenVersion để vô hiệu hóa toàn bộ token cũ trên các thiết bị khác
+    user.tokenVersion = (user.tokenVersion || 0) + 1;
+    user.lastActiveAt = new Date();
+    await user.save();
+
+    // Hủy tất cả session trước đó của người dùng
+    await Session.deleteMany({ userId: user._id });
+
+    // Phát sự kiện ngắt phiên đăng nhập trên thiết bị cũ qua socket
+    const io = req.app.get("io");
+    if (io) {
+      io.to(`user:${user._id}`).emit("auth:force_logout", {
+        message: "Tài khoản của bạn đã được đăng nhập từ một thiết bị khác.",
+      });
+    }
+
     const accessToken = jwt.sign(
-      { userId: user._id },
+      { userId: user._id, tokenVersion: user.tokenVersion },
       // @ts-ignore
       process.env.ACCESS_TOKEN_SECRET,
       { expiresIn: ACCESS_TOKEN_TTL }
@@ -265,9 +281,6 @@ export const signIn = async (req, res) => {
       sameSite: "none",
       maxAge: REFRESH_TOKEN_TTL,
     });
-
-    // Cập nhật lastActiveAt an toàn
-    User.findByIdAndUpdate(user._id, { lastActiveAt: new Date() }).catch(() => {});
 
     return res
       .status(200)
@@ -302,22 +315,32 @@ export const refreshToken = async (req, res) => {
   try {
     const token = req.cookies?.refreshToken;
     if (!token) {
-      return res.status(401).json({ message: "Token không tồn tại." });
+      return res.status(401).json({ code: "SESSION_TERMINATED", message: "Token không tồn tại." });
     }
 
     const session = await Session.findOne({ refreshToken: token });
 
     if (!session) {
-      return res.status(403).json({ message: "Token không hợp lệ hoặc đã hết hạn" });
+      res.clearCookie("refreshToken");
+      return res.status(401).json({ code: "SESSION_TERMINATED", message: "Phiên làm việc đã bị đăng xuất do đăng nhập ở thiết bị khác." });
     }
 
     if (session.expiresAt < new Date()) {
-      return res.status(403).json({ message: "Token đã hết hạn." });
+      await Session.deleteOne({ _id: session._id });
+      res.clearCookie("refreshToken");
+      return res.status(401).json({ code: "SESSION_TERMINATED", message: "Phiên đăng nhập đã hết hạn." });
+    }
+
+    const user = await User.findById(session.userId);
+    if (!user) {
+      res.clearCookie("refreshToken");
+      return res.status(404).json({ message: "Người dùng không tồn tại." });
     }
 
     const accessToken = jwt.sign(
       {
-        userId: session.userId,
+        userId: user._id,
+        tokenVersion: user.tokenVersion,
       },
       process.env.ACCESS_TOKEN_SECRET,
       { expiresIn: ACCESS_TOKEN_TTL }

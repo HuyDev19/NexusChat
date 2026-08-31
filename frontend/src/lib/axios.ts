@@ -32,6 +32,12 @@ api.interceptors.response.use(
       return Promise.reject(error);
     }
 
+    // Nếu phiên đăng nhập bị hủy do đăng nhập từ thiết bị khác
+    if (error.response?.data?.code === "SESSION_TERMINATED") {
+      useAuthStore.getState().clearState();
+      return Promise.reject(error);
+    }
+
     originalRequest._retryCount = originalRequest._retryCount || 0;
 
     if (error.response?.status === 403 && originalRequest._retryCount < 4) {

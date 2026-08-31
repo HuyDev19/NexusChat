@@ -3,6 +3,7 @@ import { io, type Socket } from "socket.io-client";
 import { useAuthStore } from "./useAuthStore";
 import type { SocketState } from "@/types/store";
 import { useChatStore } from "./useChatStore";
+import { toast } from "sonner";
 
 const baseURL = import.meta.env.VITE_SOCKET_URL?.trim() || "http://localhost:5001";
 
@@ -44,6 +45,13 @@ export const useSocketStore = create<SocketState>((set, get) => ({
 
     socket.on("connect_error", (error) => {
       console.warn("Socket kết nối lỗi:", error.message);
+    });
+
+    // force logout khi đăng nhập thiết bị khác
+    socket.on("auth:force_logout", (data) => {
+      toast.error(data?.message || "Tài khoản của bạn đã được đăng nhập từ một thiết bị khác.");
+      useAuthStore.getState().clearState();
+      get().disconnectSocket();
     });
 
     // online users

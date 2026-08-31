@@ -1,9 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import WaveSurfer from "wavesurfer.js";
-import RecordPlugin from "wavesurfer.js/dist/plugins/record.esm.js";
 import { Button } from "../ui/button";
-import { Send, Trash2, Square } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { Send, Trash2 } from "lucide-react";
 
 interface LiveAudioRecorderProps {
   onSend: (blob: Blob) => void;
@@ -11,72 +8,97 @@ interface LiveAudioRecorderProps {
 }
 
 export default function LiveAudioRecorder({ onSend, onCancel }: LiveAudioRecorderProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const waveSurferRef = useRef<WaveSurfer | null>(null);
-  const recordPluginRef = useRef<RecordPlugin | null>(null);
-  const [isRecording, setIsRecording] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
+  const [audioLevel, setAudioLevel] = useState(1);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const streamRef = useRef<MediaStream | null>(null);
+  const animationFrameRef = useRef<number | null>(null);
 
   useEffect(() => {
-    if (!containerRef.current) return;
+    let timer: any;
 
-    const ws = WaveSurfer.create({
-      container: containerRef.current,
-      waveColor: "#ef4444",
-      progressColor: "#ef4444",
-      cursorColor: "transparent",
-      barWidth: 2,
-      barGap: 2,
-      barRadius: 2,
-      height: 36,
-      normalize: true,
-    });
-    waveSurferRef.current = ws;
+    navigator.mediaDevices.getUserMedia({ audio: true })
+      .then((stream) => {
+        streamRef.current = stream;
 
-    const record = ws.registerPlugin(RecordPlugin.create({
-      scrollingWaveform: true,
-      renderRecordedAudio: false,
-    }));
-    recordPluginRef.current = record;
+        // Visualizer audio level
+        const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+        if (AudioContextClass) {
+          try {
+            const audioContext = new AudioContextClass();
+            const source = audioContext.createMediaStreamSource(stream);
+            const analyser = audioContext.createAnalyser();
+            analyser.fftSize = 64;
+            source.connect(analyser);
 
-    record.on("record-end", (blob) => {
-      onSend(blob);
-    });
+            const dataArray = new Uint8Array(analyser.frequencyBinCount);
+            const checkLevel = () => {
+              analyser.getByteFrequencyData(dataArray);
+              const average = dataArray.reduce((acc, val) => acc + val, 0) / dataArray.length;
+              setAudioLevel(Math.max(0.2, Math.min(2.0, average / 40)));
+              animationFrameRef.current = requestAnimationFrame(checkLevel);
+            };
+            checkLevel();
+          } catch (e) {
+            console.error("Lỗi AudioContext visualizer:", e);
+          }
+        }
 
-    record.startRecording().then(() => {
-      setIsRecording(true);
-    }).catch((err) => {
-      console.error("Lỗi ghi âm:", err);
-      onCancel();
-    });
+        const recorder = new MediaRecorder(stream);
+        mediaRecorderRef.current = recorder;
+        audioChunksRef.current = [];
+
+        recorder.ondataavailable = (e) => {
+          if (e.data.size > 0) {
+            audioChunksRef.current.push(e.data);
+          }
+        };
+
+        recorder.start(100);
+
+        timer = setInterval(() => {
+          setRecordingTime((prev) => prev + 1);
+        }, 1000);
+      })
+      .catch((err) => {
+        console.error("Lỗi micro:", err);
+        onCancel();
+      });
 
     return () => {
-      record.stopRecording();
-      ws.destroy();
+      clearInterval(timer);
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+        mediaRecorderRef.current.stop();
+      }
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((track) => track.stop());
+      }
     };
   }, []);
 
-  useEffect(() => {
-    let interval: any;
-    if (isRecording) {
-      interval = setInterval(() => {
-        setRecordingTime((prev) => prev + 1);
-      }, 1000);
-    }
-    return () => clearInterval(interval);
-  }, [isRecording]);
-
   const handleStopAndSend = () => {
-    if (recordPluginRef.current?.isRecording()) {
-      recordPluginRef.current.stopRecording();
+    if (!mediaRecorderRef.current) return;
+    mediaRecorderRef.current.onstop = () => {
+      const audioBlob = new Blob(audioChunksRef.current, { type: "audio/webm" });
+      onSend(audioBlob);
+    };
+    mediaRecorderRef.current.stop();
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop());
     }
   };
 
   const handleCancel = () => {
-    if (recordPluginRef.current?.isRecording()) {
-      // Temporarily remove listener so it doesn't trigger onSend
-      recordPluginRef.current.unAll();
-      recordPluginRef.current.stopRecording();
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+      mediaRecorderRef.current.onstop = null;
+      mediaRecorderRef.current.stop();
+    }
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop());
     }
     onCancel();
   };
@@ -88,17 +110,26 @@ export default function LiveAudioRecorder({ onSend, onCancel }: LiveAudioRecorde
   };
 
   return (
-    <div className="flex-1 flex items-center justify-between px-3 bg-red-500/10 text-red-500 rounded-xl border border-red-500/30 gap-3">
+    <div className="flex-1 flex items-center justify-between px-3.5 py-1.5 bg-red-500/10 text-red-500 rounded-2xl border border-red-500/30 gap-3 animate-in fade-in duration-200">
       <div className="flex items-center gap-2 shrink-0">
         <span className="animate-pulse h-2.5 w-2.5 bg-red-500 rounded-full"></span>
-        <span className="text-xs font-semibold w-10">{formatTime(recordingTime)}</span>
-      </div>
-      
-      <div className="flex-1 min-w-0 flex items-center overflow-hidden">
-        <div ref={containerRef} className="w-full" />
+        <span className="text-xs font-mono font-semibold w-11">{formatTime(recordingTime)}</span>
       </div>
 
-      <div className="flex gap-1.5 shrink-0 ml-2 py-1.5">
+      {/* Live animated waveform visualizer */}
+      <div className="flex-1 flex items-center justify-center gap-1 h-6 overflow-hidden">
+        {[0.4, 0.8, 1.2, 0.6, 1.0, 1.4, 0.7, 1.1, 0.5, 0.9, 1.3, 0.8].map((factor, i) => (
+          <div
+            key={i}
+            className="w-1 bg-red-500/80 rounded-full transition-all duration-75"
+            style={{
+              height: `${Math.max(4, Math.min(24, 6 * audioLevel * factor))}px`,
+            }}
+          />
+        ))}
+      </div>
+
+      <div className="flex items-center gap-1.5 shrink-0">
         <Button
           size="icon"
           className="rounded-full size-8 shrink-0 bg-red-500 hover:bg-red-600 text-white shadow-md transition-all hover:scale-105"
@@ -110,7 +141,7 @@ export default function LiveAudioRecorder({ onSend, onCancel }: LiveAudioRecorde
         <Button
           size="icon"
           variant="outline"
-          className="rounded-full size-8 shrink-0 border-red-500/30 text-red-500 hover:bg-red-50 transition-all"
+          className="rounded-full size-8 shrink-0 border-red-500/30 text-red-500 hover:bg-red-500/10 transition-all"
           onClick={handleCancel}
           title="Hủy ghi âm"
         >

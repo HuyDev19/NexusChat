@@ -250,7 +250,7 @@ export const getMessages = async (req, res) => {
     let messages = await Message.find(query)
       .sort({ createdAt: -1 })
       .limit(Number(limit) + 1)
-      .populate("replyTo", "content senderId imgUrl audioUrl isRecalled")
+      .populate("replyTo", "content senderId imgUrl audioUrl fileUrl fileName isRecalled isViewOnce")
       .populate("sharedContact", "_id displayName username avatarUrl");
 
     let nextCursor = null;

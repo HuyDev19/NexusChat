@@ -91,15 +91,65 @@ export const processScheduledMessages = async (io) => {
   }
 };
 
+export const checkAndResetExpiredStreaks = async (io) => {
+  try {
+    const now = new Date();
+    // 48 giờ trước
+    const twoDaysAgo = new Date(now.getTime() - 48 * 60 * 60 * 1000);
+    const expiredConvos = await Conversation.find({
+      type: "direct",
+      "streak.count": { $gt: 0 },
+      "streak.lastMessageDate": { $lte: twoDaysAgo }
+    }).limit(50);
+
+    for (const convo of expiredConvos) {
+      convo.streak = {
+        count: 0,
+        lastMessageDate: null,
+        senders: [],
+        isBothMessaged: false
+      };
+      if (typeof convo.markModified === "function") {
+        convo.markModified("streak");
+      }
+      await convo.save();
+
+      if (io) {
+        convo.participants.forEach((p) => {
+          const userId = p.userId?._id || p.userId || p._id;
+          if (userId) {
+            io.to(`user:${userId}`).emit("conversation:streak-reset", {
+              conversationId: convo._id,
+              streak: convo.streak
+            });
+          }
+        });
+      }
+    }
+  } catch (err) {
+    console.error("[ScheduleWorker] Lỗi khi kiểm tra streak hết hạn:", err);
+  }
+};
+
+let streakCounter = 0;
+
 export const startScheduleWorker = (io) => {
   if (workerInterval) clearInterval(workerInterval);
 
-  console.log("[ScheduleWorker] Đã khởi động background worker hẹn giờ tin nhắn (mỗi 10 giây)");
+  console.log("[ScheduleWorker] Đã khởi động background worker hẹn giờ tin nhắn & dọn streak (mỗi 10 giây)");
   // Chạy ngay lần đầu
   processScheduledMessages(io);
+  checkAndResetExpiredStreaks(io);
+
   // Sau đó chạy định kỳ mỗi 10 giây
   workerInterval = setInterval(() => {
     processScheduledMessages(io);
+    streakCounter += 1;
+    // Kiểm tra streak hết hạn mỗi 60 giây (mỗi 6 chu kỳ)
+    if (streakCounter >= 6) {
+      streakCounter = 0;
+      checkAndResetExpiredStreaks(io);
+    }
   }, 10000);
 };
 

@@ -8,11 +8,26 @@ import { useStoryStore } from "@/stores/useStoryStore";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useChatStore } from "@/stores/useChatStore";
 import UserAvatar from "./UserAvatar";
-import { formatDistanceToNow } from "date-fns";
-import { vi } from "date-fns/locale";
 import { toast } from "sonner";
 import { Input } from "../ui/input";
 import { cn } from "@/lib/utils";
+
+const formatTimeAgo = (dateInput: string | Date) => {
+  try {
+    const date = new Date(dateInput);
+    const now = new Date();
+    const diffInSecs = Math.floor((now.getTime() - date.getTime()) / 1000);
+    if (diffInSecs < 60) return "vừa xong";
+    const diffInMins = Math.floor(diffInSecs / 60);
+    if (diffInMins < 60) return `${diffInMins} phút trước`;
+    const diffInHours = Math.floor(diffInMins / 60);
+    if (diffInHours < 24) return `${diffInHours} giờ trước`;
+    const diffInDays = Math.floor(diffInHours / 24);
+    return `${diffInDays} ngày trước`;
+  } catch {
+    return "";
+  }
+};
 
 const QUICK_REACTIONS = ["❤️", "😂", "😮", "😢", "🔥"];
 
@@ -275,7 +290,7 @@ export default function StoryViewerModal({ open, onOpenChange, initialGroupIndex
               <div>
                 <p className="text-white font-medium text-sm drop-shadow-md">{currentGroup.user.displayName}</p>
                 <p className="text-white/70 text-xs drop-shadow-md">
-                  {formatDistanceToNow(new Date(currentStory.createdAt), { addSuffix: true, locale: vi })}
+                  {formatTimeAgo(currentStory.createdAt)}
                 </p>
               </div>
             </div>

@@ -4,6 +4,7 @@ import { useAuthStore } from "@/stores/useAuthStore";
 import { useFriendStore } from "@/stores/useFriendStore";
 import { useChatStore } from "@/stores/useChatStore";
 import { useCallStore } from "@/stores/useCallStore";
+import { useMediaViewerStore } from "@/stores/useMediaViewerStore";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import { Button } from "../ui/button";
 import { 
@@ -18,10 +19,8 @@ import {
   Mail, 
   User as UserIcon,
   Plus,
-  Trash2,
-  Heart,
   Smile,
-  X 
+  ZoomIn
 } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { toast } from "sonner";
@@ -30,21 +29,17 @@ import { userService } from "@/services/userService";
 import StatusBadge from "../chat/StatusBadge";
 import { useSocketStore } from "@/stores/useSocketStore";
 
-const EMOJI_REACTIONS = ["👍", "❤️", "😂", "😮", "🔥"];
-
 const AccountInfoModal = () => {
-  const { isOpen, user: profileUser, loading, closeAccountModal, setUserPhotos, updatePhotoReactions } = useAccountInfoModalStore();
+  const { isOpen, user: profileUser, loading, closeAccountModal, setUserPhotos } = useAccountInfoModalStore();
   const { user: currentUser } = useAuthStore();
   const { friends, sentList, receivedList, addFriend, cancelRequest, acceptRequest } = useFriendStore();
-  const { conversations, messages: chatMessages, fetchMessages, setActiveConversation, createConversation } = useChatStore();
+  const { conversations, setActiveConversation, createConversation } = useChatStore();
   const { startCall } = useCallStore();
   const { onlineUsers, lastActiveMap } = useSocketStore();
   
   const [actionLoading, setActionLoading] = useState(false);
-  const [previewImage, setPreviewImage] = useState<string | null>(null);
 
-  // Profile Photo Upload & Reaction States
-  const [selectedPhoto, setSelectedPhoto] = useState<ProfilePhoto | null>(null);
+  // Profile Photo Upload States
   const [showAddPhotoModal, setShowAddPhotoModal] = useState(false);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
@@ -52,31 +47,24 @@ const AccountInfoModal = () => {
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const photoInputRef = useRef<HTMLInputElement>(null);
 
+  const profilePhotos = profileUser?.photos || [];
+
   // Tìm cuộc trò chuyện trực tiếp nếu có
-  const directConvo = conversations.find(
-    (c) => c.type === "direct" && c.participants?.some((p) => p._id === profileUser?._id)
+  const directConvo = (conversations || []).find(
+    (c) => c?.type === "direct" && c?.participants?.some((p) => {
+      const pId = p?._id || (p as any)?.userId?._id || (p as any)?.userId;
+      return pId?.toString() === profileUser?._id?.toString();
+    })
   );
 
-  const convoMessages = directConvo ? (chatMessages[directConvo._id]?.items || []) : [];
-
-  useEffect(() => {
-    if (directConvo?._id && convoMessages.length === 0) {
-      fetchMessages(directConvo._id);
-    }
-  }, [directConvo?._id]);
-
-  const sharedImages = convoMessages.filter((m) => !!m.imgUrl && !m.isRecalled);
-
-  if (!isOpen && !previewImage && !selectedPhoto && !showAddPhotoModal) return null;
-
   const isSelf = Boolean(currentUser?._id && profileUser?._id && currentUser._id === profileUser._id);
-  const isFriend = Boolean(profileUser?._id && (friends || []).some((f) => (f?._id || f)?.toString() === profileUser._id));
+  const isFriend = Boolean(profileUser?._id && (friends || []).some((f) => ((f as any)?._id || f)?.toString() === profileUser._id));
   const sentReq = (sentList || []).find((r) => {
-    const toId = (r?.to?._id || r?.to)?.toString();
+    const toId = ((r?.to as any)?._id || r?.to)?.toString();
     return Boolean(toId && profileUser?._id && toId === profileUser._id);
   });
   const receivedReq = (receivedList || []).find((r) => {
-    const fromId = (r?.from?._id || r?.from)?.toString();
+    const fromId = ((r?.from as any)?._id || r?.from)?.toString();
     return Boolean(fromId && profileUser?._id && fromId === profileUser._id);
   });
 
@@ -162,7 +150,6 @@ const AccountInfoModal = () => {
       setPhotoPreview(URL.createObjectURL(file));
       setShowAddPhotoModal(true);
     }
-    // reset input value so re-selecting works
     e.target.value = "";
   };
 
@@ -190,31 +177,39 @@ const AccountInfoModal = () => {
     }
   };
 
-  const handleReactPhoto = async (photoId: string, emoji: string) => {
-    if (!profileUser?._id) return;
-    try {
-      const res = await userService.reactProfilePhoto(profileUser._id, photoId, emoji);
-      updatePhotoReactions(photoId, res.reactions);
-      if (selectedPhoto && selectedPhoto._id === photoId) {
-        setSelectedPhoto({ ...selectedPhoto, reactions: res.reactions });
-      }
-    } catch (error) {
-      console.error("Lỗi tương tác ảnh:", error);
-      toast.error("Không thể gửi cảm xúc");
+  const handleOpenCover = () => {
+    if (profileUser?.coverUrl) {
+      useMediaViewerStore.getState().openSingle(
+        profileUser.coverUrl,
+        "Ảnh bìa",
+        profileUser.displayName,
+        profileUser.avatarUrl
+      );
     }
   };
 
-  const handleDeletePhoto = async (photoId: string) => {
-    if (!window.confirm("Bạn có chắc chắn muốn xóa ảnh này khỏi trang cá nhân không?")) return;
-    try {
-      const res = await userService.deleteProfilePhoto(photoId);
-      setUserPhotos(res.photos);
-      setSelectedPhoto(null);
-      toast.success("Đã xóa ảnh thành công");
-    } catch (error) {
-      console.error("Lỗi khi xóa ảnh:", error);
-      toast.error("Không thể xóa ảnh");
+  const handleOpenAvatar = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (profileUser?.avatarUrl) {
+      useMediaViewerStore.getState().openSingle(
+        profileUser.avatarUrl,
+        "Ảnh đại diện",
+        profileUser.displayName,
+        profileUser.avatarUrl
+      );
     }
+  };
+
+  const handleOpenPhoto = (photo: ProfilePhoto, idx: number) => {
+    const mediaItems = profilePhotos.map((p) => ({
+      _id: p._id,
+      url: p.url,
+      senderName: profileUser?.displayName || "Người dùng",
+      senderAvatar: profileUser?.avatarUrl || null,
+      createdAt: p.createdAt,
+      content: p.caption,
+    }));
+    useMediaViewerStore.getState().openViewer(mediaItems, idx);
   };
 
   const noteText = typeof profileUser?.note === "string" 
@@ -241,21 +236,10 @@ const AccountInfoModal = () => {
     }
   } catch (e) {}
 
-  const profilePhotos = profileUser?.photos || [];
-
-  useEffect(() => {
-    if (selectedPhoto) {
-      const updatedPhoto = profilePhotos.find((p: any) => p._id === selectedPhoto._id);
-      if (updatedPhoto) {
-        setSelectedPhoto(updatedPhoto);
-      }
-    }
-  }, [profilePhotos]);
-
   return (
     <>
       <Dialog open={isOpen} onOpenChange={closeAccountModal}>
-        <DialogContent className="max-w-md w-full p-0 overflow-hidden bg-background border border-border shadow-2xl rounded-2xl">
+        <DialogContent className="max-w-md w-full p-0 overflow-hidden bg-background border border-border shadow-2xl rounded-2xl sm:rounded-3xl">
           <DialogHeader className="px-5 py-3.5 border-b border-border/60 flex flex-row items-center justify-between">
             <DialogTitle className="text-base font-bold text-foreground">
               Thông tin tài khoản
@@ -268,25 +252,28 @@ const AccountInfoModal = () => {
               <p className="text-sm text-muted-foreground">Đang tải thông tin...</p>
             </div>
           ) : (
-            <div className="flex flex-col max-h-[80vh] overflow-y-auto">
+            <div className="flex flex-col max-h-[80vh] overflow-y-auto beautiful-scrollbar">
               {/* Cover & Avatar Header */}
               <div className="relative">
                 <div 
                   className={cn(
-                    "h-44 w-full bg-gradient-to-r from-violet-600 via-indigo-600 to-sky-500 overflow-hidden",
-                    profileUser.coverUrl && "cursor-pointer hover:opacity-90 transition-opacity"
+                    "h-44 w-full bg-gradient-to-r from-violet-600 via-indigo-600 to-sky-500 overflow-hidden relative group/cover select-none",
+                    profileUser.coverUrl && "cursor-pointer"
                   )}
-                  onClick={() => {
-                    if (profileUser.coverUrl) setPreviewImage(profileUser.coverUrl);
-                  }}
-                  title={profileUser.coverUrl ? "Bấm để xem ảnh bìa" : undefined}
+                  onClick={handleOpenCover}
+                  title={profileUser.coverUrl ? "Bấm để phóng to ảnh bìa" : undefined}
                 >
                   {profileUser.coverUrl ? (
-                    <img
-                      src={profileUser.coverUrl}
-                      alt="Cover"
-                      className="w-full h-full object-cover"
-                    />
+                    <>
+                      <img
+                        src={profileUser.coverUrl}
+                        alt="Cover"
+                        className="w-full h-full object-cover group-hover/cover:scale-105 transition-transform duration-300"
+                      />
+                      <div className="absolute inset-0 bg-black/20 opacity-0 group-hover/cover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
+                        <ZoomIn className="size-7 text-white drop-shadow-md" />
+                      </div>
+                    </>
                   ) : (
                     <div className="w-full h-full opacity-60 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-sky-400 via-indigo-500 to-purple-800" />
                   )}
@@ -295,20 +282,25 @@ const AccountInfoModal = () => {
                 {/* Avatar */}
                 <div 
                   className={cn(
-                    "absolute -bottom-10 left-6",
-                    profileUser.avatarUrl && "cursor-pointer hover:scale-105 transition-transform"
+                    "absolute -bottom-10 left-6 z-10 select-none group/avatar",
+                    profileUser.avatarUrl && "cursor-pointer"
                   )}
-                  onClick={() => {
-                    if (profileUser.avatarUrl) setPreviewImage(profileUser.avatarUrl);
-                  }}
-                  title={profileUser.avatarUrl ? "Bấm để xem ảnh đại diện" : undefined}
+                  onClick={handleOpenAvatar}
+                  title={profileUser.avatarUrl ? "Bấm để phóng to ảnh đại diện" : undefined}
                 >
-                  <Avatar className="size-20 border-4 border-background shadow-xl ring-2 ring-border/20">
-                    <AvatarImage src={profileUser.avatarUrl || undefined} alt={profileUser.displayName} />
-                    <AvatarFallback className="bg-primary text-primary-foreground font-bold text-2xl">
-                      {profileUser.displayName?.charAt(0)?.toUpperCase() || "U"}
-                    </AvatarFallback>
-                  </Avatar>
+                  <div className="relative">
+                    <Avatar className="size-20 border-4 border-background shadow-xl ring-2 ring-border/20 group-hover/avatar:scale-105 transition-transform duration-200">
+                      <AvatarImage src={profileUser.avatarUrl || undefined} alt={profileUser.displayName || "Avatar"} />
+                      <AvatarFallback className="bg-primary text-primary-foreground font-bold text-2xl">
+                        {profileUser.displayName?.charAt(0)?.toUpperCase() || "U"}
+                      </AvatarFallback>
+                    </Avatar>
+                    {profileUser.avatarUrl && (
+                      <div className="absolute inset-0 rounded-full bg-black/30 opacity-0 group-hover/avatar:opacity-100 flex items-center justify-center transition-opacity pointer-events-none">
+                        <ZoomIn className="size-5 text-white drop-shadow-md" />
+                      </div>
+                    )}
+                  </div>
                   <StatusBadge
                     status={getEffectiveStatus(
                       profileUser._id ? onlineUsers.includes(profileUser._id) : false,
@@ -324,7 +316,7 @@ const AccountInfoModal = () => {
                 <div className="flex items-center justify-between">
                   <div>
                     <h3 className="text-xl font-bold text-foreground flex items-center gap-2">
-                      {profileUser.displayName}
+                      {profileUser.displayName || "Người dùng"}
                     </h3>
                     {profileUser.username && (
                       <p className="text-xs text-muted-foreground font-medium">@{profileUser.username}</p>
@@ -343,7 +335,7 @@ const AccountInfoModal = () => {
                   {isSelf ? (
                     <Button 
                       variant="outline" 
-                      className="col-span-2 rounded-xl font-semibold h-10"
+                      className="col-span-2 rounded-xl font-semibold h-10 cursor-pointer"
                       onClick={() => {
                         closeAccountModal();
                       }}
@@ -354,7 +346,7 @@ const AccountInfoModal = () => {
                     <>
                       <Button
                         variant="secondary"
-                        className="rounded-xl font-semibold h-10 flex items-center justify-center gap-2 bg-secondary/80 hover:bg-secondary"
+                        className="rounded-xl font-semibold h-10 flex items-center justify-center gap-2 bg-secondary/80 hover:bg-secondary cursor-pointer"
                         onClick={() => handleStartCall(false)}
                         disabled={actionLoading}
                       >
@@ -362,7 +354,7 @@ const AccountInfoModal = () => {
                         Gọi điện
                       </Button>
                       <Button
-                        className="rounded-xl font-semibold h-10 flex items-center justify-center gap-2 bg-primary hover:bg-primary/90 text-primary-foreground"
+                        className="rounded-xl font-semibold h-10 flex items-center justify-center gap-2 bg-primary hover:bg-primary/90 text-primary-foreground cursor-pointer"
                         onClick={handleSendMessage}
                         disabled={actionLoading}
                       >
@@ -373,7 +365,7 @@ const AccountInfoModal = () => {
                   ) : receivedReq ? (
                     <>
                       <Button
-                        className="rounded-xl font-semibold h-10 flex items-center justify-center gap-2 bg-primary hover:bg-primary/90"
+                        className="rounded-xl font-semibold h-10 flex items-center justify-center gap-2 bg-primary hover:bg-primary/90 cursor-pointer"
                         onClick={handleAcceptRequest}
                         disabled={actionLoading}
                       >
@@ -382,7 +374,7 @@ const AccountInfoModal = () => {
                       </Button>
                       <Button
                         variant="secondary"
-                        className="rounded-xl font-semibold h-10 flex items-center justify-center gap-2"
+                        className="rounded-xl font-semibold h-10 flex items-center justify-center gap-2 cursor-pointer"
                         onClick={handleSendMessage}
                         disabled={actionLoading}
                       >
@@ -394,7 +386,7 @@ const AccountInfoModal = () => {
                     <>
                       <Button
                         variant="outline"
-                        className="rounded-xl font-semibold h-10 flex items-center justify-center gap-2 text-amber-500 border-amber-500/30 hover:bg-amber-500/10"
+                        className="rounded-xl font-semibold h-10 flex items-center justify-center gap-2 text-amber-500 border-amber-500/30 hover:bg-amber-500/10 cursor-pointer"
                         onClick={handleCancelRequest}
                         disabled={actionLoading}
                       >
@@ -402,7 +394,7 @@ const AccountInfoModal = () => {
                         Hủy lời mời
                       </Button>
                       <Button
-                        className="rounded-xl font-semibold h-10 flex items-center justify-center gap-2 bg-primary hover:bg-primary/90"
+                        className="rounded-xl font-semibold h-10 flex items-center justify-center gap-2 bg-primary hover:bg-primary/90 cursor-pointer"
                         onClick={handleSendMessage}
                         disabled={actionLoading}
                       >
@@ -413,7 +405,7 @@ const AccountInfoModal = () => {
                   ) : (
                     <>
                       <Button
-                        className="rounded-xl font-semibold h-10 flex items-center justify-center gap-2 bg-primary hover:bg-primary/90"
+                        className="rounded-xl font-semibold h-10 flex items-center justify-center gap-2 bg-primary hover:bg-primary/90 cursor-pointer"
                         onClick={handleAddFriend}
                         disabled={actionLoading}
                       >
@@ -422,7 +414,7 @@ const AccountInfoModal = () => {
                       </Button>
                       <Button
                         variant="secondary"
-                        className="rounded-xl font-semibold h-10 flex items-center justify-center gap-2 bg-secondary/80 hover:bg-secondary"
+                        className="rounded-xl font-semibold h-10 flex items-center justify-center gap-2 bg-secondary/80 hover:bg-secondary cursor-pointer"
                         onClick={handleSendMessage}
                         disabled={actionLoading}
                       >
@@ -481,7 +473,7 @@ const AccountInfoModal = () => {
               <div className="h-2 bg-muted/40 border-y border-border/40" />
 
               {/* ========================================================= */}
-              {/* ẢNH TRANG CÁ NHÂN (PERSONAL PHOTOS WITH EMOJI REACTIONS) */}
+              {/* ẢNH TRANG CÁ NHÂN (PERSONAL PHOTOS)                       */}
               {/* ========================================================= */}
               <div className="p-6">
                 <div className="flex items-center justify-between mb-3">
@@ -503,7 +495,7 @@ const AccountInfoModal = () => {
                       <Button
                         size="sm"
                         variant="outline"
-                        className="h-8 px-2.5 text-xs font-semibold rounded-xl gap-1.5 border-primary/30 text-primary hover:bg-primary/10"
+                        className="h-8 px-2.5 text-xs font-semibold rounded-xl gap-1.5 border-primary/30 text-primary hover:bg-primary/10 cursor-pointer"
                         onClick={() => photoInputRef.current?.click()}
                       >
                         <Plus className="size-3.5" />
@@ -521,7 +513,7 @@ const AccountInfoModal = () => {
                       <Button
                         size="sm"
                         variant="ghost"
-                        className="mt-2 text-xs font-medium text-primary hover:underline h-7"
+                        className="mt-2 text-xs font-medium text-primary hover:underline h-7 cursor-pointer"
                         onClick={() => photoInputRef.current?.click()}
                       >
                         Tải lên bức ảnh đầu tiên
@@ -530,50 +522,31 @@ const AccountInfoModal = () => {
                   </div>
                 ) : (
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-                    {profilePhotos.map((photo) => {
-                      const totalReactions = (photo.reactions || []).length;
-                      // Group reaction counts
-                      const reactionCountMap: Record<string, number> = {};
-                      (photo.reactions || []).forEach((r) => {
-                        reactionCountMap[r.emoji] = (reactionCountMap[r.emoji] || 0) + 1;
-                      });
-                      const topEmojis = Object.keys(reactionCountMap).slice(0, 3);
+                    {profilePhotos.map((photo, idx) => (
+                      <div
+                        key={photo._id}
+                        className="group relative aspect-square rounded-xl overflow-hidden bg-muted cursor-pointer border border-border/40 shadow-xs hover:shadow-md transition-all duration-200"
+                        onClick={() => handleOpenPhoto(photo, idx)}
+                      >
+                        <img
+                          src={photo.url}
+                          alt={photo.caption || "Profile photo"}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        />
 
-                      return (
-                        <div
-                          key={photo._id}
-                          className="group relative aspect-square rounded-xl overflow-hidden bg-muted cursor-pointer border border-border/40 shadow-xs hover:shadow-md transition-all duration-200"
-                          onClick={() => setSelectedPhoto(photo)}
-                        >
-                          <img
-                            src={photo.url}
-                            alt={photo.caption || "Profile photo"}
-                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                          />
-
-                          {/* Overlay & Reactions Summary */}
-                          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent opacity-90 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-2">
-                            {photo.caption && (
-                              <p className="text-[11px] text-white font-medium truncate mb-1 drop-shadow-sm">
-                                {photo.caption}
-                              </p>
-                            )}
-
-                            {totalReactions > 0 ? (
-                              <div className="flex items-center gap-1 bg-black/60 backdrop-blur-sm w-fit px-1.5 py-0.5 rounded-full border border-white/20">
-                                <span className="text-xs">{topEmojis.join("")}</span>
-                                <span className="text-[10px] text-white font-bold">{totalReactions}</span>
-                              </div>
-                            ) : (
-                              <div className="flex items-center gap-1 text-[10px] text-white/70 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <Smile className="size-3" />
-                                <span>Bấm để thả cảm xúc</span>
-                              </div>
-                            )}
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent opacity-90 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-2">
+                          {photo.caption && (
+                            <p className="text-[11px] text-white font-medium truncate mb-1 drop-shadow-sm">
+                              {photo.caption}
+                            </p>
+                          )}
+                          <div className="flex items-center gap-1 text-[10px] text-white/70 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <Smile className="size-3" />
+                            <span>Bấm để xem ảnh</span>
                           </div>
                         </div>
-                      );
-                    })}
+                      </div>
+                    ))}
                   </div>
                 )}
               </div>
@@ -599,14 +572,14 @@ const AccountInfoModal = () => {
                 </div>
               )}
 
-              <div>
-                <label className="text-xs font-semibold text-muted-foreground block mb-1.5">
-                  Mô tả / Caption (tùy chọn)
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                  Mô tả bức ảnh (tùy chọn)
                 </label>
-                <textarea
-                  rows={2}
-                  className="w-full p-3 rounded-xl bg-muted/50 border border-border/60 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary resize-none"
-                  placeholder="Chia sẻ khoảnh khắc, cảm nghĩ về bức ảnh này..."
+                <input
+                  type="text"
+                  placeholder="Viết chú thích cho bức ảnh của bạn..."
+                  className="w-full h-10 px-3 rounded-xl bg-muted/60 border border-border/60 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
                   value={photoCaption}
                   onChange={(e) => setPhotoCaption(e.target.value)}
                 />
@@ -614,17 +587,19 @@ const AccountInfoModal = () => {
 
               <div className="flex justify-end gap-2 pt-2">
                 <Button
+                  type="button"
                   variant="outline"
-                  className="rounded-xl font-semibold"
                   onClick={() => setShowAddPhotoModal(false)}
                   disabled={uploadingPhoto}
+                  className="rounded-xl h-9 cursor-pointer"
                 >
                   Hủy
                 </Button>
                 <Button
-                  className="rounded-xl font-semibold gap-2 bg-primary hover:bg-primary/90 text-primary-foreground"
+                  type="button"
                   onClick={handleUploadPhoto}
-                  disabled={uploadingPhoto}
+                  disabled={uploadingPhoto || !photoFile}
+                  className="rounded-xl h-9 bg-primary text-primary-foreground gap-2 font-medium cursor-pointer"
                 >
                   {uploadingPhoto ? (
                     <>
@@ -636,134 +611,6 @@ const AccountInfoModal = () => {
                   )}
                 </Button>
               </div>
-            </div>
-          </DialogContent>
-        </Dialog>
-      )}
-
-      {/* ========================================================= */}
-      {/* MODAL XEM CHI TIẾT ẢNH CÁ NHÂN & TƯƠNG TÁC CẢM XÚC        */}
-      {/* ========================================================= */}
-      {selectedPhoto && (
-        <Dialog open={!!selectedPhoto} onOpenChange={() => setSelectedPhoto(null)}>
-          <DialogContent className="sm:max-w-4xl max-h-[95vh] p-0 bg-black/90 backdrop-blur-xl border border-white/10 shadow-2xl flex flex-col overflow-hidden rounded-2xl text-white">
-            <div className="relative flex-1 flex items-center justify-center bg-black/50 p-2 min-h-[50vh] max-h-[70vh] overflow-hidden">
-              <img
-                src={selectedPhoto.url}
-                alt={selectedPhoto.caption || "Photo"}
-                className="max-h-[68vh] max-w-full object-contain rounded-lg shadow-2xl"
-              />
-            </div>
-
-            {/* Bottom Info & Reaction Bar */}
-            <div className="p-4 bg-zinc-900/90 border-t border-white/10 flex flex-col gap-3">
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0 flex-1">
-                  {selectedPhoto.caption && (
-                    <p className="text-sm font-medium text-white mb-1 leading-snug">
-                      {selectedPhoto.caption}
-                    </p>
-                  )}
-                  <p className="text-xs text-zinc-400">
-                    Đăng ngày {new Date(selectedPhoto.createdAt).toLocaleDateString("vi-VN", {
-                      day: "2-digit",
-                      month: "2-digit",
-                      year: "numeric"
-                    })}
-                  </p>
-                </div>
-
-                {isSelf && (
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="text-red-400 hover:text-red-300 hover:bg-red-500/20 rounded-xl gap-1.5 h-8"
-                    onClick={() => handleDeletePhoto(selectedPhoto._id)}
-                  >
-                    <Trash2 className="size-4" />
-                    Xóa ảnh
-                  </Button>
-                )}
-              </div>
-
-              {/* Emoji Reaction Bar */}
-              <div className="flex items-center justify-between gap-2 pt-2 border-t border-white/10">
-                <div className="flex items-center gap-1.5 sm:gap-2">
-                  {EMOJI_REACTIONS.map((emoji) => {
-                    const isMyReaction = (selectedPhoto.reactions || []).some(
-                      (r) => (r.userId?._id || r.userId)?.toString() === currentUser?._id && r.emoji === emoji
-                    );
-                    const reactionsForEmoji = (selectedPhoto.reactions || []).filter((r) => r.emoji === emoji);
-                    const count = reactionsForEmoji.length;
-
-                    return (
-                      <div key={emoji} className="relative group/reaction">
-                        <button
-                          onClick={() => handleReactPhoto(selectedPhoto._id, emoji)}
-                          className={cn(
-                            "px-3 py-1.5 rounded-full flex items-center gap-1.5 text-base transition-all duration-200 hover:scale-110 active:scale-95",
-                            isMyReaction
-                              ? "bg-primary text-primary-foreground ring-2 ring-primary/60 font-bold shadow-md shadow-primary/30"
-                              : "bg-white/10 hover:bg-white/20 text-white"
-                          )}
-                          title={`Thả cảm xúc ${emoji}`}
-                        >
-                          <span>{emoji}</span>
-                          {count > 0 && <span className="text-xs font-semibold">{count}</span>}
-                        </button>
-                        
-                        {count > 0 && (
-                          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover/reaction:flex flex-col gap-1.5 bg-black/90 backdrop-blur-md p-2 rounded-xl border border-white/20 shadow-xl min-w-[140px] z-50">
-                            <span className="text-[10px] text-zinc-400 font-semibold px-1 uppercase tracking-wider">Đã thả {emoji}</span>
-                            <div className="flex flex-col gap-1 max-h-32 overflow-y-auto beautiful-scrollbar">
-                              {reactionsForEmoji.map((r, i) => (
-                                <div key={i} className="flex items-center gap-2 text-xs text-white bg-white/5 p-1 rounded-md">
-                                  <img src={r.userId?.avatarUrl || "https://github.com/shadcn.png"} alt="avatar" className="size-4 rounded-full object-cover" />
-                                  <span className="truncate max-w-[90px]">{r.userId?.displayName || "Người dùng"}</span>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-
-                {/* Total reactions count */}
-                <div className="text-xs font-medium text-zinc-400">
-                  {(selectedPhoto.reactions || []).length} lượt cảm xúc
-                </div>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
-      )}
-
-      {/* Lightbox xem ảnh đơn thuần (Cover / Avatar / Chat images) */}
-      {previewImage && (
-        <Dialog open={!!previewImage} onOpenChange={() => setPreviewImage(null)}>
-          <DialogContent
-            className="max-w-[95vw] w-auto max-h-[95vh] p-0 bg-transparent border-none shadow-none flex items-center justify-center overflow-visible"
-            showCloseButton={false}
-          >
-            <div className="relative inline-flex flex-col items-center justify-center max-w-[92vw] max-h-[90vh]">
-              <div className="absolute top-3 right-3 z-50 flex items-center gap-1.5 bg-black/75 backdrop-blur-md p-1.5 rounded-full border border-white/20 shadow-xl">
-                <button
-                  type="button"
-                  onClick={() => setPreviewImage(null)}
-                  className="p-1.5 text-white/80 hover:text-white hover:bg-white/20 rounded-full transition-colors cursor-pointer"
-                  title="Đóng (Esc)"
-                >
-                  <X className="size-4" />
-                </button>
-              </div>
-              <img
-                src={previewImage}
-                alt="Preview"
-                className="w-auto h-auto max-w-[90vw] max-h-[88vh] object-contain rounded-2xl shadow-2xl border border-white/10"
-                onClick={(e) => e.stopPropagation()}
-              />
             </div>
           </DialogContent>
         </Dialog>

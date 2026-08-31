@@ -33,65 +33,76 @@ const PreferencesForm = () => {
   };
 
   return (
-    <Card className="glass-strong border-border/30">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Sun className="h-5 w-5 text-primary" />
-          Tuỳ chỉnh ứng dụng
-        </CardTitle>
-        <CardDescription>
-          Cá nhân hoá trải nghiệm trò chuyện của bạn
-        </CardDescription>
-      </CardHeader>
+    <Card className="glass-strong border-border/30 rounded-2xl sm:rounded-3xl shadow-xl min-h-[440px] flex flex-col justify-between">
+      <div>
+        <CardHeader className="pb-4">
+          <CardTitle className="flex items-center gap-2.5 text-base sm:text-lg">
+            <div className="p-2 rounded-xl bg-amber-500/10 text-amber-500 border border-amber-500/20">
+              <Sun className="h-4.5 w-4.5" />
+            </div>
+            <div>
+              <span>Tuỳ chỉnh ứng dụng</span>
+              <CardDescription className="text-xs mt-0.5">
+                Cá nhân hoá giao diện và trải nghiệm trò chuyện của bạn
+              </CardDescription>
+            </div>
+          </CardTitle>
+        </CardHeader>
 
-      <CardContent className="space-y-6">
-        {/* Dark Mode */}
-        <div className="flex items-center justify-between">
-          <div>
-            <Label htmlFor="theme-toggle" className="text-base font-medium">
-              Chế độ tối
-            </Label>
-            <p className="text-sm text-muted-foreground">
-              Chuyển đổi giữa giao diện sáng và tối
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <Sun className="h-4 w-4 text-muted-foreground" />
+        <CardContent className="space-y-4 pt-2">
+          {/* Dark Mode */}
+          <div className="flex items-center justify-between p-3.5 rounded-2xl bg-muted/30 border border-border/40 hover:border-primary/30 transition-colors">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-xl bg-primary/10 text-primary shrink-0">
+                {isDark ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
+              </div>
+              <div>
+                <Label htmlFor="theme-toggle" className="text-xs sm:text-sm font-semibold cursor-pointer">
+                  Chế độ tối (Dark Mode)
+                </Label>
+                <p className="text-[11px] text-muted-foreground mt-0.5">
+                  Chuyển đổi giao diện sáng hoặc tối cho ứng dụng
+                </p>
+              </div>
+            </div>
             <Switch
               id="theme-toggle"
               checked={isDark}
               onCheckedChange={toggleTheme}
-              className="data-[state=checked]:bg-primary-glow"
+              className="data-[state=checked]:bg-primary shrink-0"
             />
-            <Moon className="h-4 w-4 text-muted-foreground" />
           </div>
-        </div>
 
-        {/* Online Status */}
-        <div className="flex items-center justify-between">
-          <div>
-            <Label htmlFor="online-status" className="text-base font-medium">
-              Trạng thái hoạt động
-            </Label>
-            <p className="text-sm text-muted-foreground">
-              Chọn trạng thái hiển thị của bạn
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <Activity className="h-4 w-4 text-muted-foreground" />
+          {/* Online Status */}
+          <div className="flex items-center justify-between p-3.5 rounded-2xl bg-muted/30 border border-border/40 hover:border-primary/30 transition-colors">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-500 shrink-0">
+                <Activity className="h-4 w-4" />
+              </div>
+              <div>
+                <Label htmlFor="online-status" className="text-xs sm:text-sm font-semibold">
+                  Trạng thái hoạt động
+                </Label>
+                <p className="text-[11px] text-muted-foreground mt-0.5">
+                  Chọn cách hiển thị trạng thái của bạn với bạn bè
+                </p>
+              </div>
+            </div>
             <select
               id="online-status"
               value={presenceStatus}
               onChange={handleStatusChange}
-              className="glass-light border-border/30 bg-background rounded-md text-sm p-1.5 focus:outline-none"
+              className="glass-light border border-border/50 bg-background/80 hover:bg-background rounded-xl text-xs px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary/40 font-medium cursor-pointer shrink-0"
             >
-              <option value="online">Trực tuyến</option>
-              <option value="busy">Đang bận</option>
-              <option value="offline">Tắt trạng thái hoạt động</option>
+              <option value="online">🟢 Trực tuyến</option>
+              <option value="busy">🔴 Đang bận</option>
+              <option value="offline">⚫ Ẩn hoạt động</option>
             </select>
           </div>
-        </div>
-      </CardContent>
+        </CardContent>
+      </div>
+
+
     </Card>
   );
 };

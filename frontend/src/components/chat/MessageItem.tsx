@@ -88,93 +88,122 @@ const FormattedText = ({
   );
 };
 
-import WaveSurfer from 'wavesurfer.js';
-
 const VoiceMessagePlayer = ({ src, isOwn }: { src: string; isOwn?: boolean }) => {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const waveSurferRef = useRef<WaveSurfer | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [duration, setDuration] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
   const [speed, setSpeed] = useState(1);
-  const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
-    if (!containerRef.current) return;
+    const audio = new Audio(src);
+    audioRef.current = audio;
 
-    const ws = WaveSurfer.create({
-      container: containerRef.current,
-      waveColor: isOwn ? 'rgba(255,255,255,0.4)' : '#d1d5db',
-      progressColor: isOwn ? '#ffffff' : '#3b82f6',
-      cursorColor: 'transparent',
-      barWidth: 2,
-      barGap: 2,
-      barRadius: 2,
-      height: 24,
-      url: src,
-    });
-    waveSurferRef.current = ws;
+    const onLoadedMetadata = () => {
+      setDuration(audio.duration || 0);
+    };
+    const onTimeUpdate = () => {
+      setCurrentTime(audio.currentTime || 0);
+    };
+    const onEnded = () => {
+      setIsPlaying(false);
+      setCurrentTime(0);
+    };
 
-    ws.on('play', () => setIsPlaying(true));
-    ws.on('pause', () => setIsPlaying(false));
-    ws.on('timeupdate', (time) => setCurrentTime(time));
-    ws.on('ready', (dur) => {
-      setDuration(dur);
-      setIsReady(true);
-    });
-    ws.on('finish', () => setIsPlaying(false));
+    audio.addEventListener("loadedmetadata", onLoadedMetadata);
+    audio.addEventListener("timeupdate", onTimeUpdate);
+    audio.addEventListener("ended", onEnded);
 
     return () => {
-      ws.destroy();
+      audio.pause();
+      audio.removeEventListener("loadedmetadata", onLoadedMetadata);
+      audio.removeEventListener("timeupdate", onTimeUpdate);
+      audio.removeEventListener("ended", onEnded);
     };
-  }, [src, isOwn]);
+  }, [src]);
 
   useEffect(() => {
-    if (waveSurferRef.current && isReady) {
-      waveSurferRef.current.setPlaybackRate(speed);
+    if (audioRef.current) {
+      audioRef.current.playbackRate = speed;
     }
-  }, [speed, isReady]);
+  }, [speed]);
 
   const togglePlay = () => {
-    waveSurferRef.current?.playPause();
+    if (!audioRef.current) return;
+    if (isPlaying) {
+      audioRef.current.pause();
+      setIsPlaying(false);
+    } else {
+      audioRef.current.play().then(() => setIsPlaying(true)).catch(console.error);
+    }
   };
 
   const toggleSpeed = () => {
     setSpeed((s) => (s === 1 ? 1.5 : s === 1.5 ? 2 : 1));
   };
 
-  const formatTime = (time: number) => {
-    if (!time || isNaN(time)) return '0:00';
-    const min = Math.floor(time / 60);
-    const sec = Math.floor(time % 60);
-    return `${min}:${sec < 10 ? '0' : ''}${sec}`;
+  const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const time = Number(e.target.value);
+    if (audioRef.current) {
+      audioRef.current.currentTime = time;
+      setCurrentTime(time);
+    }
   };
 
+  const formatTime = (time: number) => {
+    if (!time || isNaN(time)) return "0:00";
+    const min = Math.floor(time / 60);
+    const sec = Math.floor(time % 60);
+    return `${min}:${sec < 10 ? "0" : ""}${sec}`;
+  };
+
+  const progressPercent = duration > 0 ? (currentTime / duration) * 100 : 0;
+
   return (
-    <div className={cn("flex flex-col gap-1 w-48 lg:w-56", isOwn ? "text-primary-foreground" : "")}>
-      <div className="flex items-center gap-3">
+    <div className={cn("flex flex-col gap-1 w-48 lg:w-56 select-none", isOwn ? "text-primary-foreground" : "")}>
+      <div className="flex items-center gap-2.5">
         <button
+          type="button"
           onClick={togglePlay}
-          className={cn("shrink-0 size-8 flex items-center justify-center rounded-full transition-colors",
-            isOwn ? "bg-white/20 hover:bg-white/30" : "bg-primary/10 hover:bg-primary/20 text-primary"
+          className={cn(
+            "shrink-0 size-8 flex items-center justify-center rounded-full transition-colors",
+            isOwn ? "bg-white/20 hover:bg-white/30 text-white" : "bg-primary/10 hover:bg-primary/20 text-primary"
           )}
         >
           {isPlaying ? <Pause className="size-4 fill-current" /> : <Play className="size-4 fill-current ml-0.5" />}
         </button>
-        
-        <div className="flex-1 w-full min-w-0" ref={containerRef} />
-        
+
+        {/* Waveform / Progress bar */}
+        <div className="flex-1 flex items-center relative py-1">
+          <div className="w-full h-1.5 rounded-full bg-muted/60 relative overflow-hidden">
+            <div
+              className={cn("h-full transition-all duration-100", isOwn ? "bg-white" : "bg-primary")}
+              style={{ width: `${progressPercent}%` }}
+            />
+          </div>
+          <input
+            type="range"
+            min={0}
+            max={duration || 100}
+            value={currentTime}
+            onChange={handleSeek}
+            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+          />
+        </div>
+
         <button
+          type="button"
           onClick={toggleSpeed}
-          className={cn("shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded transition-colors",
-            isOwn ? "bg-white/20 hover:bg-white/30" : "bg-primary/10 hover:bg-primary/20 text-primary"
+          className={cn(
+            "shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded transition-colors",
+            isOwn ? "bg-white/20 hover:bg-white/30 text-white" : "bg-primary/10 hover:bg-primary/20 text-primary"
           )}
         >
           {speed}x
         </button>
       </div>
-      
-      <div className="flex justify-between items-center text-[10px] px-1 opacity-70">
+
+      <div className="flex justify-between items-center text-[10px] px-1 opacity-80 font-mono">
         <span>{formatTime(currentTime)}</span>
         <span>{formatTime(duration)}</span>
       </div>
@@ -341,16 +370,10 @@ const MessageItem = ({
     ? message.content!.replace("[STORY_REPLY] ", "").replace("Đã trả lời tin của bạn: ", "").trim() 
     : message.content;
 
-  const isImageOrVideoReply = isStoryReply || !!(message.replyTo && message.replyTo.imgUrl);
-  const replyImgUrl = isStoryReply ? message.imgUrl : message.replyTo?.imgUrl;
-  
-  let replyHeaderName = "";
-  if (isStoryReply) {
-      replyHeaderName = message.isOwn ? "Bạn đã trả lời tin" : `${getDisplayName()} đã trả lời tin`;
-  } else if (message.replyTo) {
-      const targetName = message.replyTo.senderId === user?._id ? "bạn" : (selectedConvo.participants.find(p => p._id === message.replyTo?.senderId)?.displayName || "người dùng");
-      replyHeaderName = message.isOwn ? `Bạn đã trả lời ${targetName}` : `${getDisplayName()} đã trả lời ${targetName}`;
-  }
+  const replyImgUrl = isStoryReply ? message.imgUrl : undefined;
+  const replyHeaderName = isStoryReply
+    ? (message.isOwn ? "Bạn đã trả lời tin" : `${getDisplayName()} đã trả lời tin`)
+    : "";
 
   return (
     <>
@@ -412,29 +435,64 @@ const MessageItem = ({
             </span>
           )}
 
-          {message.replyTo && !isImageOrVideoReply && (
-            <div
-              className="flex items-center gap-2 mb-1 px-3 py-1.5 bg-muted/40 rounded-lg border-l-2 border-primary cursor-pointer hover:bg-muted/60 transition-colors max-w-full"
-              onClick={() => {
-                const el = document.querySelector(`.message-${message.replyTo?._id}`);
-                el?.scrollIntoView({ behavior: "smooth", block: "center" });
-                el?.classList.add("bg-primary/20", "transition-colors", "duration-500");
-                setTimeout(() => el?.classList.remove("bg-primary/20"), 1500);
-              }}
-            >
-              <Reply className="size-3 text-muted-foreground shrink-0" />
-              <div className="flex flex-col text-[11px] min-w-0">
-                <span className="font-semibold text-primary truncate">
-                  {message.replyTo.senderId === user?._id ? "Bạn" : (selectedConvo.participants.find(p => p._id === message.replyTo?.senderId)?.displayName || "người dùng")}
-                </span>
-                <span className="text-muted-foreground truncate">
-                  {message.replyTo.isViewOnce ? "[Tin nhắn xem một lần]" : message.replyTo.isRecalled ? "Tin nhắn đã thu hồi" : message.replyTo.audioUrl ? "🎵 Tin nhắn thoại" : message.replyTo.imgUrl ? "🖼️ Hình ảnh" : message.replyTo.content}
-                </span>
-              </div>
-            </div>
-          )}
+          {message.replyTo && !isStoryReply && (() => {
+            const replySenderId = typeof message.replyTo?.senderId === "object"
+              ? (message.replyTo.senderId as any)?._id || String(message.replyTo.senderId)
+              : message.replyTo?.senderId
+              ? String(message.replyTo.senderId)
+              : undefined;
 
-          {isImageOrVideoReply && (
+            const replySenderName = replySenderId === user?._id
+              ? "Bạn"
+              : selectedConvo.participants.find((p) => {
+                  const pId = p._id || (p as any).userId?._id || (p as any).userId;
+                  return pId?.toString() === replySenderId;
+                })?.displayName || "người dùng";
+
+            return (
+              <div
+                className="flex items-center justify-between gap-3 mb-1 px-3 py-1.5 bg-muted/40 rounded-xl border-l-2 border-primary cursor-pointer hover:bg-muted/60 transition-all max-w-full group/reply shadow-xs"
+                onClick={() => {
+                  const el = document.querySelector(`.message-${message.replyTo?._id}`);
+                  el?.scrollIntoView({ behavior: "smooth", block: "center" });
+                  el?.classList.add("bg-primary/20", "transition-colors", "duration-500");
+                  setTimeout(() => el?.classList.remove("bg-primary/20"), 1500);
+                }}
+              >
+                <div className="flex items-center gap-2 min-w-0">
+                  <Reply className="size-3 text-primary shrink-0 group-hover/reply:translate-x-0.5 transition-transform" />
+                  <div className="flex flex-col text-[11px] min-w-0">
+                    <span className="font-semibold text-primary truncate">
+                      {replySenderName}
+                    </span>
+                    <span className="text-muted-foreground truncate text-[11px]">
+                      {message.replyTo.isViewOnce
+                        ? "[Tin nhắn xem một lần]"
+                        : message.replyTo.isRecalled
+                        ? "Tin nhắn đã thu hồi"
+                        : message.replyTo.audioUrl
+                        ? "🎵 Tin nhắn thoại"
+                        : message.replyTo.imgUrl
+                        ? (message.replyTo.content || "Hình ảnh")
+                        : message.replyTo.fileUrl
+                        ? `📎 ${message.replyTo.fileName || "Tệp đính kèm"}`
+                        : message.replyTo.content}
+                    </span>
+                  </div>
+                </div>
+
+                {message.replyTo.imgUrl && (
+                  <img
+                    src={message.replyTo.imgUrl}
+                    alt="Hình ảnh trả lời"
+                    className="size-10 rounded-lg object-cover border border-border/50 shrink-0 shadow-xs"
+                  />
+                )}
+              </div>
+            );
+          })()}
+
+          {isStoryReply && (
             <div className={cn("flex flex-col gap-1 mb-1", message.isOwn ? "items-end" : "items-start")}>
                <span className="text-[11px] text-muted-foreground flex items-center gap-1 mb-0.5">
                   <Reply className="size-3" /> {replyHeaderName}
@@ -474,7 +532,7 @@ const MessageItem = ({
             )}
           </div>
 
-          <div className={cn("relative flex items-center gap-2", message.isOwn ? "flex-row-reverse" : "flex-row", isImageOrVideoReply ? "z-10" : "")}>
+          <div className={cn("relative flex items-center gap-2", message.isOwn ? "flex-row-reverse" : "flex-row", isStoryReply ? "z-10" : "")}>
             <Card
               onDoubleClick={() => !message.isRecalled && reactToMessage(message._id, '❤️')}
               className={cn(
@@ -482,7 +540,7 @@ const MessageItem = ({
                 message.isOwn ? "chat-bubble-sent border-0" : "chat-bubble-received",
                 message.isRecalled ? "bg-muted/50 border border-border" : "",
                 isIncognito ? "select-none pointer-events-auto" : "",
-                isImageOrVideoReply ? "-mt-3" : ""
+                isStoryReply ? "-mt-3" : ""
               )}
               onCopy={(e) => {
                 if (isIncognito) {

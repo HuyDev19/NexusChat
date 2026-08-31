@@ -90,19 +90,24 @@ export const isNoteExpired = (note?: any) => {
   return new Date(note.expiresAt).getTime() < Date.now();
 };
 
-export const isStreakActive = (streak?: { count: number; lastMessageDate?: string | Date | null }) => {
+export const isStreakActive = (streak?: { count: number; lastMessageDate?: string | Date | null; isBothMessaged?: boolean }) => {
   if (!streak || !streak.count || streak.count < 1 || !streak.lastMessageDate) return false;
   const d1 = new Date(streak.lastMessageDate);
+  if (isNaN(d1.getTime())) return false;
   const d2 = new Date();
   const u1 = Date.UTC(d1.getFullYear(), d1.getMonth(), d1.getDate());
   const u2 = Date.UTC(d2.getFullYear(), d2.getMonth(), d2.getDate());
   const dayDiff = Math.floor((u2 - u1) / (1000 * 60 * 60 * 24));
-  return dayDiff < 2;
+  // Nếu đã qua >= 2 ngày không nhắn -> Mất chuỗi hoàn toàn
+  if (dayDiff >= 2) return false;
+  // Nếu chỉ có 1 người nhắn và count <= 1 -> Chưa thành chuỗi
+  if (streak.count <= 1 && !streak.isBothMessaged) return false;
+  return true;
 };
 
 export const isStreakOnFire = (streak?: { count: number; lastMessageDate?: string | Date | null; isBothMessaged?: boolean; senders?: string[] }) => {
   if (!isStreakActive(streak)) return false;
-  return Boolean(streak?.isBothMessaged || (streak?.senders && streak.senders.length >= 2));
+  return Boolean(streak?.isBothMessaged);
 };
 
 export const getOfflineMinutes = (dateStrOrDate?: string | Date | null): number | null => {

@@ -15,15 +15,17 @@ export const getEffectiveStreak = (streak) => {
   }
   const now = new Date();
   const dayDiff = getDayDifference(streak.lastMessageDate, now);
-  // Nếu đã qua 2 ngày không nhắn (bỏ lỡ cả ngày hôm qua) -> Chuỗi bị đứt
+  // Nếu đã qua >= 2 ngày không nhắn -> Chuỗi bị đứt hoàn toàn
   if (dayDiff >= 2) {
     return { count: 0, lastMessageDate: streak.lastMessageDate, senders: [], isBothMessaged: false };
   }
+  // Nếu sang ngày mới (dayDiff === 1), isBothMessaged cho ngày hôm nay mặc định là false cho đến khi cả 2 cùng nhắn hôm nay
+  const isBoth = dayDiff === 0 ? Boolean(streak.isBothMessaged) : false;
   return {
     count: streak.count,
     lastMessageDate: streak.lastMessageDate,
-    senders: Array.isArray(streak.senders) ? streak.senders : [],
-    isBothMessaged: Boolean(streak.isBothMessaged || (streak.senders && streak.senders.length >= 2)),
+    senders: dayDiff === 0 && Array.isArray(streak.senders) ? streak.senders : [],
+    isBothMessaged: isBoth,
   };
 };
 
@@ -79,26 +81,27 @@ export const updateConversationAfterCreateMessage = async (
     const lastDate = currentStreak.lastMessageDate;
     const senderIdStr = senderId.toString();
 
-    // Lấy tin nhắn trong vòng 24h để xác định cả 2 đã nhắn lại với nhau chưa
-    const recentMessages = await Message.find({
+    // Lấy tin nhắn từ đầu ngày hôm nay (00:00:00) để xác định cả 2 đã nhắn lại với nhau trong ngày chưa
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+    const todayMessages = await Message.find({
       conversationId: conversation._id,
-      createdAt: { $gte: new Date(now.getTime() - 24 * 60 * 60 * 1000) }
+      createdAt: { $gte: startOfToday }
     }).select("senderId").limit(30);
 
-    const activeSenders = new Set(recentMessages.map(m => m.senderId.toString()));
+    const activeSenders = new Set(todayMessages.map(m => m.senderId.toString()));
     activeSenders.add(senderIdStr);
 
     const participantIds = (conversation.participants || []).map(p => (p.userId?._id || p.userId || p._id).toString());
     const isBoth = participantIds.length >= 2 && participantIds.every(id => activeSenders.has(id));
 
-    let count = currentStreak.count || 1;
-    if (!lastDate) {
-      count = isBoth ? 2 : 1;
+    let count = currentStreak.count || 0;
+    if (!lastDate || currentStreak.count < 1) {
+      count = 1;
     } else {
       const dayDiff = getDayDifference(lastDate, now);
       if (dayDiff >= 2) {
-        // Đứt chuỗi -> Bắt đầu chuỗi mới
-        count = isBoth ? 2 : 1;
+        // Bỏ lỡ >= 1 ngày -> Đứt chuỗi cũ, bắt đầu chuỗi mới từ 1
+        count = 1;
       } else if (dayDiff === 1) {
         // Sang ngày kế tiếp: nếu hôm nay cả 2 đã nhắn -> Tăng tiếp chuỗi!
         if (isBoth) {
@@ -108,11 +111,7 @@ export const updateConversationAfterCreateMessage = async (
         }
       } else {
         // Cùng ngày (dayDiff === 0)
-        if (isBoth && !currentStreak.isBothMessaged) {
-          count = Math.max((currentStreak.count || 1) + 1, 2);
-        } else {
-          count = Math.max(currentStreak.count || 1, 1);
-        }
+        count = Math.max(currentStreak.count || 1, 1);
       }
     }
 

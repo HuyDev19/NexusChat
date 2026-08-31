@@ -15,7 +15,6 @@ import {
   Maximize2, 
   Minimize2, 
   RotateCcw,
-  Sparkles,
   Layers
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -106,10 +105,12 @@ export const MediaViewerModal = () => {
     <Dialog open={isOpen} onOpenChange={(open) => !open && closeViewer()}>
       <DialogContent
         className={cn(
-          "p-0 bg-zinc-950/95 backdrop-blur-2xl border border-white/15 shadow-2xl flex flex-col overflow-hidden text-white transition-all duration-300",
+          "p-0 bg-zinc-950/95 backdrop-blur-2xl border border-white/15 shadow-2xl flex flex-col overflow-hidden text-white transition-all duration-300 !z-[999999]",
           isFullscreen
-            ? "fixed inset-0 w-screen h-screen max-w-none max-h-none rounded-none border-none z-[9999]"
-            : "!w-[95vw] !max-w-[95vw] sm:!max-w-[95vw] md:!max-w-[94vw] lg:!max-w-[92vw] xl:!max-w-[1440px] h-[92vh] max-h-[94vh] rounded-2xl"
+            ? "fixed inset-0 w-screen h-screen max-w-none max-h-none rounded-none border-none"
+            : items.length > 1
+              ? "!w-[95vw] !max-w-[95vw] sm:!max-w-[95vw] md:!max-w-[94vw] lg:!max-w-[92vw] xl:!max-w-[1440px] h-[92vh] max-h-[94vh] rounded-2xl"
+              : "w-[90vw] sm:w-[84vw] md:w-[80vw] max-w-[1120px] h-[92vh] max-h-[94vh] rounded-2xl sm:rounded-3xl"
         )}
         showCloseButton={false}
       >
@@ -137,7 +138,7 @@ export const MediaViewerModal = () => {
                 size="icon"
                 onClick={() => setShowThumbnails((prev) => !prev)}
                 className={cn(
-                  "size-8 rounded-lg text-zinc-400 hover:text-white hover:bg-white/10 transition-colors",
+                  "size-8 rounded-lg text-zinc-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer",
                   showThumbnails && "text-primary bg-primary/10"
                 )}
                 title={showThumbnails ? "Ẩn danh sách ảnh" : "Hiện danh sách ảnh"}
@@ -150,7 +151,7 @@ export const MediaViewerModal = () => {
               variant="ghost"
               size="icon"
               onClick={handleToggleFullscreen}
-              className="size-8 rounded-lg text-zinc-400 hover:text-white hover:bg-white/10 transition-colors"
+              className="size-8 rounded-lg text-zinc-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
               title={isFullscreen ? "Thu nhỏ cửa sổ" : "Mở rộng toàn màn hình"}
             >
               {isFullscreen ? <Minimize2 className="size-4" /> : <Maximize2 className="size-4" />}
@@ -159,8 +160,11 @@ export const MediaViewerModal = () => {
             <Button
               variant="ghost"
               size="icon"
-              onClick={closeViewer}
-              className="size-8 rounded-lg text-zinc-400 hover:text-rose-400 hover:bg-rose-500/10 transition-colors"
+              onClick={(e) => {
+                e.stopPropagation();
+                closeViewer();
+              }}
+              className="size-8 rounded-lg text-zinc-400 hover:text-rose-400 hover:bg-rose-500/10 transition-colors cursor-pointer"
               title="Đóng (Esc)"
             >
               <X className="size-4.5" />
@@ -175,7 +179,7 @@ export const MediaViewerModal = () => {
           {/* Main Image Stage */}
           <div
             ref={containerRef}
-            className="flex-1 relative flex items-center justify-center bg-black/90 overflow-hidden select-none p-4"
+            className="flex-1 relative flex items-center justify-center bg-black/90 overflow-hidden select-none p-3 sm:p-5"
             onDoubleClick={() => setZoom((prev) => (prev > 1 ? 1 : 1.75))}
           >
             {/* Previous Button */}
@@ -217,7 +221,7 @@ export const MediaViewerModal = () => {
                   transform: `scale(${zoom}) rotate(${rotation}deg)`,
                   transition: "transform 0.2s cubic-bezier(0.2, 0, 0.2, 1)",
                 }}
-                className="max-h-full max-w-full w-auto h-auto object-contain rounded-lg shadow-2xl pointer-events-auto cursor-zoom-in"
+                className="max-h-full max-w-full w-auto h-auto object-contain rounded-xl shadow-2xl pointer-events-auto cursor-zoom-in transition-transform"
                 draggable={false}
               />
             </div>
@@ -293,7 +297,7 @@ export const MediaViewerModal = () => {
               variant="ghost"
               size="icon"
               onClick={() => setZoom((prev) => Math.max(prev - 0.25, 0.5))}
-              className="size-8 rounded-lg text-zinc-300 hover:text-white hover:bg-white/10 transition-colors"
+              className="size-8 rounded-lg text-zinc-300 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
               title="Thu nhỏ (-)"
             >
               <ZoomOut className="size-4" />
@@ -307,7 +311,7 @@ export const MediaViewerModal = () => {
               variant="ghost"
               size="icon"
               onClick={() => setZoom((prev) => Math.min(prev + 0.25, 3))}
-              className="size-8 rounded-lg text-zinc-300 hover:text-white hover:bg-white/10 transition-colors"
+              className="size-8 rounded-lg text-zinc-300 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
               title="Phóng to (+)"
             >
               <ZoomIn className="size-4" />
@@ -318,7 +322,7 @@ export const MediaViewerModal = () => {
               variant="ghost"
               size="icon"
               onClick={() => setRotation((prev) => (prev + 90) % 360)}
-              className="size-8 rounded-lg text-zinc-300 hover:text-white hover:bg-white/10 transition-colors"
+              className="size-8 rounded-lg text-zinc-300 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
               title="Xoay 90°"
             >
               <RotateCw className="size-4" />
@@ -333,7 +337,7 @@ export const MediaViewerModal = () => {
                   setZoom(1);
                   setRotation(0);
                 }}
-                className="size-8 rounded-lg text-zinc-300 hover:text-white hover:bg-white/10 transition-colors"
+                className="size-8 rounded-lg text-zinc-300 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
                 title="Khôi phục kích thước gốc (0)"
               >
                 <RotateCcw className="size-4" />
@@ -347,7 +351,7 @@ export const MediaViewerModal = () => {
               href={currentItem.url}
               target="_blank"
               rel="noreferrer"
-              className="size-8 rounded-lg text-zinc-300 hover:text-white hover:bg-white/10 flex items-center justify-center transition-colors"
+              className="size-8 rounded-lg text-zinc-300 hover:text-white hover:bg-white/10 flex items-center justify-center transition-colors cursor-pointer"
               title="Mở tab mới"
             >
               <ExternalLink className="size-4" />
@@ -358,7 +362,7 @@ export const MediaViewerModal = () => {
               variant="ghost"
               size="icon"
               onClick={handleDownload}
-              className="size-8 rounded-lg text-zinc-300 hover:text-white hover:bg-white/10 transition-colors"
+              className="size-8 rounded-lg text-zinc-300 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
               title="Tải ảnh về máy"
             >
               <Download className="size-4" />

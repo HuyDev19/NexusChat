@@ -83,7 +83,7 @@ export const sendDirectMessage = async (req, res) => {
 
     await conversation.save();
 
-    await message.populate("replyTo", "content senderId imgUrl audioUrl isRecalled");
+    await message.populate("replyTo", "content senderId imgUrl audioUrl fileUrl fileName isRecalled isViewOnce");
     if (sharedContactId) {
       await message.populate("sharedContact", "_id displayName username avatarUrl");
     }
@@ -149,7 +149,7 @@ export const sendGroupMessage = async (req, res) => {
 
     await conversation.save();
 
-    await message.populate("replyTo", "content senderId imgUrl audioUrl isRecalled");
+    await message.populate("replyTo", "content senderId imgUrl audioUrl fileUrl fileName isRecalled isViewOnce");
     if (sharedContactId) {
       await message.populate("sharedContact", "_id displayName username avatarUrl");
     }

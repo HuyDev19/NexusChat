@@ -11,18 +11,12 @@ const StatusBadge = ({ status = "offline", lastActiveAt, showMinutesBadge = fals
     if (!lastActiveAt || !showMinutesBadge) return null;
 
     const offlineMinutes = getOfflineMinutes(lastActiveAt);
-    // Nếu không có thời gian hoặc đã offline hơn 24 giờ (1440 phút) -> không hiển thị gì cả
-    if (offlineMinutes === null || offlineMinutes < 0 || offlineMinutes >= 24 * 60) {
+    // Nếu không có thời gian hoặc đã offline từ 1 giờ (60 phút) trở lên -> không hiển thị gì cả
+    if (offlineMinutes === null || offlineMinutes < 0 || offlineMinutes >= 60) {
       return null;
     }
 
-    let badgeText = "";
-    if (offlineMinutes < 60) {
-      badgeText = offlineMinutes < 1 ? "1p" : `${offlineMinutes}p`;
-    } else {
-      const hours = Math.floor(offlineMinutes / 60);
-      badgeText = `${hours}h`;
-    }
+    const badgeText = offlineMinutes < 1 ? "1p" : `${offlineMinutes}p`;
 
     return (
       <div

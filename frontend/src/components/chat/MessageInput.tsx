@@ -811,32 +811,52 @@ const MessageInput = ({ selectedConvo }: { selectedConvo: Conversation }) => {
 
       {/* Replying Banner */}
       {replyingToMessage && (
-        <div className="flex items-center justify-between px-4 py-2 bg-muted/30 border-t border-b">
-          <div className="flex items-center gap-2 overflow-hidden">
-            <Reply className="size-4 text-primary shrink-0" />
-            <div className="flex flex-col text-sm truncate">
+        <div className="flex items-center justify-between px-4 py-2.5 bg-muted/40 border-t border-b border-border/40 backdrop-blur-md animate-in slide-in-from-bottom-2 duration-200">
+          <div className="flex items-center gap-2.5 overflow-hidden min-w-0">
+            <div className="p-1 rounded-lg bg-primary/10 text-primary shrink-0">
+              <Reply className="size-3.5" />
+            </div>
+            <div className="flex flex-col text-xs sm:text-sm truncate min-w-0">
               <span className="font-semibold text-primary truncate">
                 Đang trả lời{" "}
-                {participants.find((p) => p._id === replyingToMessage.senderId)?.displayName ||
-                  "người dùng"}
+                {replyingToMessage.senderId === user?._id
+                  ? "chính mình"
+                  : participants.find((p) => p._id === replyingToMessage.senderId)?.displayName || "người dùng"}
               </span>
-              <span className="text-muted-foreground truncate">
-                {replyingToMessage.audioUrl
+              <span className="text-muted-foreground truncate text-xs">
+                {replyingToMessage.isViewOnce
+                  ? "[Tin nhắn xem một lần]"
+                  : replyingToMessage.isRecalled
+                  ? "Tin nhắn đã thu hồi"
+                  : replyingToMessage.audioUrl
                   ? "🎵 Tin nhắn thoại"
                   : replyingToMessage.imgUrl
-                  ? "🖼️ Hình ảnh"
+                  ? (replyingToMessage.content || "Hình ảnh")
+                  : replyingToMessage.fileUrl
+                  ? `📎 ${replyingToMessage.fileName || "Tệp đính kèm"}`
                   : replyingToMessage.content}
               </span>
             </div>
           </div>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="size-6 shrink-0 cursor-pointer"
-            onClick={() => setReplyingToMessage(null)}
-          >
-            <X className="size-4" />
-          </Button>
+
+          <div className="flex items-center gap-2 shrink-0">
+            {replyingToMessage.imgUrl && (
+              <img
+                src={replyingToMessage.imgUrl}
+                alt="Hình ảnh trả lời"
+                className="size-10 rounded-lg object-cover border border-border/50 shadow-xs shrink-0"
+              />
+            )}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="size-7 shrink-0 cursor-pointer rounded-lg hover:bg-muted"
+              onClick={() => setReplyingToMessage(null)}
+              title="Hủy trả lời"
+            >
+              <X className="size-4" />
+            </Button>
+          </div>
         </div>
       )}
 

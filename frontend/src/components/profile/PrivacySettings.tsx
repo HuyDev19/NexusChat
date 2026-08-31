@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { Shield, Bell, ShieldBan, KeyRound, Loader2, Mail, RotateCcw, X, UserX, Trash2, CheckCircle2, AlertTriangle, Eye } from "lucide-react";
+import { createPortal } from "react-dom";
+import { Shield, Bell, ShieldBan, KeyRound, Loader2, Mail, RotateCcw, X, UserX, Trash2, CheckCircle2, AlertTriangle, Eye, ChevronRight } from "lucide-react";
 import {
   Card,
   CardHeader,
@@ -10,6 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useUserStore } from "@/stores/useUserStore";
 import { userService } from "@/services/userService";
@@ -109,6 +111,7 @@ const PrivacySettings = () => {
       } else {
         setNotificationsEnabled(true);
         localStorage.setItem("desktop_notifications", "enabled");
+        toast.success("Đã bật thông báo trình duyệt");
       }
     } else {
       localStorage.setItem("desktop_notifications", "disabled");
@@ -229,41 +232,97 @@ const PrivacySettings = () => {
   };
 
   return (
-    <Card className="glass-strong border-border/30 relative">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Shield className="h-5 w-5 text-purple-400" />
-          Quyền riêng tư & Bảo mật
+    <Card className="glass-strong border-border/30 rounded-3xl shadow-xl">
+      <CardHeader className="pb-4">
+        <CardTitle className="flex items-center gap-2.5 text-base sm:text-lg">
+          <div className="p-2 rounded-xl bg-purple-500/10 text-purple-400 border border-purple-500/20">
+            <Shield className="h-4.5 w-4.5" />
+          </div>
+          <div>
+            <span>Quyền riêng tư & Bảo mật</span>
+            <CardDescription className="text-xs mt-0.5">
+              Quản lý bảo mật tài khoản và cài đặt quyền riêng tư
+            </CardDescription>
+          </div>
         </CardTitle>
-        <CardDescription>
-          Quản lý cài đặt quyền riêng tư và bảo mật của bạn
-        </CardDescription>
       </CardHeader>
 
-      <CardContent className="space-y-5">
+      <CardContent className="space-y-4 pt-2">
         {/* ========================================================= */}
-        {/* SECTION 1: ĐỔI MẬT KHẨU (TRỰC TIẾP TRONG TAB)               */}
+        {/* SECTION 1: CÀI ĐẶT THÔNG BÁO VÀ ĐÃ XEM (ĐỒNG BỘ VỚI SWITCH) */}
         {/* ========================================================= */}
-        <div className="p-4 rounded-2xl bg-muted/40 border border-border/50 space-y-3">
+        <div className="flex items-center justify-between p-3.5 rounded-2xl bg-muted/30 border border-border/40 hover:border-purple-500/30 transition-colors">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-xl bg-indigo-500/10 text-indigo-400 shrink-0">
+              <Bell className="h-4 w-4" />
+            </div>
+            <div>
+              <Label htmlFor="notification-toggle" className="text-xs sm:text-sm font-semibold cursor-pointer">
+                Thông báo trình duyệt
+              </Label>
+              <p className="text-[11px] text-muted-foreground mt-0.5">
+                Nhận thông báo khi có tin nhắn mới dù đang ẩn tab
+              </p>
+            </div>
+          </div>
+          <Switch
+            id="notification-toggle"
+            checked={notificationsEnabled}
+            onCheckedChange={handleToggleNotifications}
+            disabled={!isNotificationSupported}
+            className="data-[state=checked]:bg-purple-600 shrink-0"
+          />
+        </div>
+
+        <div className="flex items-center justify-between p-3.5 rounded-2xl bg-muted/30 border border-border/40 hover:border-purple-500/30 transition-colors">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-xl bg-sky-500/10 text-sky-400 shrink-0">
+              <Eye className="h-4 w-4" />
+            </div>
+            <div>
+              <Label htmlFor="read-receipts-toggle" className="text-xs sm:text-sm font-semibold cursor-pointer">
+                Hiển thị "Đã xem" (Read receipts)
+              </Label>
+              <p className="text-[11px] text-muted-foreground mt-0.5">
+                Cho phép người khác thấy khi bạn đã đọc tin nhắn
+              </p>
+            </div>
+          </div>
+          <Switch
+            id="read-receipts-toggle"
+            checked={Boolean(user?.readReceipts)}
+            onCheckedChange={handleToggleReadReceipts}
+            className="data-[state=checked]:bg-purple-600 shrink-0"
+          />
+        </div>
+
+        {/* ========================================================= */}
+        {/* SECTION 2: ĐỔI MẬT KHẨU TÀI KHOẢN                           */}
+        {/* ========================================================= */}
+        <div className="p-4 rounded-2xl bg-muted/30 border border-border/40 space-y-3">
           <div className="flex items-center justify-between">
-            <h4 className="font-semibold text-xs flex items-center gap-2 text-foreground">
-              <KeyRound className="w-4 h-4 text-purple-400" />
+            <h4 className="font-semibold text-xs sm:text-sm flex items-center gap-2 text-foreground">
+              <div className="p-1.5 rounded-lg bg-purple-500/10 text-purple-400">
+                <KeyRound className="w-3.5 h-3.5" />
+              </div>
               <span>Đổi mật khẩu tài khoản</span>
             </h4>
-            <span className="text-[10px] text-muted-foreground font-medium">Xác thực OTP qua Gmail</span>
+            <span className="text-[10px] text-purple-400/90 font-medium px-2 py-0.5 rounded-full bg-purple-500/10 border border-purple-500/20">
+              OTP Gmail
+            </span>
           </div>
 
           {changePwStep === 1 ? (
             <div className="flex items-center justify-between pt-1 gap-2">
               <span className="text-xs text-muted-foreground truncate">
-                Email nhận mã: <strong className="text-purple-400 font-semibold">{user?.email}</strong>
+                Email nhận mã: <strong className="text-foreground font-medium">{user?.email}</strong>
               </span>
               <Button
                 type="button"
                 onClick={handleSendPwOtp}
                 disabled={isPwLoading}
                 size="sm"
-                className="h-8 text-xs bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white gap-1.5 font-medium shrink-0 rounded-xl"
+                className="h-8 text-xs bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white gap-1.5 font-medium shrink-0 rounded-xl shadow-xs"
               >
                 {isPwLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Mail className="w-3.5 h-3.5" />}
                 <span>Gửi mã OTP</span>
@@ -272,7 +331,7 @@ const PrivacySettings = () => {
           ) : (
             <div className="space-y-3 pt-1 animate-in fade-in duration-200">
               <div className="p-2.5 rounded-xl bg-purple-950/30 border border-purple-500/30 text-xs text-purple-200 flex items-center justify-between">
-                <span>Mã OTP 6 chữ số đã gửi tới <strong>{user?.email}</strong></span>
+                <span>Mã OTP 6 số đã gửi tới <strong>{user?.email}</strong></span>
                 <button
                   type="button"
                   disabled={pwTimer > 0 || isPwLoading}
@@ -294,7 +353,7 @@ const PrivacySettings = () => {
                     placeholder="123456"
                     value={pwOtp}
                     onChange={(e) => setPwOtp(e.target.value.replace(/\D/g, ""))}
-                    className="h-8.5 text-xs text-center font-bold tracking-[4px] bg-purple-950/20 border-purple-500/40 focus:border-purple-500"
+                    className="h-8.5 text-xs text-center font-bold tracking-[4px] bg-background/80 border-purple-500/40 focus:border-purple-500 rounded-xl"
                   />
                 </div>
                 <div className="space-y-1">
@@ -305,7 +364,7 @@ const PrivacySettings = () => {
                     placeholder="••••••••"
                     value={newPw}
                     onChange={(e) => setNewPw(e.target.value)}
-                    className="h-8.5 text-xs bg-muted/30"
+                    className="h-8.5 text-xs bg-background/80 rounded-xl"
                   />
                 </div>
                 <div className="space-y-1">
@@ -316,7 +375,7 @@ const PrivacySettings = () => {
                     placeholder="••••••••"
                     value={confirmPw}
                     onChange={(e) => setConfirmPw(e.target.value)}
-                    className="h-8.5 text-xs bg-muted/30"
+                    className="h-8.5 text-xs bg-background/80 rounded-xl"
                   />
                 </div>
               </div>
@@ -330,16 +389,6 @@ const PrivacySettings = () => {
                   className="h-8 text-xs rounded-xl"
                 >
                   Hủy
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  disabled={pwTimer > 0 || isPwLoading}
-                  onClick={handleSendPwOtp}
-                  className="h-8 text-xs rounded-xl"
-                >
-                  {pwTimer > 0 ? `Gửi lại sau (${pwTimer}s)` : "Gửi lại OTP"}
                 </Button>
                 <Button
                   type="button"
@@ -357,96 +406,74 @@ const PrivacySettings = () => {
         </div>
 
         {/* ========================================================= */}
-        {/* SECTION 2 & 3: CÀI ĐẶT THÔNG BÁO VÀ DANH SÁCH CHẶN        */}
+        {/* SECTION 3: DANH SÁCH CHẶN                                 */}
         {/* ========================================================= */}
-        <div className="space-y-2.5">
-          {/* Cài đặt thông báo */}
-          <Button
-            variant="outline"
-            onClick={handleToggleNotifications}
-            className="w-full justify-between glass-light border-border/30 hover:border-purple-500/50 hover:bg-purple-500/10 transition-all text-xs h-10 px-4 rounded-xl"
-          >
-            <div className="flex items-center gap-2">
-              <Bell className="h-4 w-4 text-indigo-400" />
-              <span>Cài đặt thông báo trình duyệt</span>
+        <div
+          onClick={handleOpenBlockedModal}
+          className="flex items-center justify-between p-3.5 rounded-2xl bg-muted/30 border border-border/40 hover:border-purple-500/40 hover:bg-muted/50 transition-all cursor-pointer group"
+        >
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-xl bg-rose-500/10 text-rose-400 shrink-0">
+              <ShieldBan className="h-4 w-4" />
             </div>
-            <div className="flex items-center gap-1.5">
-              <span className={cn("text-[11px] font-medium", !isNotificationSupported ? "text-muted-foreground" : notificationsEnabled ? "text-green-400" : "text-muted-foreground")}>
-                {!isNotificationSupported ? "Không hỗ trợ" : notificationsEnabled ? "Đã bật" : "Đã tắt"}
-              </span>
-              <div className={cn("w-2 h-2 rounded-full", !isNotificationSupported ? "bg-muted-foreground/40" : notificationsEnabled ? "bg-green-500 animate-pulse" : "bg-muted-foreground")} />
+            <div>
+              <span className="text-xs sm:text-sm font-semibold">Danh sách người dùng đã chặn</span>
+              <p className="text-[11px] text-muted-foreground mt-0.5">
+                Quản lý các tài khoản bạn đã chặn gửi tin nhắn
+              </p>
             </div>
-          </Button>
-
-          {/* Cài đặt đã xem */}
-          <Button
-            variant="outline"
-            onClick={handleToggleReadReceipts}
-            className="w-full justify-between glass-light border-border/30 hover:border-purple-500/50 hover:bg-purple-500/10 transition-all text-xs h-10 px-4 rounded-xl"
-          >
-            <div className="flex items-center gap-2">
-              <Eye className="h-4 w-4 text-sky-400" />
-              <span>Hiển thị "Đã xem" (Read receipts)</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <span className={cn("text-[11px] font-medium", user?.readReceipts ? "text-green-400" : "text-muted-foreground")}>
-                {user?.readReceipts ? "Đã bật" : "Đã tắt"}
-              </span>
-              <div className={cn("w-2 h-2 rounded-full", user?.readReceipts ? "bg-green-500 animate-pulse" : "bg-muted-foreground")} />
-            </div>
-          </Button>
-
-          {/* Danh sách chặn */}
-          <Button
-            variant="outline"
-            onClick={handleOpenBlockedModal}
-            className="w-full justify-between glass-light border-border/30 hover:border-purple-500/50 hover:bg-purple-500/10 transition-all text-xs h-10 px-4 rounded-xl"
-          >
-            <div className="flex items-center gap-2">
-              <ShieldBan className="h-4 w-4 text-rose-400" />
-              <span>Danh sách chặn</span>
-            </div>
-            <span className="text-[11px] px-2 py-0.5 rounded-full bg-rose-500/10 text-rose-400 border border-rose-500/20 font-medium">
-              {user?.blockedUsers?.length || 0} người dùng
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-rose-500/10 text-rose-400 border border-rose-500/20 font-medium">
+              {user?.blockedUsers?.length || 0} người
             </span>
-          </Button>
+            <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:translate-x-0.5 transition-transform" />
+          </div>
         </div>
 
         {/* ========================================================= */}
         {/* SECTION 4: KHU VỰC NGUY HIỂM - XOÁ TÀI KHOẢN             */}
         {/* ========================================================= */}
-        <div className="pt-3 border-t border-border/30 space-y-2.5">
-          <h4 className="font-medium text-xs text-rose-400 uppercase tracking-wider flex items-center gap-1.5">
-            <AlertTriangle className="w-3.5 h-3.5" />
-            Khu vực nguy hiểm
-          </h4>
-          <Button
-            variant="destructive"
-            onClick={() => {
-              setShowDeleteModal(true);
-              setDeleteStep(1);
-            }}
-            className="w-full bg-rose-600 hover:bg-rose-700 text-white font-semibold text-xs h-10 rounded-xl shadow-md shadow-rose-600/20 gap-2"
-          >
-            <Trash2 className="w-4 h-4" />
-            <span>Xoá tài khoản vĩnh viễn</span>
-          </Button>
+        <div className="pt-2 border-t border-border/30">
+          <div className="flex items-center justify-between p-3.5 rounded-2xl bg-rose-500/5 border border-rose-500/20">
+            <div>
+              <span className="text-xs sm:text-sm font-semibold text-rose-400 flex items-center gap-1.5">
+                <AlertTriangle className="w-3.5 h-3.5" /> Xóa tài khoản
+              </span>
+              <p className="text-[11px] text-muted-foreground mt-0.5">
+                Xóa vĩnh viễn tài khoản và toàn bộ dữ liệu trò chuyện
+              </p>
+            </div>
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={() => {
+                setShowDeleteModal(true);
+                setDeleteStep(1);
+              }}
+              className="h-8 text-xs bg-rose-600 hover:bg-rose-700 text-white font-medium rounded-xl gap-1.5 shadow-sm shadow-rose-600/20 shrink-0"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>Xóa vĩnh viễn</span>
+            </Button>
+          </div>
         </div>
       </CardContent>
 
       {/* ========================================================= */}
-      {/* MODAL DANH SÁCH CHẶN                                       */}
+      {/* MODAL DANH SÁCH CHẶN (SỬ DỤNG REACT PORTAL)                */}
       {/* ========================================================= */}
-      {showBlockedModal && (
+      {showBlockedModal && typeof document !== "undefined" && createPortal(
         <div
-          className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-200"
-          onPointerDown={(e) => e.stopPropagation()}
-          onMouseDown={(e) => e.stopPropagation()}
-          onClick={(e) => e.stopPropagation()}
+          className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-in fade-in duration-200"
+          onClick={() => setShowBlockedModal(false)}
         >
-          <div className="relative w-full max-w-md bg-card/95 border border-purple-500/30 rounded-3xl p-6 shadow-2xl space-y-4 text-foreground max-h-[80vh] flex flex-col">
+          <div
+            className="relative w-full max-w-md bg-card border border-purple-500/30 rounded-3xl p-6 shadow-2xl space-y-4 text-foreground max-h-[80vh] flex flex-col animate-in zoom-in-95 duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-center justify-between border-b border-border/40 pb-3">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2.5">
                 <div className="p-2 rounded-xl bg-rose-500/10 text-rose-400 border border-rose-500/20">
                   <ShieldBan className="w-5 h-5" />
                 </div>
@@ -458,7 +485,7 @@ const PrivacySettings = () => {
               <button
                 type="button"
                 onClick={() => setShowBlockedModal(false)}
-                className="p-1 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+                className="p-1.5 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -508,22 +535,24 @@ const PrivacySettings = () => {
               )}
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* ========================================================= */}
-      {/* MODAL XOÁ TÀI KHOẢN                                       */}
+      {/* MODAL XOÁ TÀI KHOẢN (SỬ DỤNG REACT PORTAL)                */}
       {/* ========================================================= */}
-      {showDeleteModal && (
+      {showDeleteModal && typeof document !== "undefined" && createPortal(
         <div
-          className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-200"
-          onPointerDown={(e) => e.stopPropagation()}
-          onMouseDown={(e) => e.stopPropagation()}
-          onClick={(e) => e.stopPropagation()}
+          className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-in fade-in duration-200"
+          onClick={() => setShowDeleteModal(false)}
         >
-          <div className="relative w-full max-w-md bg-card/95 border border-rose-500/40 rounded-3xl p-6 shadow-2xl space-y-4 text-foreground">
+          <div
+            className="relative w-full max-w-md bg-card border border-rose-500/40 rounded-3xl p-6 shadow-2xl space-y-4 text-foreground animate-in zoom-in-95 duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-center justify-between border-b border-border/40 pb-3">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2.5">
                 <div className="p-2 rounded-xl bg-rose-500/10 text-rose-500 border border-rose-500/20">
                   <Trash2 className="w-5 h-5" />
                 </div>
@@ -535,26 +564,26 @@ const PrivacySettings = () => {
               <button
                 type="button"
                 onClick={() => setShowDeleteModal(false)}
-                className="p-1 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+                className="p-1.5 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="p-3 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-300 text-xs space-y-1">
+            <div className="p-3.5 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-300 text-xs space-y-1">
               <p className="font-semibold flex items-center gap-1.5">
                 <AlertTriangle className="w-4 h-4 text-rose-400 flex-shrink-0" />
                 Cảnh báo quan trọng:
               </p>
               <p className="text-[11px] opacity-90 leading-relaxed">
-                Tài khoản của bạn sẽ bị xóa hoàn toàn khỏi hệ thống MongoDB. Sau khi xóa, địa chỉ Gmail <strong>{user?.email}</strong> và Username của bạn sẽ trở thành tài khoản trống và có thể dùng để đăng ký mới.
+                Tài khoản của bạn sẽ bị xóa hoàn toàn khỏi hệ thống. Sau khi xóa, địa chỉ Gmail <strong>{user?.email}</strong> và Username của bạn sẽ có thể dùng để đăng ký tài khoản mới.
               </p>
             </div>
 
             {deleteStep === 1 ? (
               <div className="space-y-4 pt-1">
                 <p className="text-xs text-muted-foreground">
-                  Bấm nút bên dưới để nhận mã OTP 6 chữ số về email: <strong className="text-purple-400">{user?.email}</strong>
+                  Bấm nút bên dưới để nhận mã OTP 6 chữ số về email: <strong className="text-foreground">{user?.email}</strong>
                 </p>
                 <div className="flex gap-2 pt-2">
                   <Button
@@ -598,7 +627,7 @@ const PrivacySettings = () => {
                     placeholder="123456"
                     value={deleteOtp}
                     onChange={(e) => setDeleteOtp(e.target.value.replace(/\D/g, ""))}
-                    className="h-10 rounded-xl bg-rose-950/20 border-rose-500/40 text-center font-bold tracking-[6px] text-sm focus:border-rose-500"
+                    className="h-10 rounded-xl bg-background/80 border-rose-500/40 text-center font-bold tracking-[6px] text-sm focus:border-rose-500"
                   />
                 </div>
 
@@ -621,7 +650,7 @@ const PrivacySettings = () => {
                   type="button"
                   onClick={handleConfirmDeleteAccount}
                   disabled={isDeleteLoading || deleteOtp.length !== 6}
-                  className="w-full h-10 bg-rose-600 hover:bg-rose-700 text-white font-semibold text-xs gap-2 mt-2"
+                  className="w-full h-10 bg-rose-600 hover:bg-rose-700 text-white font-semibold text-xs gap-2 mt-2 rounded-xl"
                 >
                   {isDeleteLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
                   <span>Xác nhận xóa tài khoản vĩnh viễn</span>
@@ -629,7 +658,8 @@ const PrivacySettings = () => {
               </div>
             )}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </Card>
   );

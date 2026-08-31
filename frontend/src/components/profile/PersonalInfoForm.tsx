@@ -174,7 +174,7 @@ const PersonalInfoForm = ({ userInfo }: Props) => {
 
   return (
     <div className="space-y-6">
-      <Card className="glass-strong border-border/30">
+      <Card className="glass-strong border-border/30 rounded-3xl shadow-xl">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Heart className="size-5 text-primary" />
@@ -196,7 +196,7 @@ const PersonalInfoForm = ({ userInfo }: Props) => {
                   value={disabled ? (userInfo[key] ?? "") : formData[key as keyof typeof formData]}
                   onChange={disabled ? undefined : handleChange}
                   disabled={disabled}
-                  className="glass-light border-border/30"
+                  className="glass-light border-border/30 rounded-2xl h-10"
                 />
               </div>
             ))}
@@ -208,7 +208,7 @@ const PersonalInfoForm = ({ userInfo }: Props) => {
               id="bio"
               value={formData.bio}
               onChange={handleChange}
-              className="resize-none glass-light border-border/30"
+              className="resize-none glass-light border-border/30 rounded-2xl"
               rows={3}
               maxLength={150}
             />
@@ -220,9 +220,16 @@ const PersonalInfoForm = ({ userInfo }: Props) => {
           <Button
             onClick={handleSubmit}
             disabled={isSubmitting}
-            className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
+            className="w-full sm:w-auto rounded-2xl font-semibold px-6 shadow-md shadow-primary/20"
           >
-            {isSubmitting ? "Đang lưu..." : "Lưu thay đổi"}
+            {isSubmitting ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Đang lưu...
+              </>
+            ) : (
+              "Lưu thay đổi"
+            )}
           </Button>
         </CardContent>
       </Card>
