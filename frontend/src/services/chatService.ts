@@ -193,6 +193,11 @@ export const chatService = {
     return res.data;
   },
 
+  async deleteMessageForMe(messageId: string) {
+    const res = await api.post(`/messages/${messageId}/delete-for-me`);
+    return res.data;
+  },
+
   async editMessage(messageId: string, content: string) {
     const res = await api.post(`/messages/${messageId}/edit`, { content });
     return res.data;

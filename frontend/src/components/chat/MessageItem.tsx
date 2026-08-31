@@ -3,7 +3,7 @@ import type { Conversation, Message, Participant } from "@/types/chat";
 import UserAvatar from "./UserAvatar";
 import { Card } from "../ui/card";
 import { Badge } from "../ui/badge";
-import { Play, Pause, Pin, PinOff, Timer, EyeOff, Eye, Undo2, MoreHorizontal, Reply, Forward, Languages, FileText, Download, Pencil, X, ExternalLink } from "lucide-react";
+import { Play, Pause, Pin, PinOff, Timer, EyeOff, Eye, Undo2, MoreHorizontal, Reply, Forward, Languages, FileText, Download, Pencil, X, ExternalLink, Trash2 } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { useChatStore } from "@/stores/useChatStore";
 import { useAuthStore } from "@/stores/useAuthStore";
@@ -226,7 +226,7 @@ const MessageItem = ({
   selectedConvo,
   lastMessageStatus,
 }: MessageItemProps) => {
-  const { reactToMessage, pinMessage, recallMessage, markMediaAsViewed, voteOnPoll, setReplyingToMessage, setForwardingMessage, translateMessage, setEditingMessage } = useChatStore();
+  const { reactToMessage, pinMessage, recallMessage, deleteMessageForMe, markMediaAsViewed, voteOnPoll, setReplyingToMessage, setForwardingMessage, translateMessage, setEditingMessage } = useChatStore();
   const { user } = useAuthStore();
   const prev = index + 1 < messages.length ? messages[index + 1] : undefined;
   const next = index > 0 ? messages[index - 1] : undefined;
@@ -384,6 +384,7 @@ const MessageItem = ({
 
   const isStoryReply = message.content?.startsWith("[STORY_REPLY] ");
   const isImageReply = !isStoryReply && !!message.replyTo?.imgUrl && !message.replyTo?.isViewOnce && !message.replyTo?.isRecalled;
+  const isOverlayReply = (isStoryReply || isImageReply) && !message.isRecalled;
   const actualContent = isStoryReply 
     ? message.content!.replace("[STORY_REPLY] ", "").replace(/^Đã trả lời tin( của bạn| của [^:]+)?: /i, "").trim() 
     : message.content;
@@ -608,15 +609,18 @@ const MessageItem = ({
             )}
           </div>
 
-          <div className={cn("relative flex items-center gap-2", message.isOwn ? "flex-row-reverse" : "flex-row", (isStoryReply || isImageReply) ? "z-10 -mt-5" : "")}>
+          <div className={cn("relative flex items-center gap-2", message.isOwn ? "flex-row-reverse" : "flex-row", isOverlayReply ? "z-10 -mt-5" : "")}>
             <Card
               onDoubleClick={() => !message.isRecalled && reactToMessage(message._id, '❤️')}
               className={cn(
                 "p-3 relative select-none transition-all duration-300 hover:shadow-md hover:shadow-primary/10 hover:-translate-y-[1px]",
-                message.isOwn ? "chat-bubble-sent border-0 !bg-primary" : "chat-bubble-received !bg-card",
-                message.isRecalled ? "bg-muted/50 border border-border" : "",
+                message.isRecalled
+                  ? "bg-muted/60 border border-border text-muted-foreground"
+                  : message.isOwn
+                  ? "chat-bubble-sent border-0 !bg-primary"
+                  : "chat-bubble-received !bg-card",
                 isIncognito ? "select-none pointer-events-auto" : "",
-                (isStoryReply || isImageReply) ? "rounded-[20px] px-3.5 py-2 shadow-md ring-2 ring-background opacity-100" : ""
+                isOverlayReply ? "rounded-[20px] px-3.5 py-2 shadow-md ring-2 ring-background opacity-100" : ""
               )}
               onCopy={(e) => {
                 if (isIncognito) {
@@ -918,12 +922,19 @@ const MessageItem = ({
                     {message.isOwn && (
                       <DropdownMenuItem
                         onClick={() => recallMessage(message._id)}
-                        className="cursor-pointer text-red-500 hover:text-red-600 focus:text-red-600 focus:bg-red-50 font-medium flex items-center gap-2"
+                        className="cursor-pointer text-amber-500 hover:text-amber-600 focus:text-amber-600 focus:bg-amber-50 dark:focus:bg-amber-950/30 font-medium flex items-center gap-2"
                       >
                         <Undo2 className="size-4" />
                         Thu hồi tin nhắn
                       </DropdownMenuItem>
                     )}
+                    <DropdownMenuItem
+                      onClick={() => deleteMessageForMe(message._id, selectedConvo._id)}
+                      className="cursor-pointer text-red-500 hover:text-red-600 focus:text-red-600 focus:bg-red-50 dark:focus:bg-red-950/30 font-medium flex items-center gap-2"
+                    >
+                      <Trash2 className="size-4" />
+                      Xóa ở phía bạn
+                    </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>

@@ -14,6 +14,7 @@ import {
   translateMessage,
   uploadFile,
   editMessage,
+  deleteMessageForMe,
 } from "../controllers/messageController.js";
 import {
   checkFriendship,
@@ -46,6 +47,7 @@ router.post("/:messageId/react", reactToMessage);
 router.post("/:messageId/pin", pinMessage);
 router.post("/:messageId/view-media", markMediaAsViewed);
 router.post("/:messageId/recall", recallMessage);
+router.post("/:messageId/delete-for-me", deleteMessageForMe);
 router.post("/:messageId/vote", voteOnPoll);
 router.post("/:messageId/translate", translateMessage);
 router.post("/:messageId/edit", editMessage);

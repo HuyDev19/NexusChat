@@ -219,15 +219,14 @@ export const getMessages = async (req, res) => {
   try {
     const { conversationId } = req.params;
     const { limit = 50, cursor } = req.query;
+    const userId = req.user._id;
 
-    const query = { conversationId };
+    const query = { conversationId, deletedFor: { $ne: userId } };
 
     const conversation = await Conversation.findById(conversationId);
     if (!conversation) {
       return res.status(404).json({ message: "Conversation not found" });
     }
-
-    const userId = req.user._id;
 
     // Security check: only participants can read messages
     const isMember = conversation.participants.some(p => p.userId.toString() === userId.toString());
@@ -300,7 +299,7 @@ export const getPinnedMessages = async (req, res) => {
       clearedTime = conversation.clearedAt.get(userId.toString());
     }
 
-    const query = { conversationId, isPinned: true };
+    const query = { conversationId, isPinned: true, deletedFor: { $ne: userId } };
     if (clearedTime) {
       query.createdAt = { $gt: new Date(clearedTime) };
     }
@@ -351,7 +350,8 @@ export const searchMessages = async (req, res) => {
 
     const query = {
       conversationId,
-      content: { $regex: q, $options: "i" }
+      content: { $regex: q, $options: "i" },
+      deletedFor: { $ne: userId }
     };
 
     if (clearedTime) {

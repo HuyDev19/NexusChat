@@ -138,6 +138,7 @@ export interface ChatState {
   pinMessage: (messageId: string) => Promise<void>;
   markMediaAsViewed: (messageId: string) => Promise<void>;
   recallMessage: (messageId: string) => Promise<void>;
+  deleteMessageForMe: (messageId: string, conversationId?: string) => Promise<void>;
   editMessage: (messageId: string, content: string) => Promise<void>;
   translateMessage: (conversationId: string, messageId: string) => Promise<void>;
   updateWallpaper: (conversationId: string, data: string | File) => Promise<void>;

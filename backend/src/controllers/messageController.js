@@ -605,4 +605,30 @@ export const editMessage = async (req, res) => {
     console.error("Lỗi khi chỉnh sửa tin nhắn:", error);
     return res.status(500).json({ message: "Lỗi hệ thống khi chỉnh sửa tin nhắn" });
   }
+};
+
+export const deleteMessageForMe = async (req, res) => {
+  try {
+    const { messageId } = req.params;
+    const userId = req.user._id;
+
+    const message = await Message.findById(messageId);
+    if (!message) {
+      return res.status(404).json({ message: "Không tìm thấy tin nhắn" });
+    }
+
+    if (!message.deletedFor) {
+      message.deletedFor = [];
+    }
+
+    if (!message.deletedFor.some((id) => id.toString() === userId.toString())) {
+      message.deletedFor.push(userId);
+      await message.save();
+    }
+
+    return res.status(200).json({ message: "Đã xóa tin nhắn ở phía bạn", messageId });
+  } catch (error) {
+    console.error("Lỗi khi xóa tin nhắn cho tôi:", error);
+    return res.status(500).json({ message: "Lỗi hệ thống khi xóa tin nhắn" });
+  }
 };

@@ -656,6 +656,35 @@ export const useChatStore = create<ChatState>()(
           toast.error(error.response?.data?.message || "Lỗi hệ thống khi thu hồi tin nhắn.");
         }
       },
+      deleteMessageForMe: async (messageId: string, conversationId?: string) => {
+        try {
+          const { activeConversationId } = get();
+          const targetConvoId = conversationId || activeConversationId;
+
+          if (targetConvoId) {
+            set((state) => {
+              const currentItems = state.messages[targetConvoId]?.items;
+              if (!currentItems) return state;
+
+              return {
+                messages: {
+                  ...state.messages,
+                  [targetConvoId]: {
+                    ...state.messages[targetConvoId],
+                    items: currentItems.filter((m) => m._id !== messageId),
+                  },
+                },
+              };
+            });
+          }
+
+          await chatService.deleteMessageForMe(messageId);
+          toast.success("Đã xóa tin nhắn ở phía bạn");
+        } catch (error: any) {
+          console.error("Lỗi xảy ra khi xóa tin nhắn cho tôi:", error);
+          toast.error(error.response?.data?.message || "Không thể xóa tin nhắn.");
+        }
+      },
       editMessage: async (messageId: string, content: string) => {
         try {
           await chatService.editMessage(messageId, content);
