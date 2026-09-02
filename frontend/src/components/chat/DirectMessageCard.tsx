@@ -73,6 +73,7 @@ const DirectMessageCard = ({ convo }: { convo: Conversation }) => {
             avatarUrl={otherUser.avatarUrl ?? undefined}
             note={isNoteExpired(otherUser.note) ? undefined : otherUser.note?.content}
             userId={otherUser._id}
+            isIncognito={convo.incognitoMode?.isActive}
           />
           <StatusBadge
             status={effectiveStatus}

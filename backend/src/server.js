@@ -5,11 +5,14 @@ import { Server } from "socket.io";
 import { connectDB } from "./libs/db.js";
 import authRoute from "./routes/authRoute.js";
 import userRoute from "./routes/userRoute.js";
+import { getUserCount } from "./controllers/userController.js";
 import friendRoute from "./routes/friendRoute.js";
 import messageRoute from "./routes/messageRoute.js";
 import conversationRoute from "./routes/conversationRoute.js";
 import callRoute from "./routes/callRoute.js";
 import storyRoute from "./routes/storyRoute.js";
+import reviewRoute from "./routes/reviewRoute.js";
+import feedbackRoute from "./routes/feedbackRoute.js";
 import { registerCallSocketHandlers, activeGroupCalls, activeRoomCalls } from "./libs/callSocket.js";
 import cookieParser from "cookie-parser";
 import { protectedRoute } from "./middlewares/authMiddleware.js";
@@ -42,6 +45,9 @@ app.use(cors({ origin: process.env.CLIENT_URL || "http://localhost:5173", creden
 
 // public routes
 app.use("/api/auth", authRoute);
+app.get("/api/users/count", getUserCount);
+app.use("/api/reviews", reviewRoute);
+app.use("/api/feedback", feedbackRoute);
 
 // private routes
 app.use(protectedRoute);

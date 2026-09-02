@@ -123,6 +123,9 @@ export interface Message {
     audioUrl?: string | null;
     isRecalled?: boolean;
     isViewOnce?: boolean;
+    createdAt?: string;
+    fileUrl?: string | null;
+    fileName?: string | null;
   };
   isForwarded?: boolean;
   translatedContent?: string;

@@ -262,9 +262,7 @@ const ChatWindowBody = () => {
                     if (!typingUser && !isAI) return null;
                     
                     const isIncognito = selectedConvo?.type === "direct" && selectedConvo?.incognitoMode?.isActive;
-                    const avatarUrl = isIncognito 
-                        ? "https://cdn-icons-png.flaticon.com/512/868/1236413.png" 
-                        : (isAI ? "https://cdn-icons-png.flaticon.com/512/826/826963.png" : (typingUser as any)?.avatarUrl);
+                    const avatarUrl = isAI ? "https://cdn-icons-png.flaticon.com/512/826/826963.png" : (typingUser as any)?.avatarUrl;
                     const displayName = isIncognito 
                         ? "Người Lạ" 
                         : (isAI ? "NexusAI" : (selectedConvo?.nicknames?.[typingUserId] || (typingUser as any)?.displayName || "User"));
@@ -276,6 +274,7 @@ const ChatWindowBody = () => {
                                     type="chat"
                                     name={displayName}
                                     avatarUrl={avatarUrl}
+                                    isIncognito={isIncognito}
                                 />
                             </div>
                             <div className="bg-muted p-3 rounded-2xl rounded-bl-sm w-fit flex gap-1.5 items-center h-[38px]">

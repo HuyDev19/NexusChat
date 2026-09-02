@@ -679,7 +679,7 @@ const MessageInput = ({ selectedConvo }: { selectedConvo: Conversation }) => {
           return {
             ...p,
             displayName: "Người Lạ",
-            avatarUrl: "https://cdn-icons-png.flaticon.com/512/868/1236413.png",
+            isIncognito: true,
             username: "nguoila"
           };
         }
@@ -1255,7 +1255,13 @@ const MessageInput = ({ selectedConvo }: { selectedConvo: Conversation }) => {
                         onMouseEnter={() => setMentionIndex(index)}
                       >
                         <div className="w-6 h-6 rounded-full bg-primary/20 shrink-0 overflow-hidden flex items-center justify-center">
-                          {p.avatarUrl ? (
+                          {p.isIncognito ? (
+                            <div className="w-full h-full bg-zinc-200 dark:bg-zinc-800 flex items-center justify-center text-zinc-700 dark:text-zinc-300">
+                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-[60%] h-[60%]">
+                                <path d="M12 2.5a.75.75 0 0 1 .633.344l3.75 5.656H21a.75.75 0 0 1 0 1.5H3a.75.75 0 0 1 0-1.5h4.617l3.75-5.656A.75.75 0 0 1 12 2.5Zm-4.25 9.5a3.75 3.75 0 1 0 1.63 7.126A3.727 3.727 0 0 0 12 17.5a3.727 3.727 0 0 0 2.62 1.626 3.75 3.75 0 1 0 1.63-7.126 3.75 3.75 0 0 0-3.328 2.05h-1.844A3.75 3.75 0 0 0 7.75 12Zm0 1.5a2.25 2.25 0 1 1 0 4.5 2.25 2.25 0 0 1 0-4.5Zm8.5 0a2.25 2.25 0 1 1 0 4.5 2.25 2.25 0 0 1 0-4.5Z" />
+                              </svg>
+                            </div>
+                          ) : p.avatarUrl ? (
                             <img
                               src={p.avatarUrl}
                               alt={p.displayName}

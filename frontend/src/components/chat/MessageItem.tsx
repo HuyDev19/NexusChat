@@ -289,7 +289,6 @@ const MessageItem = ({
 
   const getAvatarUrl = (): string | undefined => {
     if (isAI) return "https://cdn-icons-png.flaticon.com/512/826/826963.png";
-    if (isIncognito && !message.isOwn) return "https://cdn-icons-png.flaticon.com/512/868/1236413.png";
     return participant?.avatarUrl || undefined;
   };
 
@@ -425,6 +424,7 @@ const MessageItem = ({
                   type="chat"
                   name={getDisplayName()}
                   avatarUrl={getAvatarUrl()}
+                  isIncognito={isIncognito}
                 />
               </div>
             )}
@@ -455,10 +455,11 @@ const MessageItem = ({
           )}
 
           {message.replyTo && !isStoryReply && !message.isRecalled && (() => {
-            const replySenderId = typeof message.replyTo?.senderId === "object"
-              ? (message.replyTo.senderId as any)?._id || String(message.replyTo.senderId)
-              : message.replyTo?.senderId
-              ? String(message.replyTo.senderId)
+            const reply = message.replyTo!;
+            const replySenderId = typeof reply.senderId === "object"
+              ? (reply.senderId as any)?._id || String(reply.senderId)
+              : reply.senderId
+              ? String(reply.senderId)
               : undefined;
 
             const isReplyToOwn = replySenderId === user?._id;
@@ -471,7 +472,7 @@ const MessageItem = ({
               : replyParticipant?.displayName || "người dùng";
             const replySenderAvatar = !isReplyToOwn ? replyParticipant?.avatarUrl : undefined;
 
-            if (isImageReply && message.replyTo?.imgUrl) {
+            if (isImageReply && reply.imgUrl) {
               const replyHeaderText = isReplyToOwn ? "Bạn đã trả lời" : `${replySenderName} đã trả lời bạn`;
               return (
                 <div className={cn("flex flex-col gap-1 mb-0 max-w-[200px]", message.isOwn ? "items-end" : "items-start")}>
@@ -492,8 +493,8 @@ const MessageItem = ({
                   <div 
                     className="relative overflow-hidden rounded-2xl max-w-[150px] sm:max-w-[180px] max-h-[140px] cursor-pointer shadow-xs border border-border/40 hover:opacity-95 hover:brightness-105 transition-all group/replyimg bg-muted/30 flex items-center justify-center shrink-0"
                     onClick={() => {
-                      if (message.replyTo?._id) {
-                        const el = document.querySelector(`.message-${message.replyTo._id}`);
+                      if (reply._id) {
+                        const el = document.querySelector(`.message-${reply._id}`);
                         if (el) {
                           el.scrollIntoView({ behavior: "smooth", block: "center" });
                           el.classList.add("bg-primary/20", "transition-colors", "duration-500");
@@ -501,20 +502,20 @@ const MessageItem = ({
                           return;
                         }
                       }
-                      if (message.replyTo?.imgUrl) {
+                      if (reply.imgUrl) {
                         useMediaViewerStore.getState().openSingle(
-                          message.replyTo.imgUrl,
+                          reply.imgUrl,
                           "Hình ảnh",
                           replySenderName,
                           replySenderAvatar || null,
-                          message.replyTo.createdAt || message.createdAt
+                          reply.createdAt || message.createdAt
                         );
                       }
                     }}
                     title="Bấm để xem ảnh hoặc chuyển đến tin nhắn gốc"
                   >
                     <img 
-                      src={message.replyTo.imgUrl} 
+                      src={reply.imgUrl} 
                       alt="Hình ảnh trả lời" 
                       className="w-auto h-auto max-w-full max-h-[140px] rounded-2xl object-cover" 
                     />
@@ -527,7 +528,7 @@ const MessageItem = ({
               <div
                 className="flex items-center justify-between gap-3 mb-1 px-3 py-1.5 bg-muted/40 rounded-xl border-l-2 border-primary cursor-pointer hover:bg-muted/60 transition-all max-w-full group/reply shadow-xs"
                 onClick={() => {
-                  const el = document.querySelector(`.message-${message.replyTo?._id}`);
+                  const el = document.querySelector(`.message-${reply._id}`);
                   el?.scrollIntoView({ behavior: "smooth", block: "center" });
                   el?.classList.add("bg-primary/20", "transition-colors", "duration-500");
                   setTimeout(() => el?.classList.remove("bg-primary/20"), 1500);
@@ -540,15 +541,15 @@ const MessageItem = ({
                       {replySenderName}
                     </span>
                     <span className="text-muted-foreground truncate text-[11px]">
-                      {message.replyTo.isViewOnce
+                      {reply.isViewOnce
                         ? "[Tin nhắn xem một lần]"
-                        : message.replyTo.isRecalled
+                        : reply.isRecalled
                         ? "Tin nhắn đã thu hồi"
-                        : message.replyTo.audioUrl
+                        : reply.audioUrl
                         ? "🎵 Tin nhắn thoại"
-                        : message.replyTo.fileUrl
-                        ? `📎 ${message.replyTo.fileName || "Tệp đính kèm"}`
-                        : message.replyTo.content}
+                        : reply.fileUrl
+                        ? `📎 ${reply.fileName || "Tệp đính kèm"}`
+                        : reply.content}
                     </span>
                   </div>
                 </div>
@@ -586,9 +587,9 @@ const MessageItem = ({
                 title="Bấm để xem ảnh/tin"
               >
                 {replyImgUrl?.match(/\.(mp4|webm)$/i) || replyImgUrl?.includes("video") ? (
-                  <video src={replyImgUrl} className="w-full h-full object-cover" />
+                  <video src={replyImgUrl || ""} className="w-full h-full object-cover" />
                 ) : (
-                  <img src={replyImgUrl} alt="Story" className="w-full h-full object-cover" />
+                  <img src={replyImgUrl || ""} alt="Story" className="w-full h-full object-cover" />
                 )}
               </div>
             </div>
@@ -978,20 +979,26 @@ const MessageItem = ({
                     const p = participants.find((part) => part._id?.toString() === vid);
                     if (!p) return null;
                     
-                    const finalAvatar = isIncognito 
-                          ? "https://cdn-icons-png.flaticon.com/512/868/1236413.png" 
-                          : (p.avatarUrl || "https://cdn-icons-png.flaticon.com/512/847/847969.png");
-                    const finalTitle = isIncognito
-                          ? "Đã xem bởi Người Lạ"
-                          : `Đã xem bởi ${p.displayName}`;
-                          
+                    if (isIncognito) {
+                      return (
+                        <div
+                          key={vid}
+                          className="size-3.5 rounded-full border border-background shadow-sm bg-zinc-200 dark:bg-zinc-800 flex items-center justify-center text-zinc-700 dark:text-zinc-300"
+                          title="Đã xem bởi Người Lạ"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-[70%] h-[70%]">
+                            <path d="M12 2.5a.75.75 0 0 1 .633.344l3.75 5.656H21a.75.75 0 0 1 0 1.5H3a.75.75 0 0 1 0-1.5h4.617l3.75-5.656A.75.75 0 0 1 12 2.5Zm-4.25 9.5a3.75 3.75 0 1 0 1.63 7.126A3.727 3.727 0 0 0 12 17.5a3.727 3.727 0 0 0 2.62 1.626 3.75 3.75 0 1 0 1.63-7.126 3.75 3.75 0 0 0-3.328 2.05h-1.844A3.75 3.75 0 0 0 7.75 12Zm0 1.5a2.25 2.25 0 1 1 0 4.5 2.25 2.25 0 0 1 0-4.5Zm8.5 0a2.25 2.25 0 1 1 0 4.5 2.25 2.25 0 0 1 0-4.5Z" />
+                          </svg>
+                        </div>
+                      );
+                    }
                     return (
                       <img
                         key={vid}
-                        src={finalAvatar}
-                        alt={isIncognito ? "Người Lạ" : p.displayName}
-                        className="size-3.5 rounded-full border border-background shadow-sm"
-                        title={finalTitle}
+                        src={p.avatarUrl || "https://cdn-icons-png.flaticon.com/512/847/847969.png"}
+                        alt={p.displayName}
+                        className="size-3.5 rounded-full border border-background shadow-sm object-cover"
+                        title={`Đã xem bởi ${p.displayName}`}
                       />
                     );
                   })}

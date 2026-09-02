@@ -190,9 +190,8 @@ The project is organized as a monorepo with two main parts:
 
 ### User management
 - Get current authenticated user via /api/users/me
-- Basic user profile fields such as username, displayName, avatarUrl, email, bio, phone
-- Update user profile information
-- Upload and manage user avatar via Cloudinary
+- Basic user profile fields such as username, displayName, avatarUrl, coverUrl, email, bio, phone, note
+- Update user profile information, including uploading and managing user avatar and cover image
 - Mini Profile Sidebar to quickly view a friend's details
 - Real-time user presence tracking (online, offline, busy)
 
@@ -211,8 +210,12 @@ The project is organized as a monorepo with two main parts:
 - Track unread counts and last message metadata per conversation
 - **Pin Messages**
 - **Recall Messages**
+- **Edit Messages**: Ability to edit sent messages.
+- **Delete for Me**: Ability to delete messages locally without affecting other participants.
 - **Disappearing Messages** with customizable expiration timers (5 mins, 1 hour, 24 hours)
 - **View Once Media** for images and voice messages
+- **File Attachments**: Upload and share files via Google Drive integration.
+- **Polls**: Create and vote on polls in group chats.
 - **Voice Messages & Speech-to-Text**: Voice recording with real-time transcription capability.
 - **Chat Lock**: 4-digit PIN for sensitive conversations.
 - **Chat Wallpapers & Shared Nicknames**: Custom backgrounds and aliases.
@@ -246,6 +249,8 @@ The project is organized as a monorepo with two main parts:
 - **Ringing System**: Emits `call:invite` and triggers a clean visual `<IncomingCallModal />` with pulse animations and Mixkit Ringtone audio on loop for target users.
 - **Web Push/Browser Notification**: Automatically pops up browser alerts when a call starts, directing the user back to the webapp on click.
 - **Messenger-Style Call Room**: Prebuilt grid via LiveKit SDK inside `<CallRoomModal />` with Mute, Video Toggle, and Screen Share controls. 
+- **AI Noise Filter (Krisp)**: Tích hợp Krisp để lọc tiếng ồn hai chiều bằng AI.
+- **Device Settings**: Tùy chỉnh nhanh Microphone, Camera, Speaker trực tiếp trong cuộc gọi.
 - **Floating Panel Control**: Users can minimize the call layout to a small draggable panel in the corner to continue chatting.
 
 ---
@@ -279,12 +284,22 @@ The project is organized as a monorepo with two main parts:
 - POST /api/users/:id/unblock
 - POST /api/messages/direct
 - POST /api/messages/group
-- POST /api/messages/uploadAudio
-- POST /api/messages/uploadImage
-- POST /api/messages/:id/react
-- POST /api/messages/:id/pin
-- POST /api/messages/:id/recall
-- POST /api/messages/:id/view
+- POST /api/messages/upload-audio
+- POST /api/messages/upload-image
+- POST /api/messages/upload-file
+- POST /api/messages/:messageId/react
+- POST /api/messages/:messageId/pin
+- POST /api/messages/:messageId/view-media
+- POST /api/messages/:messageId/recall
+- POST /api/messages/:messageId/delete-for-me
+- POST /api/messages/:messageId/vote
+- POST /api/messages/:messageId/translate
+- POST /api/messages/:messageId/edit
+- POST /api/messages/schedule
+- GET /api/messages/scheduled
+- GET /api/messages/scheduled/:conversationId
+- DELETE /api/messages/scheduled/:id
+- PUT /api/messages/scheduled/:id
 - POST /api/conversations
 - POST /api/conversations/channel
 - GET /api/conversations/channels/explore
@@ -322,8 +337,10 @@ The project is organized as a monorepo with two main parts:
 - displayName
 - avatarUrl
 - avatarId
+- coverUrl
 - bio
 - phone
+- note
 - presenceStatus
 - lockedConversations
 - blockedUsers
@@ -346,8 +363,16 @@ The project is organized as a monorepo with two main parts:
 - content
 - imgUrl
 - audioUrl
+- fileUrl
+- fileName
+- fileSize
+- sharedContact
+- poll
 - isPinned
 - isRecalled
+- isEdited
+- editHistory
+- deletedFor
 - expiresIn
 - expiresAt
 - isViewOnce
@@ -382,6 +407,7 @@ The frontend uses several Zustand stores:
 - useUserStore: user-specific actions
 - useCallStore: active call state, incoming call state, starts and finishes call session
 - useProfileStore: mini profile sidebar state and data
+- useMediaViewerStore: global media viewer state for displaying images and videos
 
 ---
 
@@ -389,7 +415,6 @@ The frontend uses several Zustand stores:
 
 ### Product scope
 - No unfriend action yet.
-- No message editing flow.
 
 ---
 

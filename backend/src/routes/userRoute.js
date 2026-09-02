@@ -20,6 +20,7 @@ import {
   addProfilePhoto,
   deleteProfilePhoto,
   reactProfilePhoto,
+  getUserCount,
 } from "../controllers/userController.js";
 import { protectedRoute } from "../middlewares/authMiddleware.js";
 import upload from "../middlewares/multerMiddleware.js";
@@ -27,6 +28,7 @@ import upload from "../middlewares/multerMiddleware.js";
 const router = express.Router();
 
 router.get("/search", searchUserByUsername);
+router.get("/count", getUserCount);
 
 router.get("/me", authMe);
 router.put("/me", updateMe);

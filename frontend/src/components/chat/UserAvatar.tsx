@@ -14,9 +14,10 @@ interface IUserAvatarProps {
   className?: string;
   note?: string;
   userId?: string;
+  isIncognito?: boolean;
 }
 
-const UserAvatar = ({ type, name, avatarUrl, className, note, userId }: IUserAvatarProps) => {
+const UserAvatar = ({ type, name, avatarUrl, className, note, userId, isIncognito }: IUserAvatarProps) => {
   const bgColor = !avatarUrl ? "bg-blue-500" : "";
   const [replyText, setReplyText] = useState("");
   const [open, setOpen] = useState(false);
@@ -52,16 +53,27 @@ const UserAvatar = ({ type, name, avatarUrl, className, note, userId }: IUserAva
           className ?? "",
           type === "sidebar" && "size-12 text-base",
           type === "chat" && "size-8 text-sm",
-          type === "profile" && "size-24 text-3xl shadow-md"
+          type === "profile" && "size-24 text-3xl shadow-md",
+          isIncognito && "bg-zinc-200 dark:bg-zinc-800 flex items-center justify-center border border-border"
         )}
       >
-        <AvatarImage
-          src={avatarUrl || undefined}
-          alt={displayName}
-        />
-        <AvatarFallback className={`${bgColor} text-white font-semibold`}>
-          {displayName.charAt(0)}
-        </AvatarFallback>
+        {isIncognito ? (
+          <div className="flex items-center justify-center w-full h-full text-zinc-700 dark:text-zinc-300">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-[60%] h-[60%]">
+              <path d="M12 2.5a.75.75 0 0 1 .633.344l3.75 5.656H21a.75.75 0 0 1 0 1.5H3a.75.75 0 0 1 0-1.5h4.617l3.75-5.656A.75.75 0 0 1 12 2.5Zm-4.25 9.5a3.75 3.75 0 1 0 1.63 7.126A3.727 3.727 0 0 0 12 17.5a3.727 3.727 0 0 0 2.62 1.626 3.75 3.75 0 1 0 1.63-7.126 3.75 3.75 0 0 0-3.328 2.05h-1.844A3.75 3.75 0 0 0 7.75 12Zm0 1.5a2.25 2.25 0 1 1 0 4.5 2.25 2.25 0 0 1 0-4.5Zm8.5 0a2.25 2.25 0 1 1 0 4.5 2.25 2.25 0 0 1 0-4.5Z" />
+            </svg>
+          </div>
+        ) : (
+          <>
+            <AvatarImage
+              src={avatarUrl || undefined}
+              alt={displayName}
+            />
+            <AvatarFallback className={`${bgColor} text-white font-semibold`}>
+              {displayName.charAt(0)}
+            </AvatarFallback>
+          </>
+        )}
       </Avatar>
 
     {noteContent && (

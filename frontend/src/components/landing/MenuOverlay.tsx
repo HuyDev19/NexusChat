@@ -6,17 +6,16 @@ import { PenguinIcon } from "@/components/ui/PenguinIcon";
 interface MenuOverlayProps {
   open: boolean;
   onClose: () => void;
-  onOpenContact: () => void;
 }
 
 const NAV_LINKS = [
-  { label: "Tính năng", href: "#features" },
+  { label: "Tính năng", href: "#trust" },
+  { label: "Bảo mật", href: "#features" },
+  { label: "Cập nhật", href: "#changelog" },
   { label: "Đánh giá", href: "#testimonials" },
-  { label: "Bảo mật", href: "#trust" },
-  { label: "Liên hệ", href: "#contact" },
 ];
 
-export const MenuOverlay = ({ open, onClose, onOpenContact }: MenuOverlayProps) => {
+export const MenuOverlay = ({ open, onClose }: MenuOverlayProps) => {
   const navigate = useNavigate();
   const [mounted, setMounted] = useState(false);
 
@@ -111,27 +110,25 @@ export const MenuOverlay = ({ open, onClose, onOpenContact }: MenuOverlayProps) 
 
           {/* Bottom row */}
           <div
-            className="flex flex-col sm:flex-row items-start sm:items-center gap-4 pt-6 border-t"
+            className="flex flex-col gap-4 pt-6 mt-auto border-t"
             style={{ borderColor: "rgba(255,255,255,0.15)" }}
           >
-            <button
-              onClick={() => {
-                onClose();
-                setTimeout(onOpenContact, 300);
-              }}
-              className="inline-flex items-center gap-2 rounded-full bg-white text-indigo-950 text-sm font-medium uppercase tracking-wide px-6 py-3 hover:bg-purple-200 transition-colors"
+            <Link
+              to="/signup"
+              onClick={onClose}
+              className="w-full flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-primary to-purple-600 text-white text-[15px] font-bold uppercase tracking-wide px-6 py-4 shadow-[0_0_20px_rgba(124,58,237,0.3)] hover:shadow-[0_0_30px_rgba(124,58,237,0.5)] hover:from-primary/90 hover:to-purple-600/90 transition-all"
             >
-              Đăng ký ngay
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              Đăng ký tài khoản
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M5 12h14M13 6l6 6-6 6"/>
               </svg>
-            </button>
+            </Link>
             <Link
               to="/signin"
               onClick={onClose}
-              className="text-white/70 hover:text-white text-sm font-medium transition-colors"
+              className="w-full flex items-center justify-center gap-2 rounded-full bg-white/10 text-white text-[15px] font-semibold uppercase tracking-wide px-6 py-4 hover:bg-white/20 transition-all border border-white/10"
             >
-              Đăng nhập →
+              Đăng nhập
             </Link>
           </div>
         </div>

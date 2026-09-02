@@ -1,6 +1,6 @@
 import { useChatStore } from "@/stores/useChatStore";
 import type { Conversation } from "@/types/chat";
-import { SidebarTrigger } from "../ui/sidebar";
+import { SidebarTrigger, useSidebar } from "../ui/sidebar";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { Separator } from "../ui/separator";
 import UserAvatar from "./UserAvatar";
@@ -22,7 +22,7 @@ import { isNoteExpired, isStreakActive, isStreakOnFire, formatLastActive, getEff
 import { Label } from "../ui/label";
 import { useProfileStore } from "@/stores/useProfileStore";
 import VoiceRoomListPopover from "./VoiceRoomListPopover";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { Ghost } from "lucide-react";
 
 const IncognitoTimer = ({ expiresAt, onExpire }: { expiresAt: string, onExpire: () => void }) => {
@@ -62,10 +62,22 @@ const ChatWindowHeader = ({ chat }: { chat?: Conversation }) => {
   const { friends, addFriend, cancelRequest, sentList } = useFriendStore();
   const { isOpen: isProfileOpen, mode: profileMode, openChatDetails, closeProfile } = useProfileStore();
   const [isSendingRequest, setIsSendingRequest] = useState(false);
+  const { setOpen, open, setOpenMobile, openMobile } = useSidebar();
 
   let otherUser: any = null;
 
   chat = chat ?? conversations.find((c) => c._id === activeConversationId);
+  const isIncognito = chat?.type === "direct" && chat?.incognitoMode?.isActive;
+  const prevIncognito = useRef(isIncognito);
+
+  useEffect(() => {
+    if (isIncognito && !prevIncognito.current) {
+      if (isProfileOpen) closeProfile();
+      if (open) setOpen(false);
+      if (openMobile) setOpenMobile(false);
+    }
+    prevIncognito.current = isIncognito;
+  }, [isIncognito, isProfileOpen, closeProfile, open, setOpen, openMobile, setOpenMobile]);
 
   if (!chat) {
     return (
@@ -160,8 +172,6 @@ const ChatWindowHeader = ({ chat }: { chat?: Conversation }) => {
     return chat?.nicknames?.[userObj._id] || userObj.displayName;
   };
 
-  const isIncognito = chat?.type === "direct" && chat?.incognitoMode?.isActive;
-
   const handleIncognitoExpire = () => {
     if (chat?._id) {
       chatService.toggleIncognitoMode(chat._id, false).catch(() => {});
@@ -199,9 +209,10 @@ const ChatWindowHeader = ({ chat }: { chat?: Conversation }) => {
                   <UserAvatar
                     type={"sidebar"}
                     name={isIncognito ? "Người Lạ" : chat?.nicknames?.[otherUser?._id ?? ""] || otherUser?.displayName || ""}
-                    avatarUrl={isIncognito ? "https://cdn-icons-png.flaticon.com/512/868/1236413.png" : otherUser?.avatarUrl ?? undefined}
+                    avatarUrl={otherUser?.avatarUrl ?? undefined}
                     note={isIncognito || isNoteExpired(typeof otherUser?.note === 'string' ? null : otherUser?.note) ? undefined : (typeof otherUser?.note === "string" ? otherUser.note : otherUser?.note?.content)}
                     userId={otherUser?._id}
+                    isIncognito={isIncognito}
                   />
                   {!isIncognito && (
                     <StatusBadge

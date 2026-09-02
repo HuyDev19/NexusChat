@@ -1575,6 +1575,30 @@ export const toggleIncognitoMode = async (req, res) => {
         expiresAt: { $ne: null }
       });
 
+      // Find the new last message that is NOT incognito
+      const lastMessage = await Message.findOne({ conversationId: id, expiresAt: null }).sort({ createdAt: -1 });
+      if (lastMessage) {
+        let finalContent = lastMessage.content;
+        if (lastMessage.isViewOnce) {
+          finalContent = "[Tin nhắn xem một lần]";
+        } else if (!finalContent) {
+          if (lastMessage.fileUrl) finalContent = "Đã gửi tệp tin";
+          else if (lastMessage.imgUrl) finalContent = "Đã gửi 1 ảnh";
+          else if (lastMessage.audioUrl) finalContent = "Đã gửi tin nhắn thoại";
+          else if (lastMessage.poll && lastMessage.poll.options && lastMessage.poll.options.length > 0) finalContent = "Đã tạo một bình chọn";
+          else if (lastMessage.sharedContact) finalContent = "Đã chia sẻ 1 liên hệ";
+          else finalContent = "";
+        }
+        conversation.lastMessage = {
+          _id: lastMessage._id,
+          content: finalContent,
+          senderId: lastMessage.senderId,
+          createdAt: lastMessage.createdAt,
+        };
+        conversation.lastMessageAt = lastMessage.createdAt;
+      } else {
+        conversation.lastMessage = null;
+      }
     }
 
     await conversation.save();
@@ -1584,7 +1608,11 @@ export const toggleIncognitoMode = async (req, res) => {
       conversation.participants.forEach((p) => {
         io.to(`user:${p.userId}`).emit("conversation:update", {
           conversationId: id,
-          updates: { incognitoMode: conversation.incognitoMode }
+          updates: { 
+            incognitoMode: conversation.incognitoMode,
+            lastMessage: conversation.lastMessage,
+            lastMessageAt: conversation.lastMessageAt,
+          }
         });
         
         // Cập nhật lại UI client sau khi xóa tin nhắn (nếu tắt)

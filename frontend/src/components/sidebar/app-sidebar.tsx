@@ -1,4 +1,5 @@
 import { NavUser } from "@/components/sidebar/nav-user";
+import { Link } from "react-router";
 import {
   Sidebar,
   SidebarContent,
@@ -32,14 +33,14 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               asChild
               className="bg-gradient-primary"
             >
-              <a href="#">
+              <Link to="/">
                 <div className="flex w-full items-center px-2">
                   <h1 className="text-xl font-bold text-white flex items-center gap-2">
                     <img src="/favicon.svg" alt="Logo" className="w-7 h-7" />
                     NexusChat
                   </h1>
                 </div>
-              </a>
+              </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>

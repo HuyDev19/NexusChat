@@ -20,6 +20,16 @@ export const authMe = async (req, res) => {
   }
 };
 
+export const getUserCount = async (req, res) => {
+  try {
+    const count = await User.countDocuments();
+    return res.status(200).json({ count });
+  } catch (error) {
+    console.error("Lỗi khi lấy số lượng người dùng:", error);
+    return res.status(500).json({ message: "Lỗi hệ thống" });
+  }
+};
+
 export const searchUserByUsername = async (req, res) => {
   try {
     const query = String(req.query.username || "").trim();
