@@ -120,15 +120,66 @@ export const submitReview = async (req, res) => {
 
 export const getApprovedReviews = async (req, res) => {
   try {
-    // Get all approved reviews, populate user info (name, avatar), sorted by newest
     const reviews = await Review.find({ status: "approved" })
       .populate("user", "displayName avatarUrl")
       .sort({ createdAt: -1 })
-      .limit(10); // Limit to top 10 newest for performance
+      .limit(10);
 
     res.status(200).json({ success: true, reviews });
   } catch (error) {
     console.error("Error in getApprovedReviews:", error);
+    res.status(500).json({ success: false, message: "Lỗi máy chủ nội bộ." });
+  }
+};
+
+export const getReviewStats = async (req, res) => {
+  try {
+    const approved = await Review.find({ status: "approved" })
+      .populate("user", "displayName avatarUrl")
+      .sort({ rating: -1, createdAt: -1 });
+
+    if (!approved.length) {
+      return res.status(200).json({
+        success: true,
+        averageRating: 0,
+        totalReviews: 0,
+        recentAvatars: [],
+        topReviews: [],
+      });
+    }
+
+    const total = approved.length;
+    const sum = approved.reduce((acc, r) => acc + r.rating, 0);
+    const averageRating = Math.round((sum / total) * 10) / 10;
+
+    // Top reviews with content (5-star first, then 4-star)
+    const topReviews = approved
+      .filter((r) => r.rating >= 4 && r.content && r.content.length > 10)
+      .slice(0, 6)
+      .map((r) => ({
+        name: r.user?.displayName || "Người dùng",
+        avatar: r.user?.avatarUrl || null,
+        rating: r.rating,
+        content: r.content,
+      }));
+
+    // Recent reviewer avatars (up to 4)
+    const recentAvatars = approved
+      .slice(0, 4)
+      .map((r) => ({
+        name: r.user?.displayName || "?",
+        avatar: r.user?.avatarUrl || null,
+      }));
+
+    res.status(200).json({
+      success: true,
+      averageRating,
+      totalReviews: total,
+      recentAvatars,
+      topReviews,
+    });
+  } catch (error) {
+    console.error("Error in getReviewStats:", error);
     res.status(500).json({ success: false, message: "Lỗi máy chủ nội bộ." });
   }
 };

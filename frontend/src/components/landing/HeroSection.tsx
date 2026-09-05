@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router";
 import { useAuthStore } from "@/stores/useAuthStore";
-import { ArrowRight, MessageCircleCode, Zap, ShieldCheck, Globe } from "lucide-react";
+import { ArrowRight, MessageCircleCode, Star, Quote } from "lucide-react";
 import { MarqueeTicker } from "./MarqueeTicker";
 import api from "@/lib/axios";
 
@@ -9,33 +9,12 @@ interface HeroSectionProps {
   loaderDone: boolean;
 }
 
-// Feature slider data
-const SLIDES = [
-  {
-    icon: <ShieldCheck className="w-5 h-5 text-white" />,
-    iconBg: "from-purple-600 to-indigo-600",
-    category: "NexusChat Pro",
-    name: "Mã hoá đầu cuối",
-    cta: "Tìm hiểu thêm",
-  },
-  {
-    icon: <Zap className="w-5 h-5 text-white" />,
-    iconBg: "from-indigo-500 to-cyan-500",
-    category: "NexusChat Calls",
-    name: "Video & Thoại HD",
-    cta: "Dùng miễn phí",
-  },
-  {
-    icon: <Globe className="w-5 h-5 text-white" />,
-    iconBg: "from-pink-500 to-purple-600",
-    category: "NexusChat Teams",
-    name: "Kênh nhóm toàn cầu",
-    cta: "Khám phá nhóm",
-  },
-];
-
-// Avatar dot colors for users card
-const AVATAR_COLORS = ["#7c3aed", "#c2e029", "#0b6e97", "#ffffff"];
+interface ReviewStat {
+  averageRating: number;
+  totalReviews: number;
+  recentAvatars: { name: string; avatar: string | null }[];
+  topReviews: { name: string; avatar: string | null; rating: number; content: string }[];
+}
 
 /** Word-by-word clip reveal hero title */
 const AnimatedTitle = ({ ready }: { ready: boolean }) => {
@@ -45,7 +24,7 @@ const AnimatedTitle = ({ ready }: { ready: boolean }) => {
     <div className="flex flex-col -space-y-2 sm:-space-y-5 select-none relative">
       {/* Background orb to enhance the Glass Text effect on "CHAT" */}
       <div className="absolute right-0 top-10 w-48 h-48 bg-purple-500/30 dark:bg-purple-500/40 blur-[60px] rounded-full mix-blend-screen pointer-events-none -z-10 animate-pulse" />
-      
+
       {/* Line 1: NEXUSCHAT (Dual-tone & Glass text) */}
       <h1 className="font-bold tracking-tighter leading-[1.0]"
         style={{ fontSize: "clamp(3.5rem, 12vw, 11rem)", letterSpacing: "-0.04em", display: "flex", flexWrap: "wrap" }}
@@ -55,8 +34,8 @@ const AnimatedTitle = ({ ready }: { ready: boolean }) => {
           return (
             <span key={i} className="word-clip" style={{ marginRight: char === " " ? "0.25em" : "0.01em" }}>
               <span
-                className={isChat 
-                  ? "text-transparent bg-clip-text drop-shadow-[0_4px_20px_rgba(124,58,237,0.3)] [-webkit-text-stroke:1px_rgba(124,58,237,0.6)] dark:[-webkit-text-stroke:1px_rgba(216,180,254,0.9)] bg-gradient-to-br from-purple-600/40 to-indigo-600/5 dark:from-purple-200/50 dark:to-cyan-300/20" 
+                className={isChat
+                  ? "text-transparent bg-clip-text drop-shadow-[0_4px_20px_rgba(124,58,237,0.3)] [-webkit-text-stroke:1px_rgba(124,58,237,0.6)] dark:[-webkit-text-stroke:1px_rgba(216,180,254,0.9)] bg-gradient-to-br from-purple-600/40 to-indigo-600/5 dark:from-purple-200/50 dark:to-cyan-300/20"
                   : "text-slate-900 dark:text-white"
                 }
                 style={{
@@ -132,21 +111,21 @@ export const HeroSection = ({ loaderDone }: HeroSectionProps) => {
   const [cardVisible, setCardVisible] = useState(false);
   const [sliderVisible, setSliderVisible] = useState(false);
   const [userCount, setUserCount] = useState<number | null>(null);
+  const [reviewStats, setReviewStats] = useState<ReviewStat | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Fetch user count
   useEffect(() => {
-    const fetchUserCount = async () => {
-      try {
-        const res = await api.get("/users/count");
-        if (res.data && res.data.count !== undefined) {
-          setUserCount(res.data.count);
-        }
-      } catch (error) {
-        console.error("Failed to fetch user count:", error);
-      }
-    };
-    fetchUserCount();
+    api.get("/users/count").then(res => {
+      if (res.data?.count !== undefined) setUserCount(res.data.count);
+    }).catch(() => { });
+  }, []);
+
+  // Fetch review stats
+  useEffect(() => {
+    api.get("/reviews/stats").then(res => {
+      if (res.data?.success) setReviewStats(res.data);
+    }).catch(() => { });
   }, []);
 
   // Gate hero bottom cards on loader
@@ -157,16 +136,19 @@ export const HeroSection = ({ loaderDone }: HeroSectionProps) => {
     return () => { clearTimeout(t1); clearTimeout(t2); };
   }, [loaderDone]);
 
-  // Feature slider autoplay
+  // Review quote autoplay
   useEffect(() => {
-    if (!loaderDone) return;
+    if (!loaderDone || !reviewStats?.topReviews.length) return;
     intervalRef.current = setInterval(() => {
-      setSlideIndex((prev) => (prev + 1) % SLIDES.length);
-    }, 3800);
+      setSlideIndex(prev => (prev + 1) % reviewStats.topReviews.length);
+    }, 4000);
     return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
-  }, [loaderDone]);
+  }, [loaderDone, reviewStats]);
 
-  const slide = SLIDES[slideIndex];
+  const topReviews = reviewStats?.topReviews ?? [];
+  const currentReview = topReviews[slideIndex] ?? null;
+  const avgRating = reviewStats?.averageRating ?? 0;
+  const recentAvatars = reviewStats?.recentAvatars ?? [];
 
   return (
     <section
@@ -186,7 +168,7 @@ export const HeroSection = ({ loaderDone }: HeroSectionProps) => {
       </div>
 
       {/* Grid Overlay (Idea 1) */}
-      <div 
+      <div
         className="absolute inset-0 -z-10 text-slate-900 dark:text-white opacity-[0.04] dark:opacity-[0.08]"
         style={{
           backgroundImage: `
@@ -200,7 +182,7 @@ export const HeroSection = ({ loaderDone }: HeroSectionProps) => {
       />
 
       {/* Cinematic Noise Overlay (Idea 2) */}
-      <div 
+      <div
         className="absolute inset-0 -z-10 opacity-[0.3] mix-blend-overlay"
         style={{
           backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`,
@@ -227,7 +209,7 @@ export const HeroSection = ({ loaderDone }: HeroSectionProps) => {
           {/* Right cluster */}
           <div className="flex flex-col sm:flex-row items-start sm:items-end gap-4">
 
-            {/* Feature slider — hidden on mobile */}
+            {/* Review quote slider — hidden on mobile */}
             <div
               className="hidden md:flex flex-col gap-3 w-64"
               style={{
@@ -236,44 +218,75 @@ export const HeroSection = ({ loaderDone }: HeroSectionProps) => {
                 transition: "opacity 0.7s cubic-bezier(0.16,1,0.3,1), transform 0.7s cubic-bezier(0.16,1,0.3,1)",
               }}
             >
-              {/* Feature card */}
-              <div
-                className="flex items-center gap-3 rounded-2xl p-3 backdrop-blur-md bg-white/40 dark:bg-white/10 border border-black/5 dark:border-white/15 shadow-xl shadow-purple-900/10 dark:shadow-purple-950/40"
-                key={slideIndex}
-              >
+              {currentReview ? (
                 <div
-                  className={`w-14 h-14 rounded-xl bg-gradient-to-br ${slide.iconBg} flex items-center justify-center shrink-0`}
+                  key={slideIndex}
+                  className="flex flex-col gap-3 rounded-2xl p-3.5 backdrop-blur-md bg-white/40 dark:bg-white/10 border border-black/5 dark:border-white/15 shadow-xl shadow-purple-900/10 dark:shadow-purple-950/40"
                 >
-                  {slide.icon}
+                  {/* Quote icon */}
+                  <Quote className="w-4 h-4 text-primary/60 dark:text-purple-300/60 shrink-0" />
+                  {/* Review text */}
+                  <p className="text-[0.72rem] text-slate-700 dark:text-white/85 leading-relaxed line-clamp-3">
+                    &ldquo;{currentReview.content}&rdquo;
+                  </p>
+                  {/* Reviewer info */}
+                  <div className="flex items-center gap-2 mt-auto">
+                    {currentReview.avatar ? (
+                      <img
+                        src={currentReview.avatar}
+                        alt={currentReview.name}
+                        className="w-6 h-6 rounded-full object-cover ring-1 ring-primary/30"
+                      />
+                    ) : (
+                      <div className="w-6 h-6 rounded-full bg-gradient-to-br from-primary to-purple-500 flex items-center justify-center text-[0.55rem] font-bold text-white">
+                        {currentReview.name.charAt(0).toUpperCase()}
+                      </div>
+                    )}
+                    <span className="text-[0.65rem] font-medium text-slate-600 dark:text-white/70 truncate">{currentReview.name}</span>
+                    <div className="flex items-center gap-0.5 ml-auto shrink-0">
+                      {Array.from({ length: currentReview.rating }).map((_, i) => (
+                        <Star key={i} className="w-2.5 h-2.5 fill-amber-400 text-amber-400" />
+                      ))}
+                    </div>
+                  </div>
                 </div>
-                <div className="flex flex-col min-w-0">
-                  <span className="text-[0.65rem] font-medium uppercase tracking-wider text-slate-500 dark:text-white/70">{slide.category}</span>
-                  <span className="text-[0.7rem] uppercase text-slate-800 dark:text-white/80 leading-tight mt-0.5">{slide.name}</span>
-                  <span className="text-[0.6rem] text-primary dark:text-purple-300 underline underline-offset-2 mt-1 cursor-pointer hover:text-purple-700 dark:hover:text-white transition-colors">
-                    {slide.cta} →
-                  </span>
+              ) : (
+                /* Skeleton / no reviews yet */
+                <div className="flex flex-col gap-2 rounded-2xl p-3.5 backdrop-blur-md bg-white/40 dark:bg-white/10 border border-black/5 dark:border-white/15">
+                  <Quote className="w-4 h-4 text-primary/40" />
+                  <p className="text-[0.72rem] text-slate-500 dark:text-white/50 leading-relaxed">
+                    &ldquo;NexusChat giúp nhóm tôi kết nối mọi lúc mọi nơi!&rdquo;
+                  </p>
+                  <div className="flex items-center gap-2 mt-1">
+                    <div className="w-6 h-6 rounded-full bg-gradient-to-br from-primary to-purple-500" />
+                    <span className="text-[0.65rem] text-slate-500 dark:text-white/50">Người dùng NexusChat</span>
+                    <div className="flex ml-auto">
+                      {[...Array(5)].map((_, i) => <Star key={i} className="w-2.5 h-2.5 fill-amber-400 text-amber-400" />)}
+                    </div>
+                  </div>
                 </div>
-              </div>
+              )}
 
-              {/* Dots */}
-              <div className="flex items-center gap-2 px-1">
-                {SLIDES.map((_, i) => (
-                  <button
-                    key={i}
-                    onClick={() => { setSlideIndex(i); if (intervalRef.current) clearInterval(intervalRef.current); }}
-                    className="h-1.5 rounded-full transition-all duration-300"
-                    style={{
-                      width: i === slideIndex ? "1.25rem" : "0.375rem",
-                      background: i === slideIndex ? "var(--primary)" : "rgba(124,58,237,0.3)",
-                    }}
-                    aria-current={i === slideIndex}
-                    aria-label={`Slide ${i + 1}`}
-                  />
-                ))}
-              </div>
+              {/* Dots (only show if there are reviews) */}
+              {topReviews.length > 1 && (
+                <div className="flex items-center gap-2 px-1">
+                  {topReviews.map((_, i) => (
+                    <button
+                      key={i}
+                      onClick={() => { setSlideIndex(i); if (intervalRef.current) clearInterval(intervalRef.current); }}
+                      className="h-1.5 rounded-full transition-all duration-300"
+                      style={{
+                        width: i === slideIndex ? "1.25rem" : "0.375rem",
+                        background: i === slideIndex ? "var(--primary)" : "rgba(124,58,237,0.3)",
+                      }}
+                      aria-label={`Review ${i + 1}`}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
 
-            {/* Users card */}
+            {/* Users card — registered account count */}
             <article
               className="flex items-stretch gap-3 rounded-2xl p-3 backdrop-blur-md w-full sm:w-auto sm:max-w-[15rem] bg-white/40 dark:bg-white/10 border border-black/5 dark:border-white/15 shadow-xl shadow-purple-900/10 dark:shadow-purple-950/40"
               style={{
@@ -288,20 +301,17 @@ export const HeroSection = ({ loaderDone }: HeroSectionProps) => {
                   {userCount !== null ? `${userCount.toLocaleString()}+` : "..."}
                 </span>
                 <div className="flex items-center">
-                  {AVATAR_COLORS.map((c, i) => (
+                  {["#7c3aed", "#c2e029", "#0b6e97", "#ffffff"].map((c, i) => (
                     <div
                       key={i}
                       className="w-5 h-5 rounded-full border border-white dark:border-slate-800"
-                      style={{
-                        background: c,
-                        marginLeft: i > 0 ? "-6px" : "0",
-                      }}
+                      style={{ background: c, marginLeft: i > 0 ? "-6px" : "0" }}
                     />
                   ))}
                 </div>
-                <span className="text-[0.65rem] text-slate-600 dark:text-white/75">Người dùng hoạt động</span>
+                <span className="text-[0.65rem] text-slate-600 dark:text-white/75">Tài khoản đã đăng ký</span>
               </div>
-              {/* Right: abstract avatar */}
+              {/* Right: icon */}
               <div
                 className="w-14 aspect-[3/4] rounded-xl flex items-center justify-center shrink-0"
                 style={{ background: "linear-gradient(135deg, #7c3aed, #4f46e5)" }}

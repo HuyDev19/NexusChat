@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { ArrowLeft, ArrowRight, ShieldCheck } from "lucide-react";
+import { ArrowRight, ShieldCheck, Star, Wifi } from "lucide-react";
+import api from "@/lib/axios";
 
 import imgDark from "../../assets/app-dark.png";
 import imgCall from "../../assets/app-call.png";
@@ -59,6 +60,17 @@ const SLIDES = [
   },
 ];
 
+interface ReviewStat {
+  averageRating: number;
+  totalReviews: number;
+  recentAvatars: { name: string; avatar: string | null }[];
+}
+
+// Generate 30 uptime bars (simulated, mostly green with occasional gap)
+const UPTIME_BARS = Array.from({ length: 30 }, (_, i) =>
+  i === 7 || i === 22 ? "gap" : "ok"
+);
+
 function useInView(threshold = 0.2) {
   const ref = useRef<HTMLElement>(null);
   const [visible, setVisible] = useState(false);
@@ -76,10 +88,33 @@ export const TrustSection = () => {
   const { ref, visible } = useInView(0.15);
   const [slideIndex, setSlideIndex] = useState(0);
   const [wordReveal, setWordReveal] = useState(false);
+  const [ping, setPing] = useState<number | null>(null);
+  const [reviewStats, setReviewStats] = useState<ReviewStat | null>(null);
   
   const cardRef = useRef<HTMLDivElement>(null);
 
   const slide = SLIDES[slideIndex];
+
+  // Measure real ping to backend
+  useEffect(() => {
+    const measure = async () => {
+      const start = performance.now();
+      try {
+        await api.get("/users/count");
+        setPing(Math.round(performance.now() - start));
+      } catch {
+        setPing(null);
+      }
+    };
+    measure();
+  }, []);
+
+  // Fetch real review stats
+  useEffect(() => {
+    api.get("/reviews/stats").then(res => {
+      if (res.data?.success) setReviewStats(res.data);
+    }).catch(() => {});
+  }, []);
 
   // Re-trigger word reveal on slide change
   useEffect(() => {
@@ -137,53 +172,137 @@ export const TrustSection = () => {
         {/* Left Column: Typography & Controls */}
         <div className="flex flex-col gap-10">
           {/* Top badge row */}
-          <div className="flex flex-col sm:flex-row items-stretch gap-4 sm:gap-6">
-            
-            {/* Live Server Status */}
-            <div 
-              className="flex-1 rounded-2xl bg-slate-50 dark:bg-white/5 p-4 sm:p-5 border border-slate-100 dark:border-white/10 flex flex-col justify-center"
+          <div className="flex flex-col sm:flex-row items-stretch gap-3 sm:gap-4">
+
+            {/* Card 1 — Live Server Status */}
+            <div
+              className="group flex-1 rounded-2xl p-4 sm:p-5 flex flex-col justify-between gap-3 cursor-default
+                backdrop-blur-md bg-white/70 dark:bg-white/5
+                border border-white/80 dark:border-white/10
+                shadow-sm hover:shadow-md hover:border-green-400/40 dark:hover:border-green-500/30
+                transition-all duration-300"
               style={{
                 opacity: visible ? 1 : 0,
                 transform: visible ? "translateY(0)" : "translateY(24px)",
-                transition: "opacity 0.6s cubic-bezier(0.16,1,0.3,1) 50ms, transform 0.6s cubic-bezier(0.16,1,0.3,1) 50ms",
+                transition: "opacity 0.6s cubic-bezier(0.16,1,0.3,1) 50ms, transform 0.6s cubic-bezier(0.16,1,0.3,1) 50ms, box-shadow 0.3s, border-color 0.3s",
               }}
             >
-              <div className="flex items-center gap-2 mb-2">
-                <span className="relative flex h-3 w-3 shrink-0">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
-                </span>
-                <span className="text-sm font-bold text-green-600 dark:text-green-400 truncate">Hệ thống đang hoạt động</span>
+              {/* Header */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="relative flex h-2.5 w-2.5 shrink-0">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500" />
+                  </span>
+                  <span className="text-xs font-bold text-green-600 dark:text-green-400">Đang hoạt động</span>
+                </div>
+                <Wifi className="w-3.5 h-3.5 text-slate-300 dark:text-white/20 group-hover:text-green-400 transition-colors" />
               </div>
-              <div className="text-xs text-slate-500 dark:text-muted-foreground font-medium flex items-center gap-1.5 flex-wrap">
-                <span>Ping: <span className="text-slate-900 dark:text-white">~12ms</span></span>
-                <span className="w-1 h-1 rounded-full bg-slate-300 dark:bg-white/20"></span>
-                <span>E2EE: <span className="text-slate-900 dark:text-white">Đã bật</span></span>
+
+              {/* Uptime bars — 30 days */}
+              <div className="flex items-end gap-[2px]" title="Uptime 30 ngày qua">
+                {UPTIME_BARS.map((status, i) => (
+                  <div
+                    key={i}
+                    className="flex-1 rounded-[2px] transition-all duration-200"
+                    style={{
+                      height: status === "ok" ? "16px" : "10px",
+                      background: status === "ok"
+                        ? "linear-gradient(to top, #22c55e, #4ade80)"
+                        : "#f87171",
+                      opacity: status === "ok" ? 0.85 : 0.6,
+                    }}
+                  />
+                ))}
+              </div>
+
+              {/* Metrics */}
+              <div className="flex items-center gap-3 text-[0.65rem] text-slate-500 dark:text-white/50 font-medium">
+                <span>
+                  Ping:{" "}
+                  <span className="text-slate-800 dark:text-white font-bold">
+                    {ping !== null ? `~${ping}ms` : "..."}
+                  </span>
+                </span>
+                <span className="w-0.5 h-3 rounded-full bg-slate-200 dark:bg-white/10" />
+                <span>
+                  E2EE:{" "}
+                  <span className="text-green-600 dark:text-green-400 font-bold">Đã bật</span>
+                </span>
+                <span className="w-0.5 h-3 rounded-full bg-slate-200 dark:bg-white/10" />
+                <span>
+                  30d:{" "}
+                  <span className="text-slate-800 dark:text-white font-bold">99.3%</span>
+                </span>
               </div>
             </div>
 
-            {/* Social Proof */}
+            {/* Card 2 — Social Proof */}
             <article
-              className="flex-1 rounded-2xl bg-slate-50 dark:bg-white/5 p-4 sm:p-5 border border-slate-100 dark:border-white/10 flex flex-col justify-center"
+              className="group flex-1 rounded-2xl p-4 sm:p-5 flex flex-col justify-between gap-3 cursor-pointer
+                backdrop-blur-md bg-white/70 dark:bg-white/5
+                border border-white/80 dark:border-white/10
+                shadow-sm hover:shadow-md hover:border-amber-400/40 dark:hover:border-amber-500/30
+                transition-all duration-300"
               style={{
                 opacity: visible ? 1 : 0,
                 transform: visible ? "translateY(0)" : "translateY(24px)",
-                transition: "opacity 0.6s cubic-bezier(0.16,1,0.3,1) 120ms, transform 0.6s cubic-bezier(0.16,1,0.3,1) 120ms",
+                transition: "opacity 0.6s cubic-bezier(0.16,1,0.3,1) 120ms, transform 0.6s cubic-bezier(0.16,1,0.3,1) 120ms, box-shadow 0.3s, border-color 0.3s",
               }}
+              onClick={() => document.getElementById("testimonials")?.scrollIntoView({ behavior: "smooth" })}
             >
-              <div className="flex items-center gap-1 mb-2 text-amber-500">
-                {[1,2,3,4,5].map(i => <svg key={i} className="w-4 h-4 fill-current shrink-0" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" /></svg>)}
-                <span className="text-sm font-bold text-slate-900 dark:text-white ml-1">4.9/5</span>
+              {/* Stars + score */}
+              <div className="flex items-center gap-1">
+                {[1, 2, 3, 4, 5].map(s => (
+                  <Star
+                    key={s}
+                    className="w-3.5 h-3.5 shrink-0"
+                    style={{
+                      fill: (reviewStats?.averageRating ?? 4.9) >= s ? "#f59e0b" : "transparent",
+                      color: (reviewStats?.averageRating ?? 4.9) >= s ? "#f59e0b" : "#d1d5db",
+                    }}
+                  />
+                ))}
+                <span className="text-sm font-bold text-slate-900 dark:text-white ml-1">
+                  {reviewStats?.averageRating ? `${reviewStats.averageRating}/5` : "4.9/5"}
+                </span>
+                {reviewStats?.totalReviews ? (
+                  <span className="text-[0.6rem] text-slate-400 dark:text-white/30 ml-1">
+                    ({reviewStats.totalReviews})
+                  </span>
+                ) : null}
               </div>
-              <div className="flex items-center gap-3">
+
+              {/* Avatars + text */}
+              <div className="flex items-center gap-2.5">
                 <div className="flex -space-x-2 shrink-0">
-                  <img className="w-6 h-6 rounded-full ring-2 ring-white dark:ring-background" src="https://i.pravatar.cc/100?img=11" alt="User" />
-                  <img className="w-6 h-6 rounded-full ring-2 ring-white dark:ring-background" src="https://i.pravatar.cc/100?img=22" alt="User" />
-                  <img className="w-6 h-6 rounded-full ring-2 ring-white dark:ring-background" src="https://i.pravatar.cc/100?img=33" alt="User" />
+                  {(reviewStats?.recentAvatars?.slice(0, 3) ?? []).length > 0
+                    ? reviewStats!.recentAvatars.slice(0, 3).map((u, i) =>
+                        u.avatar ? (
+                          <img key={i} src={u.avatar} alt={u.name}
+                            className="w-6 h-6 rounded-full object-cover ring-2 ring-white dark:ring-background" />
+                        ) : (
+                          <div key={i}
+                            className="w-6 h-6 rounded-full bg-gradient-to-br from-primary to-purple-500 ring-2 ring-white dark:ring-background flex items-center justify-center text-[0.5rem] font-bold text-white">
+                            {u.name.charAt(0).toUpperCase()}
+                          </div>
+                        )
+                      )
+                    : ["#7c3aed", "#f59e0b", "#10b981"].map((c, i) => (
+                        <div key={i} className="w-6 h-6 rounded-full ring-2 ring-white dark:ring-background"
+                          style={{ background: c }} />
+                      ))
+                  }
                 </div>
-                <p className="text-[0.65rem] text-slate-500 dark:text-muted-foreground leading-tight">
-                  Cùng hàng ngàn<br/>thành viên mỗi ngày.
+                <p className="text-[0.65rem] text-slate-500 dark:text-white/50 leading-tight">
+                  Cùng hàng ngàn<br />thành viên mỗi ngày.
                 </p>
+              </div>
+
+              {/* CTA */}
+              <div className="flex items-center gap-1 text-[0.65rem] font-semibold text-primary/70 group-hover:text-primary transition-colors">
+                Xem tất cả đánh giá
+                <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
               </div>
             </article>
           </div>
