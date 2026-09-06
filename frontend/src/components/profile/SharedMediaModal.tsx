@@ -12,7 +12,7 @@ interface SharedMediaModalProps {
 }
 
 const SharedMediaModal = ({ open, onOpenChange, conversationId, defaultTab = "media" }: SharedMediaModalProps) => {
-  const messages = useChatStore(state => state.messages[conversationId]?.items || []);
+  const messages = useChatStore(state => state.messages[conversationId]?.items) || [];
   const convo = useChatStore(state => state.conversations.find(c => c._id === conversationId));
 
   const images = messages.filter(m => !!m.imgUrl && !m.isRecalled);

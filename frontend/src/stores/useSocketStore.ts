@@ -35,11 +35,16 @@ export const useSocketStore = create<SocketState>((set, get) => ({
 
     socket.on("connect", () => {
       console.log("Đã kết nối với socket");
-      const conversations = useChatStore.getState().conversations;
+      const chatStore = useChatStore.getState();
+      const conversations = chatStore.conversations;
       if (conversations && conversations.length > 0) {
         conversations.forEach((c) => {
           socket.emit("join-conversation", c._id);
         });
+      }
+
+      if (chatStore.activeConversationId) {
+        chatStore.markAsSeen();
       }
     });
 

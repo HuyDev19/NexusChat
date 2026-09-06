@@ -424,8 +424,7 @@ export const useChatStore = create<ChatState>()(
             return;
           }
 
-          await chatService.markAsSeen(activeConversationId);
-
+          // Cập nhật giao diện ngay lập tức (Optimistic Update) để mất thông báo ngay
           set((state) => ({
             conversations: state.conversations.map((c) =>
               c._id === activeConversationId
@@ -439,8 +438,12 @@ export const useChatStore = create<ChatState>()(
                 : c
             ),
           }));
-        } catch (error) {
-          console.error("Lỗi xảy ra khi gọi markAsSeen trong store", error);
+
+          await chatService.markAsSeen(activeConversationId);
+        } catch (error: any) {
+          if (error.code !== "ERR_NETWORK") {
+            console.error("Lỗi xảy ra khi gọi markAsSeen trong store", error);
+          }
         }
       },
       markMessagesAsReadBy: (conversationId, userId) => {

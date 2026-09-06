@@ -16,6 +16,7 @@ import { useAuthStore } from "@/stores/useAuthStore";
 import { useUserStore } from "@/stores/useUserStore";
 import { userService } from "@/services/userService";
 import UserAvatar from "../chat/UserAvatar";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -461,206 +462,196 @@ const PrivacySettings = () => {
       </CardContent>
 
       {/* ========================================================= */}
-      {/* MODAL DANH SÁCH CHẶN (SỬ DỤNG REACT PORTAL)                */}
+      {/* MODAL DANH SÁCH CHẶN (RADIX DIALOG)                        */}
       {/* ========================================================= */}
-      {showBlockedModal && typeof document !== "undefined" && createPortal(
-        <div
-          className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-in fade-in duration-200"
-          onClick={() => setShowBlockedModal(false)}
+      <Dialog open={showBlockedModal} onOpenChange={setShowBlockedModal}>
+        <DialogContent
+          showCloseButton={false}
+          aria-describedby={undefined}
+          className="w-full max-w-md bg-card border border-purple-500/30 rounded-3xl p-6 shadow-2xl space-y-4 text-foreground max-h-[80vh] flex flex-col gap-0 outline-none"
         >
-          <div
-            className="relative w-full max-w-md bg-card border border-purple-500/30 rounded-3xl p-6 shadow-2xl space-y-4 text-foreground max-h-[80vh] flex flex-col animate-in zoom-in-95 duration-200"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between border-b border-border/40 pb-3">
-              <div className="flex items-center gap-2.5">
-                <div className="p-2 rounded-xl bg-rose-500/10 text-rose-400 border border-rose-500/20">
-                  <ShieldBan className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="font-bold text-base tracking-tight">Danh sách chặn</h3>
-                  <p className="text-[11px] text-muted-foreground">Quản lý những người bạn đã chặn</p>
-                </div>
+          <div className="flex items-center justify-between border-b border-border/40 pb-3">
+            <div className="flex items-center gap-2.5">
+              <div className="p-2 rounded-xl bg-rose-500/10 text-rose-400 border border-rose-500/20">
+                <ShieldBan className="w-5 h-5" />
               </div>
-              <button
-                type="button"
-                onClick={() => setShowBlockedModal(false)}
-                className="p-1.5 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
+              <div>
+                <h3 className="font-bold text-base tracking-tight">Danh sách chặn</h3>
+                <p className="text-[11px] text-muted-foreground">Quản lý những người bạn đã chặn</p>
+              </div>
             </div>
-
-            <div className="overflow-y-auto flex-1 space-y-2 pr-1 min-h-[160px]">
-              {isFetchingBlocked ? (
-                <div className="flex flex-col items-center justify-center h-40 gap-2 text-muted-foreground text-xs">
-                  <Loader2 className="w-6 h-6 animate-spin text-purple-500" />
-                  <span>Đang tải danh sách chặn...</span>
-                </div>
-              ) : blockedUsersList.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-40 gap-2 text-muted-foreground text-xs">
-                  <UserX className="w-8 h-8 opacity-40 text-rose-400" />
-                  <span>Chưa có người dùng nào bị chặn.</span>
-                </div>
-              ) : (
-                blockedUsersList.map((blocked) => (
-                  <div
-                    key={blocked._id}
-                    className="flex items-center justify-between p-3 rounded-2xl bg-muted/40 border border-border/50 hover:border-purple-500/30 transition-colors"
-                  >
-                    <div className="flex items-center gap-3">
-                      <UserAvatar
-                        type="chat"
-                        name={blocked.displayName}
-                        avatarUrl={blocked.avatarUrl || undefined}
-                        className="w-10 h-10"
-                      />
-                      <div className="flex flex-col">
-                        <span className="font-semibold text-xs">{blocked.displayName}</span>
-                        <span className="text-[10px] text-muted-foreground">@{blocked.username}</span>
-                      </div>
-                    </div>
-
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleUnblockUser(blocked._id)}
-                      className="h-8 text-xs rounded-xl border-rose-500/30 text-rose-400 hover:bg-rose-500/10 hover:text-rose-300"
-                    >
-                      Bỏ chặn
-                    </Button>
-                  </div>
-                ))
-              )}
-            </div>
+            <button
+              type="button"
+              onClick={() => setShowBlockedModal(false)}
+              className="p-1.5 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
           </div>
-        </div>,
-        document.body
-      )}
 
-      {/* ========================================================= */}
-      {/* MODAL XOÁ TÀI KHOẢN (SỬ DỤNG REACT PORTAL)                */}
-      {/* ========================================================= */}
-      {showDeleteModal && typeof document !== "undefined" && createPortal(
-        <div
-          className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-in fade-in duration-200"
-          onClick={() => setShowDeleteModal(false)}
-        >
-          <div
-            className="relative w-full max-w-md bg-card border border-rose-500/40 rounded-3xl p-6 shadow-2xl space-y-4 text-foreground animate-in zoom-in-95 duration-200"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between border-b border-border/40 pb-3">
-              <div className="flex items-center gap-2.5">
-                <div className="p-2 rounded-xl bg-rose-500/10 text-rose-500 border border-rose-500/20">
-                  <Trash2 className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="font-bold text-base tracking-tight text-rose-500">Xoá tài khoản vĩnh viễn</h3>
-                  <p className="text-[11px] text-muted-foreground">Cần xác thực mã OTP gửi về Gmail</p>
-                </div>
+          <div className="overflow-y-auto flex-1 space-y-2 pr-1 min-h-[160px]">
+            {isFetchingBlocked ? (
+              <div className="flex flex-col items-center justify-center h-40 gap-2 text-muted-foreground text-xs">
+                <Loader2 className="w-6 h-6 animate-spin text-purple-500" />
+                <span>Đang tải danh sách chặn...</span>
               </div>
-              <button
-                type="button"
-                onClick={() => setShowDeleteModal(false)}
-                className="p-1.5 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
+            ) : blockedUsersList.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-40 gap-2 text-muted-foreground text-xs">
+                <UserX className="w-8 h-8 opacity-40 text-rose-400" />
+                <span>Chưa có người dùng nào bị chặn.</span>
+              </div>
+            ) : (
+              blockedUsersList.map((blocked) => (
+                <div
+                  key={blocked._id}
+                  className="flex items-center justify-between p-3 rounded-2xl bg-muted/40 border border-border/50 hover:border-purple-500/30 transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    <UserAvatar
+                      type="chat"
+                      name={blocked.displayName}
+                      avatarUrl={blocked.avatarUrl || undefined}
+                      className="w-10 h-10"
+                    />
+                    <div className="flex flex-col">
+                      <span className="font-semibold text-xs">{blocked.displayName}</span>
+                      <span className="text-[10px] text-muted-foreground">@{blocked.username}</span>
+                    </div>
+                  </div>
 
-            <div className="p-3.5 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-300 text-xs space-y-1">
-              <p className="font-semibold flex items-center gap-1.5">
-                <AlertTriangle className="w-4 h-4 text-rose-400 flex-shrink-0" />
-                Cảnh báo quan trọng:
-              </p>
-              <p className="text-[11px] opacity-90 leading-relaxed">
-                Tài khoản của bạn sẽ bị xóa hoàn toàn khỏi hệ thống. Sau khi xóa, địa chỉ Gmail <strong>{user?.email}</strong> và Username của bạn sẽ có thể dùng để đăng ký tài khoản mới.
-              </p>
-            </div>
-
-            {deleteStep === 1 ? (
-              <div className="space-y-4 pt-1">
-                <p className="text-xs text-muted-foreground">
-                  Bấm nút bên dưới để nhận mã OTP 6 chữ số về email: <strong className="text-foreground">{user?.email}</strong>
-                </p>
-                <div className="flex gap-2 pt-2">
                   <Button
                     type="button"
                     variant="outline"
-                    onClick={() => setShowDeleteModal(false)}
-                    className="flex-1 h-9 rounded-xl text-xs"
+                    size="sm"
+                    onClick={() => handleUnblockUser(blocked._id)}
+                    className="h-8 text-xs rounded-xl border-rose-500/30 text-rose-400 hover:bg-rose-500/10 hover:text-rose-300"
                   >
-                    Hủy
-                  </Button>
-                  <Button
-                    type="button"
-                    onClick={handleSendDeleteOtp}
-                    disabled={isDeleteLoading}
-                    className="flex-1 h-9 rounded-xl text-xs bg-rose-600 hover:bg-rose-700 text-white gap-2 font-medium"
-                  >
-                    {isDeleteLoading ? (
-                      <>
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                        <span>Đang gửi...</span>
-                      </>
-                    ) : (
-                      <>
-                        <Mail className="w-4 h-4" />
-                        <span>Gửi OTP xóa tài khoản</span>
-                      </>
-                    )}
+                    Bỏ chặn
                   </Button>
                 </div>
-              </div>
-            ) : (
-              <div className="space-y-3 pt-1">
-                <div className="space-y-1">
-                  <Label htmlFor="delete-otp" className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                    Mã OTP 6 chữ số xác nhận
-                  </Label>
-                  <Input
-                    id="delete-otp"
-                    type="text"
-                    maxLength={6}
-                    placeholder="123456"
-                    value={deleteOtp}
-                    onChange={(e) => setDeleteOtp(e.target.value.replace(/\D/g, ""))}
-                    className="h-10 rounded-xl bg-background/80 border-rose-500/40 text-center font-bold tracking-[6px] text-sm focus:border-rose-500"
-                  />
-                </div>
-
-                <div className="flex items-center justify-between text-xs pt-1">
-                  <button
-                    type="button"
-                    disabled={deleteTimer > 0 || isDeleteLoading}
-                    onClick={handleSendDeleteOtp}
-                    className={cn(
-                      "flex items-center gap-1 font-medium text-[11px]",
-                      deleteTimer > 0 ? "text-muted-foreground cursor-not-allowed" : "text-rose-400 hover:underline"
-                    )}
-                  >
-                    <RotateCcw className={cn("w-3 h-3", isDeleteLoading && "animate-spin")} />
-                    <span>{deleteTimer > 0 ? `Gửi lại sau (${deleteTimer}s)` : "Gửi lại OTP"}</span>
-                  </button>
-                </div>
-
-                <Button
-                  type="button"
-                  onClick={handleConfirmDeleteAccount}
-                  disabled={isDeleteLoading || deleteOtp.length !== 6}
-                  className="w-full h-10 bg-rose-600 hover:bg-rose-700 text-white font-semibold text-xs gap-2 mt-2 rounded-xl"
-                >
-                  {isDeleteLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
-                  <span>Xác nhận xóa tài khoản vĩnh viễn</span>
-                </Button>
-              </div>
+              ))
             )}
           </div>
-        </div>,
-        document.body
-      )}
+        </DialogContent>
+      </Dialog>
+
+      {/* ========================================================= */}
+      {/* MODAL XOÁ TÀI KHOẢN (RADIX DIALOG)                         */}
+      {/* ========================================================= */}
+      <Dialog open={showDeleteModal} onOpenChange={setShowDeleteModal}>
+        <DialogContent
+          showCloseButton={false}
+          aria-describedby={undefined}
+          className="w-full max-w-md bg-card border border-rose-500/40 rounded-3xl p-6 shadow-2xl space-y-4 text-foreground flex flex-col gap-0 outline-none"
+        >
+          <div className="flex items-center justify-between border-b border-border/40 pb-3">
+            <div className="flex items-center gap-2.5">
+              <div className="p-2 rounded-xl bg-rose-500/10 text-rose-500 border border-rose-500/20">
+                <Trash2 className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="font-bold text-base tracking-tight text-rose-500">Xoá tài khoản vĩnh viễn</h3>
+                <p className="text-[11px] text-muted-foreground">Cần xác thực mã OTP gửi về Gmail</p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowDeleteModal(false)}
+              className="p-1.5 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+
+          <div className="p-3.5 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-300 text-xs space-y-1">
+            <p className="font-semibold flex items-center gap-1.5">
+              <AlertTriangle className="w-4 h-4 text-rose-400 flex-shrink-0" />
+              Cảnh báo quan trọng:
+            </p>
+            <p className="text-[11px] opacity-90 leading-relaxed">
+              Tài khoản của bạn sẽ bị xóa hoàn toàn khỏi hệ thống. Sau khi xóa, địa chỉ Gmail <strong>{user?.email}</strong> và Username của bạn sẽ có thể dùng để đăng ký tài khoản mới.
+            </p>
+          </div>
+
+          {deleteStep === 1 ? (
+            <div className="space-y-4 pt-1">
+              <p className="text-xs text-muted-foreground">
+                Bấm nút bên dưới để nhận mã OTP 6 chữ số về email: <strong className="text-foreground">{user?.email}</strong>
+              </p>
+              <div className="flex gap-2 pt-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setShowDeleteModal(false)}
+                  className="flex-1 h-9 rounded-xl text-xs"
+                >
+                  Hủy
+                </Button>
+                <Button
+                  type="button"
+                  onClick={handleSendDeleteOtp}
+                  disabled={isDeleteLoading}
+                  className="flex-1 h-9 rounded-xl text-xs bg-rose-600 hover:bg-rose-700 text-white gap-2 font-medium"
+                >
+                  {isDeleteLoading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Đang gửi...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Mail className="w-4 h-4" />
+                      <span>Gửi OTP xóa tài khoản</span>
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-3 pt-1">
+              <div className="space-y-1">
+                <Label htmlFor="delete-otp" className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  Mã OTP 6 chữ số xác nhận
+                </Label>
+                <Input
+                  id="delete-otp"
+                  type="text"
+                  maxLength={6}
+                  placeholder="123456"
+                  value={deleteOtp}
+                  onChange={(e) => setDeleteOtp(e.target.value.replace(/\D/g, ""))}
+                  className="h-10 rounded-xl bg-background/80 border-rose-500/40 text-center font-bold tracking-[6px] text-sm focus:border-rose-500"
+                />
+              </div>
+
+              <div className="flex items-center justify-between text-xs pt-1">
+                <button
+                  type="button"
+                  disabled={deleteTimer > 0 || isDeleteLoading}
+                  onClick={handleSendDeleteOtp}
+                  className={cn(
+                    "flex items-center gap-1 font-medium text-[11px]",
+                    deleteTimer > 0 ? "text-muted-foreground cursor-not-allowed" : "text-rose-400 hover:underline"
+                  )}
+                >
+                  <RotateCcw className={cn("w-3 h-3", isDeleteLoading && "animate-spin")} />
+                  <span>{deleteTimer > 0 ? `Gửi lại sau (${deleteTimer}s)` : "Gửi lại OTP"}</span>
+                </button>
+              </div>
+
+              <Button
+                type="button"
+                onClick={handleConfirmDeleteAccount}
+                disabled={isDeleteLoading || deleteOtp.length !== 6}
+                className="w-full h-10 bg-rose-600 hover:bg-rose-700 text-white font-semibold text-xs gap-2 mt-2 rounded-xl"
+              >
+                {isDeleteLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                <span>Xác nhận xóa tài khoản vĩnh viễn</span>
+              </Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 };
