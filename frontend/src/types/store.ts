@@ -141,6 +141,7 @@ export interface ChatState {
   deleteMessageForMe: (messageId: string, conversationId?: string) => Promise<void>;
   editMessage: (messageId: string, content: string) => Promise<void>;
   translateMessage: (conversationId: string, messageId: string) => Promise<void>;
+  revertTranslation: (conversationId: string, messageId: string) => void;
   updateWallpaper: (conversationId: string, data: string | File) => Promise<void>;
   updateNickname: (conversationId: string, targetUserId: string, nickname: string) => Promise<void>;
   updateConversationFields: (conversationId: string, fields: Partial<Conversation>) => void;

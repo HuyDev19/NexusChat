@@ -1,12 +1,16 @@
 import nodemailer from "nodemailer";
 
-let transporterInstance = null;
-
-const getTransporter = () => {
-  if (transporterInstance) return transporterInstance;
-
-  const user = process.env.EMAIL_USER;
-  const rawPass = process.env.EMAIL_PASS;
+/**
+ * Khởi tạo transporter kết nối trực tiếp đến SMTP Gmail
+ * LƯU Ý QUAN TRỌNG:
+ * Tuyệt đối KHÔNG sử dụng `pool: true` và KHÔNG lưu singleton transporter vĩnh viễn
+ * vì máy chủ Gmail tự động ngắt (close/timeout) các socket idle sau 2-5 phút.
+ * Việc tạo kết nối theo yêu cầu (on-demand connection) đảm bảo dù hệ thống chạy bao lâu,
+ * mỗi lần gửi OTP đều khởi tạo kết nối tươi mới, không bao giờ bị dính ECONNRESET hay socket closed.
+ */
+const createTransporter = (port = 465) => {
+  const user = process.env.EMAIL_USER?.trim();
+  const rawPass = process.env.EMAIL_PASS?.trim();
   const pass = rawPass ? rawPass.replace(/\s+/g, "") : "";
 
   const isPlaceholder =
@@ -22,21 +26,21 @@ const getTransporter = () => {
     return null;
   }
 
-  transporterInstance = nodemailer.createTransport({
-    service: "gmail",
+  return nodemailer.createTransport({
+    host: "smtp.gmail.com",
+    port: port,
+    secure: port === 465, // true cho port 465 (SSL direct), false cho port 587 (STARTTLS)
     auth: {
       user,
       pass,
     },
-    pool: true,
-    maxConnections: 5,
-    maxMessages: 100,
-    connectionTimeout: 8000,
-    greetingTimeout: 8000,
-    socketTimeout: 10000,
+    tls: {
+      rejectUnauthorized: false, // Tránh lỗi kiểm tra chứng chỉ SSL trên mạng WiFi trường học / cơ quan
+    },
+    connectionTimeout: 12000,
+    greetingTimeout: 10000,
+    socketTimeout: 15000,
   });
-
-  return transporterInstance;
 };
 
 export const sendOtpEmail = async (email, otp, type) => {
@@ -48,8 +52,7 @@ export const sendOtpEmail = async (email, otp, type) => {
   console.log(`👉 MÃ OTP: [ ${otp} ]`);
   console.log(`========================================\n`);
 
-  const transporter = getTransporter();
-
+  const user = process.env.EMAIL_USER?.trim();
   const isRegister = type === "register";
   const title = isRegister
     ? "Xác thực đăng ký tài khoản NexusChat"
@@ -88,22 +91,40 @@ export const sendOtpEmail = async (email, otp, type) => {
     </div>
   `;
 
-  if (!transporter) {
-    return true;
-  }
+  const mailOptions = {
+    from: `"NexusChat" <${user}>`,
+    to: email,
+    subject: `[NexusChat] ${title} - Mã OTP: ${otp}`,
+    html: htmlContent,
+  };
 
+  // Lần thử 1: Sử dụng cổng 465 (Direct SSL - tiêu chuẩn cao nhất cho Gmail)
   try {
-    await transporter.sendMail({
-      from: `"NexusChat" <${process.env.EMAIL_USER}>`,
-      to: email,
-      subject: `[NexusChat] ${title} - Mã OTP: ${otp}`,
-      html: htmlContent,
-    });
-    console.log(`✅ [Nodemailer] Đã gửi email OTP thành công tới ${email}`);
-    return true;
-  } catch (error) {
-    console.warn("⚠️ [Nodemailer] Không thể gửi email qua Gmail SMTP:", error.message);
-    console.log(`💡 Mẹo: Sử dụng mã OTP [${otp}] đã được in ở trên để tiếp tục.`);
-    return true;
+    const transporter465 = createTransporter(465);
+    if (!transporter465) {
+      return { success: false, reason: "missing_config" };
+    }
+
+    await transporter465.sendMail(mailOptions);
+    console.log(`✅ [Nodemailer] Đã gửi email OTP thành công tới ${email} (cổng 465 SSL)`);
+    return { success: true };
+  } catch (err465) {
+    console.warn(`⚠️ [Nodemailer] Gửi qua cổng 465 không thành công: ${err465.message}. Đang thử cổng 587 (STARTTLS)...`);
+
+    // Lần thử 2: Dự phòng sang cổng 587 (STARTTLS) nếu mạng hoặc tường lửa chặn cổng 465
+    try {
+      const transporter587 = createTransporter(587);
+      if (!transporter587) {
+        return { success: false, reason: "missing_config" };
+      }
+
+      await transporter587.sendMail(mailOptions);
+      console.log(`✅ [Nodemailer] Đã gửi email OTP thành công tới ${email} (cổng 587 STARTTLS)`);
+      return { success: true };
+    } catch (err587) {
+      console.error("❌ [Nodemailer] Không thể gửi email qua Gmail SMTP:", err587.message);
+      console.log(`💡 Mẹo: Sử dụng mã OTP [${otp}] đã được in ở trên console để tiếp tục.`);
+      return { success: false, error: err587.message };
+    }
   }
 };

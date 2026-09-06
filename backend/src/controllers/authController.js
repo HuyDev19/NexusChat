@@ -90,7 +90,13 @@ export const sendOtp = async (req, res) => {
     });
 
     // Gửi OTP qua Gmail
-    await sendOtpEmail(emailTrimmed, otp, type);
+    const mailResult = await sendOtpEmail(emailTrimmed, otp, type);
+
+    if (mailResult && mailResult.success === false && mailResult.reason === "missing_config") {
+      return res.status(200).json({
+        message: "Mã OTP đã được tạo (Vui lòng xem mã trong Terminal/Console Backend do chưa cấu hình Gmail)",
+      });
+    }
 
     return res.status(200).json({ message: "Mã OTP đã được gửi đến email của bạn!" });
   } catch (error) {
