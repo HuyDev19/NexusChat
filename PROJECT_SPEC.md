@@ -39,6 +39,10 @@ NexusChat is a web-based messaging application for social communication. The cur
 | cloudinary | ^2.0.0 | Image hosting for avatars |
 | multer | ^1.4.5 | File upload middleware |
 | @google/genai | ^0.1.2 | Gemini API SDK for AI Assistant |
+| @ai-sdk/google, @langchain/* | various | Vercel AI SDK & LangChain for advanced AI workflows |
+| nodemailer | ^6.10.1 | Email sending functionality |
+| node-cron / node-schedule | various | Task scheduling and cron jobs |
+| translate | ^3.1.0 | Text translation services |
 
 ### Frontend
 | Technology | Version / Note | Purpose |
@@ -59,6 +63,11 @@ NexusChat is a web-based messaging application for social communication. The cur
 | livekit-client | ^2.28.1 | WebRTC Media & SFU client |
 | @livekit/components-react | ^2.6.9 | LiveKit official React UI component set |
 | @livekit/components-styles | ^1.0.16 | LiveKit prebuilt styles |
+| @ai-sdk/react | ^4.0.71 | Vercel AI SDK React hooks |
+| antd / @mui/material | various | Component libraries for UI elements |
+| wavesurfer.js | ^7.12.11 | Audio waveform visualization |
+| react-konva / react-filerobot | various | Advanced image editing capabilities |
+| emoji-mart | ^5.6.0 | Emoji picker integration |
 
 ### Root workspace
 - framer-motion ^12.38.0
@@ -115,6 +124,10 @@ The project is organized as a monorepo with two main parts:
    - messageController.js
    - conversationController.js
    - callController.js
+   - feedbackController.js
+   - reviewController.js
+   - scheduledController.js
+   - storyController.js
 - backend/src/models/
    - User.js
    - Conversation.js
@@ -122,6 +135,11 @@ The project is organized as a monorepo with two main parts:
    - Friend.js
    - FriendRequest.js
    - Session.js
+   - Feedback.js
+   - Review.js
+   - Otp.js
+   - ScheduledMessage.js
+   - Story.js
 - backend/src/routes/
    - authRoute.js
    - userRoute.js
@@ -129,6 +147,9 @@ The project is organized as a monorepo with two main parts:
    - messageRoute.js
    - conversationRoute.js
    - callRoute.js
+   - feedbackRoute.js
+   - reviewRoute.js
+   - storyRoute.js
 - backend/src/middlewares/
    - authMiddleware.js
    - friendMiddleware.js
@@ -168,6 +189,10 @@ The project is organized as a monorepo with two main parts:
    - useThemeStore.ts
    - useUserStore.ts
    - useCallStore.ts
+   - useAccountInfoModalStore.ts
+   - useOfflineStore.ts
+   - useScheduleStore.ts
+   - useStoryStore.ts
 - frontend/src/types/
    - chat.ts
    - store.ts
@@ -187,6 +212,7 @@ The project is organized as a monorepo with two main parts:
 - Refresh token stored in HttpOnly cookie
 - Sign out and clear refresh-token session
 - Protected route access through auth middleware
+- OTP-based verification via Email (Nodemailer)
 
 ### User management
 - Get current authenticated user via /api/users/me
@@ -230,6 +256,8 @@ The project is organized as a monorepo with two main parts:
   - Cho phép người dùng gọi `@NexusAI` trong chat để trò chuyện, hỏi đáp. Bot sẽ đọc ngữ cảnh 15 tin nhắn gần nhất và tự động phản hồi lại vào đoạn chat.
   - Cung cấp nút **Tóm tắt (Summarize)** sử dụng AI để phân tích và tóm tắt nhanh nội dung quan trọng của cuộc trò chuyện.
 - **Rich Text & Markdown**: Hỗ trợ hiển thị Markdown (`in đậm`, `in nghiêng`, `danh sách`, `code block`) giúp cho các tin nhắn trở nên rõ ràng và dễ đọc.
+- **Stories**: Users can share 24-hour expiring status updates (Stories).
+- **Feedback & Reviews**: Users can submit application feedback and leave reviews.
 
 ### Group Management
 - **Role Management**: Distinguish between `leader` (Admin), `deputy`, and `member`.
@@ -325,6 +353,9 @@ The project is organized as a monorepo with two main parts:
 - POST /api/conversations/:id/leave
 - GET /api/conversations/:id/summarize
 - POST /api/calls/token (Requests token and room details for LiveKit call room)
+- GET / POST /api/feedback
+- GET / POST /api/reviews
+- GET / POST /api/stories
 
 ---
 
@@ -394,6 +425,18 @@ The project is organized as a monorepo with two main parts:
 - refreshToken
 - expiresAt
 
+### Story
+- User relationships and media content for status updates
+
+### ScheduledMessage
+- Timing data and payload for future messages
+
+### Feedback & Review
+- User ratings, comments, and application feedback
+
+### Otp
+- Email verification codes and expirations
+
 ---
 
 ## 8. Frontend State Structure
@@ -408,6 +451,10 @@ The frontend uses several Zustand stores:
 - useCallStore: active call state, incoming call state, starts and finishes call session
 - useProfileStore: mini profile sidebar state and data
 - useMediaViewerStore: global media viewer state for displaying images and videos
+- useStoryStore: state management for viewing and posting stories
+- useOfflineStore: state management for network connectivity and offline banners
+- useScheduleStore: state management for scheduling messages
+- useAccountInfoModalStore: manages the account settings modal visibility
 
 ---
 
