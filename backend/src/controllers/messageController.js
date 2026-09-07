@@ -5,8 +5,7 @@ import { updateConversationAfterCreateMessage } from "../utils/messageHelper.js"
 import cloudinary from "../libs/cloudinary.js";
 import fs from "fs";
 import { handleAIResponse } from "../services/aiService.js";
-import { NEXUS_AI_ID } from "../utils/seedNexusAI.js";
-import { translate } from "@vitalets/google-translate-api";
+import { translateText } from "../services/translateService.js";
 import { uploadFileToDrive } from "../services/driveService.js";
 
 export const sendDirectMessage = async (req, res) => {
@@ -510,11 +509,11 @@ export const translateMessage = async (req, res) => {
     if (!message) return res.status(404).json({ message: "Không tìm thấy tin nhắn" });
     if (!message.content) return res.status(400).json({ message: "Tin nhắn không có nội dung để dịch" });
 
-    const result = await translate(message.content, { to: targetLang });
-    return res.status(200).json({ translatedContent: result.text });
+    const translatedContent = await translateText(message.content, targetLang);
+    return res.status(200).json({ translatedContent });
   } catch (error) {
     console.error("Lỗi khi dịch tin nhắn:", error);
-    return res.status(500).json({ message: "Lỗi hệ thống khi dịch" });
+    return res.status(500).json({ message: error.message || "Lỗi hệ thống khi dịch" });
   }
 };
 

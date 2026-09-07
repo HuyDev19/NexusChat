@@ -226,7 +226,7 @@ const MessageItem = ({
   selectedConvo,
   lastMessageStatus,
 }: MessageItemProps) => {
-  const { reactToMessage, pinMessage, recallMessage, deleteMessageForMe, markMediaAsViewed, voteOnPoll, setReplyingToMessage, setForwardingMessage, translateMessage, setEditingMessage } = useChatStore();
+  const { reactToMessage, pinMessage, recallMessage, deleteMessageForMe, markMediaAsViewed, voteOnPoll, setReplyingToMessage, setForwardingMessage, translateMessage, revertTranslation, setEditingMessage } = useChatStore();
   const { user } = useAuthStore();
   const prev = index + 1 < messages.length ? messages[index + 1] : undefined;
   const next = index > 0 ? messages[index - 1] : undefined;
@@ -660,7 +660,20 @@ const MessageItem = ({
                     <div className="pt-0.5 flex flex-col">
                       <FormattedText content={message.translatedContent || actualContent} participants={participants} nicknames={selectedConvo.nicknames} isOwn={message.isOwn} />
                       {message.translatedContent && (
-                        <span className="text-[10px] opacity-70 italic mt-0.5">(Đã dịch)</span>
+                        <div className="flex items-center gap-1.5 text-[10px] opacity-70 italic mt-0.5">
+                          <span>(Đã dịch)</span>
+                          <span>•</span>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              revertTranslation(selectedConvo._id, message._id);
+                            }}
+                            className="underline hover:opacity-100 cursor-pointer not-italic font-medium"
+                          >
+                            Xem bản gốc
+                          </button>
+                        </div>
                       )}
                     </div>
                   )}
@@ -695,7 +708,20 @@ const MessageItem = ({
                     <div className="pt-0.5 flex flex-col">
                       <FormattedText content={message.translatedContent || actualContent} participants={participants} nicknames={selectedConvo.nicknames} isOwn={message.isOwn} />
                       {message.translatedContent && (
-                        <span className="text-[10px] opacity-70 italic mt-0.5">(Đã dịch)</span>
+                        <div className="flex items-center gap-1.5 text-[10px] opacity-70 italic mt-0.5">
+                          <span>(Đã dịch)</span>
+                          <span>•</span>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              revertTranslation(selectedConvo._id, message._id);
+                            }}
+                            className="underline hover:opacity-100 cursor-pointer not-italic font-medium"
+                          >
+                            Xem bản gốc
+                          </button>
+                        </div>
                       )}
                     </div>
                   )}
@@ -782,7 +808,20 @@ const MessageItem = ({
                     <FormattedText content={message.translatedContent || actualContent} participants={participants} nicknames={selectedConvo.nicknames} isOwn={message.isOwn} />
                   )}
                   {message.translatedContent && (
-                    <span className="text-[10px] opacity-70 italic mt-1">(Đã dịch)</span>
+                    <div className="flex items-center gap-1.5 text-[10px] opacity-70 italic mt-1">
+                      <span>(Đã dịch)</span>
+                      <span>•</span>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          revertTranslation(selectedConvo._id, message._id);
+                        }}
+                        className="underline hover:opacity-100 cursor-pointer not-italic font-medium"
+                      >
+                        Xem bản gốc
+                      </button>
+                    </div>
                   )}
                 </div>
               )}
@@ -884,14 +923,24 @@ const MessageItem = ({
                         Trả lời
                       </DropdownMenuItem>
                     )}
-                    {message.content && !message.translatedContent && (
-                      <DropdownMenuItem
-                        onClick={() => translateMessage(selectedConvo._id, message._id)}
-                        className="cursor-pointer font-medium flex items-center gap-2"
-                      >
-                        <Languages className="size-4" />
-                        Dịch sang tiếng Việt
-                      </DropdownMenuItem>
+                    {message.content && (
+                      message.translatedContent ? (
+                        <DropdownMenuItem
+                          onClick={() => revertTranslation(selectedConvo._id, message._id)}
+                          className="cursor-pointer font-medium flex items-center gap-2"
+                        >
+                          <Languages className="size-4" />
+                          Xem bản gốc
+                        </DropdownMenuItem>
+                      ) : (
+                        <DropdownMenuItem
+                          onClick={() => translateMessage(selectedConvo._id, message._id)}
+                          className="cursor-pointer font-medium flex items-center gap-2"
+                        >
+                          <Languages className="size-4" />
+                          Dịch sang tiếng Việt
+                        </DropdownMenuItem>
+                      )
                     )}
                     {!message.isViewOnce && !isIncognito && (
                       <DropdownMenuItem

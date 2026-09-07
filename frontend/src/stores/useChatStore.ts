@@ -699,6 +699,7 @@ export const useChatStore = create<ChatState>()(
         }
       },
       translateMessage: async (conversationId: string, messageId: string) => {
+        const toastId = toast.loading("Đang dịch tin nhắn...");
         try {
           const res = await chatService.translateMessage(messageId);
           if (res.translatedContent) {
@@ -718,12 +719,30 @@ export const useChatStore = create<ChatState>()(
                 },
               };
             });
-            toast.success("Dịch tin nhắn thành công!");
+            toast.success("Dịch tin nhắn thành công!", { id: toastId });
           }
         } catch (error: any) {
           console.error("Lỗi khi dịch tin nhắn:", error);
-          toast.error(error.response?.data?.message || "Không thể dịch tin nhắn.");
+          toast.error(error.response?.data?.message || "Không thể dịch tin nhắn.", { id: toastId });
         }
+      },
+      revertTranslation: (conversationId: string, messageId: string) => {
+        set((state) => {
+          const currentItems = state.messages[conversationId]?.items;
+          if (!currentItems) return state;
+
+          return {
+            messages: {
+              ...state.messages,
+              [conversationId]: {
+                ...state.messages[conversationId],
+                items: currentItems.map((m) =>
+                  m._id === messageId ? { ...m, translatedContent: undefined } : m
+                ),
+              },
+            },
+          };
+        });
       },
       updateWallpaper: async (conversationId, data) => {
         try {
