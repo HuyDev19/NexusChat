@@ -8,6 +8,8 @@ import { handleAIResponse } from "../services/aiService.js";
 import { translateText } from "../services/translateService.js";
 import { uploadFileToDrive } from "../services/driveService.js";
 
+const NEXUS_AI_ID = "000000000000000000000000";
+
 export const sendDirectMessage = async (req, res) => {
   try {
     const { recipientId, content, conversationId, audioUrl, expiresIn, isViewOnce, mentions, replyTo, isForwarded, fileUrl, fileName, fileSize, sharedContactId } = req.body;

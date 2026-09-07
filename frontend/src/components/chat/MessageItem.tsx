@@ -19,6 +19,8 @@ import {
 import { Button } from "../ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import ImageViewerModal from "./ImageViewerModal";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 const EMOJI_LIST = ["👍", "❤️", "😂", "😮", "🔥"];
 
@@ -40,50 +42,66 @@ const FormattedText = ({
   names.sort((a, b) => b.length - a.length);
   const escapedNames = names.map((n) => n.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
 
-  const mentionPattern = names.length > 0 ? `@(?:${escapedNames.join("|")})` : `@_NEVER_MATCH_`;
-  const urlPattern = `https?:\\/\\/[^\\s]+`;
-  const combinedRegex = new RegExp(`(${mentionPattern}|${urlPattern})`, "g");
+  const mentionPattern = names.length > 0 ? `(@(?:${escapedNames.join("|")}))` : `(@_NEVER_MATCH_)`;
+  const mentionRegex = new RegExp(mentionPattern, "g");
 
-  const parts = content.split(combinedRegex);
+  // Thay thế @name thành link markdown đặc biệt để ReactMarkdown parse
+  const processedContent = content.replace(mentionRegex, (match) => {
+    return `[${match}](mention://${encodeURIComponent(match)})`;
+  });
 
   return (
-    <div className="text-sm leading-relaxed break-words whitespace-pre-wrap">
-      {parts.map((part, i) => {
-        if (!part) return null;
-        if (part.startsWith("@")) {
-          const mentionName = part.slice(1);
-          return (
-            <span
-              key={i}
-              className={cn(
-                "font-bold cursor-pointer hover:underline",
-                isOwn ? "text-primary-foreground" : "text-primary"
-              )}
-              title={
-                mentionName === "All" || mentionName === "Mọi người"
-                  ? "Nhắc cả nhóm"
-                  : `Tên gốc: ${mentionName}`
-              }
-            >
-              {part}
-            </span>
-          );
-        }
-        if (/^https?:\/\//.test(part)) {
-          return (
-            <a
-              key={i}
-              href={part}
-              target="_blank"
-              rel="noreferrer"
-              className="text-blue-500 hover:underline"
-            >
-              {part}
-            </a>
-          );
-        }
-        return <span key={i}>{part}</span>;
-      })}
+    <div className="text-[14px] leading-relaxed break-words markdown-body">
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        urlTransform={(value) => value}
+        components={{
+          a: ({ node, href, children, ...props }) => {
+            if (href?.startsWith("mention://")) {
+              const mentionName = decodeURIComponent(href.replace("mention://", "")).slice(1);
+              return (
+                <span
+                  className={cn(
+                    "font-bold cursor-pointer hover:underline",
+                    isOwn ? "text-primary-foreground" : "text-primary"
+                  )}
+                  title={
+                    mentionName === "All" || mentionName === "Mọi người"
+                      ? "Nhắc cả nhóm"
+                      : `Tên gốc: ${mentionName}`
+                  }
+                >
+                  @{mentionName}
+                </span>
+              );
+            }
+            return (
+              <a href={href} target="_blank" rel="noreferrer" className="text-blue-500 hover:underline underline-offset-2" {...props}>
+                {children}
+              </a>
+            );
+          },
+          p: ({ children }) => <p className="mb-1 last:mb-0">{children}</p>,
+          ul: ({ children }) => <ul className="list-disc pl-5 mb-1 last:mb-0">{children}</ul>,
+          ol: ({ children }) => <ol className="list-decimal pl-5 mb-1 last:mb-0">{children}</ol>,
+          li: ({ children }) => <li className="mb-0.5">{children}</li>,
+          strong: ({ children }) => <strong className="font-bold">{children}</strong>,
+          em: ({ children }) => <em className="italic">{children}</em>,
+          code: ({ node, inline, className, children, ...props }: any) => {
+            return inline ? (
+              <code className="bg-black/15 dark:bg-white/20 rounded-md px-1.5 py-0.5 text-[13px] font-mono" {...props}>
+                {children}
+              </code>
+            ) : (
+              <pre className="bg-zinc-900 text-zinc-100 dark:bg-black/50 p-3 rounded-xl overflow-x-auto text-[13px] my-2 font-mono shadow-inner border border-white/10">
+                <code {...props}>{children}</code>
+              </pre>
+            );
+          }
+        }}
+      >
+        {processedContent}
+      </ReactMarkdown>
     </div>
   );
 };

@@ -238,6 +238,7 @@ The project is organized as a monorepo with two main parts:
 - **Recall Messages**
 - **Edit Messages**: Ability to edit sent messages.
 - **Delete for Me**: Ability to delete messages locally without affecting other participants.
+- **Incognito Mode (Chat Ẩn Danh)**: Secure 1:1 chat mode where messages expire and are wiped upon exiting the mode.
 - **Disappearing Messages** with customizable expiration timers (5 mins, 1 hour, 24 hours)
 - **View Once Media** for images and voice messages
 - **File Attachments**: Upload and share files via Google Drive integration.
@@ -346,6 +347,7 @@ The project is organized as a monorepo with two main parts:
 - POST /api/conversations/:id/members/ban
 - PATCH /api/conversations/:id/role
 - PATCH /api/conversations/:id/info
+- POST /api/conversations/:id/incognito
 - POST /api/conversations/:id/avatar
 - DELETE /api/conversations/:id/avatar
 - DELETE /api/conversations/:id
@@ -387,6 +389,7 @@ The project is organized as a monorepo with two main parts:
 - unreadCounts
 - wallpaper
 - nicknames
+- incognitoMode
 
 ### Message
 - conversationId
