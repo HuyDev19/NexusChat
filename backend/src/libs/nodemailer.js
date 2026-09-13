@@ -1,17 +1,93 @@
 import nodemailer from "nodemailer";
 
 /**
- * Khởi tạo transporter kết nối trực tiếp đến SMTP Gmail
- * LƯU Ý QUAN TRỌNG:
- * Tuyệt đối KHÔNG sử dụng `pool: true` và KHÔNG lưu singleton transporter vĩnh viễn
- * vì máy chủ Gmail tự động ngắt (close/timeout) các socket idle sau 2-5 phút.
- * Việc tạo kết nối theo yêu cầu (on-demand connection) đảm bảo dù hệ thống chạy bao lâu,
- * mỗi lần gửi OTP đều khởi tạo kết nối tươi mới, không bao giờ bị dính ECONNRESET hay socket closed.
+ * 1. Gửi email qua Mailtrap HTTP REST API (Cổng 443 HTTPS - Hoạt động trên Render 100%, không lo bị chặn cổng)
+ * Hoạt động khi có MAILTRAP_TOKEN (từ mục Email Sending)
  */
-const createTransporter = (port = 465) => {
-  const user = process.env.EMAIL_USER?.trim();
-  const rawPass = process.env.EMAIL_PASS?.trim();
-  const pass = rawPass ? rawPass.replace(/\s+/g, "") : "";
+const sendViaMailtrapApi = async (email, otp, title, htmlContent) => {
+  const mailtrapToken = process.env.MAILTRAP_TOKEN?.trim().replace(/^["']|["']$/g, "");
+  if (!mailtrapToken) return null;
+
+  const senderEmail =
+    process.env.MAILTRAP_SENDER_EMAIL?.trim().replace(/^["']|["']$/g, "") || "hello@demomailtrap.co";
+
+  try {
+    const response = await fetch("https://send.api.mailtrap.io/api/send", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${mailtrapToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        from: {
+          email: senderEmail,
+          name: "NexusChat",
+        },
+        to: [
+          {
+            email: email,
+          },
+        ],
+        subject: `[NexusChat] ${title} - Mã OTP: ${otp}`,
+        html: htmlContent,
+      }),
+    });
+
+    const data = await response.json();
+    if (response.ok && data.success !== false) {
+      console.log(`✅ [Mailtrap API] Đã gửi email OTP thành công tới ${email} qua HTTPS API`);
+      return { success: true };
+    } else {
+      console.error("❌ [Mailtrap API] Lỗi từ máy chủ Mailtrap:", data);
+      return { success: false, error: data.errors?.join(", ") || data.message || "Lỗi Mailtrap API" };
+    }
+  } catch (err) {
+    console.error("❌ [Mailtrap API] Lỗi kết nối Mailtrap:", err.message);
+    return { success: false, error: err.message };
+  }
+};
+
+/**
+ * 2. Gửi email qua Mailtrap Sandbox SMTP (Email Testing / Hộp thư ảo)
+ * Hoạt động khi có MAILTRAP_USER và MAILTRAP_PASS (từ mục Email Testing -> Inboxes)
+ */
+const sendViaMailtrapSmtp = async (email, otp, title, htmlContent) => {
+  const user = process.env.MAILTRAP_USER?.trim().replace(/^["']|["']$/g, "");
+  const pass = process.env.MAILTRAP_PASS?.trim().replace(/^["']|["']$/g, "");
+  if (!user || !pass) return null;
+
+  try {
+    const transporter = nodemailer.createTransport({
+      host: "sandbox.smtp.mailtrap.io",
+      port: 2525,
+      auth: {
+        user,
+        pass,
+      },
+    });
+
+    await transporter.sendMail({
+      from: `"NexusChat" <no-reply@nexuschat.com>`,
+      to: email,
+      subject: `[NexusChat] ${title} - Mã OTP: ${otp}`,
+      html: htmlContent,
+    });
+
+    console.log(`✅ [Mailtrap Sandbox] Đã gửi OTP tới hộp thư thử nghiệm Mailtrap cho ${email}`);
+    return { success: true };
+  } catch (err) {
+    console.error("❌ [Mailtrap Sandbox] Lỗi gửi mail:", err.message);
+    return { success: false, error: err.message };
+  }
+};
+
+/**
+ * 3. Transporter kết nối SMTP Gmail dự phòng (Dùng khi chạy Localhost)
+ */
+const createGmailTransporter = (port = 465) => {
+  const user = process.env.EMAIL_USER?.trim().replace(/^["']|["']$/g, "");
+  const rawPass = process.env.EMAIL_PASS?.trim().replace(/^["']|["']$/g, "");
+  const pass = rawPass ? rawPass.replace(/[\s"']/g, "") : "";
 
   const isPlaceholder =
     !user ||
@@ -20,22 +96,19 @@ const createTransporter = (port = 465) => {
     pass.includes("your-app-password");
 
   if (isPlaceholder) {
-    console.warn(
-      "⚠️ Cảnh báo: EMAIL_USER hoặc EMAIL_PASS chưa được cấu hình. Mã OTP sẽ được in trực tiếp ra console."
-    );
     return null;
   }
 
   return nodemailer.createTransport({
     host: "smtp.gmail.com",
     port: port,
-    secure: port === 465, // true cho port 465 (SSL direct), false cho port 587 (STARTTLS)
+    secure: port === 465,
     auth: {
       user,
       pass,
     },
     tls: {
-      rejectUnauthorized: false, // Tránh lỗi kiểm tra chứng chỉ SSL trên mạng WiFi trường học / cơ quan
+      rejectUnauthorized: false,
     },
     connectionTimeout: 12000,
     greetingTimeout: 10000,
@@ -43,8 +116,11 @@ const createTransporter = (port = 465) => {
   });
 };
 
+/**
+ * Hàm gửi email OTP của NexusChat
+ */
 export const sendOtpEmail = async (email, otp, type) => {
-  // Luôn in mã OTP ra console Backend ngay lập tức để thuận tiện test
+  // Luôn in mã OTP ra console Backend ngay lập tức để thuận tiện test và backup
   console.log(`\n========================================`);
   console.log(`🔑 [MÃ OTP NEXUSCHAT]`);
   console.log(`📧 Email: ${email}`);
@@ -52,7 +128,7 @@ export const sendOtpEmail = async (email, otp, type) => {
   console.log(`👉 MÃ OTP: [ ${otp} ]`);
   console.log(`========================================\n`);
 
-  const user = process.env.EMAIL_USER?.trim();
+  const user = process.env.EMAIL_USER?.trim().replace(/^["']|["']$/g, "") || "no-reply@nexuschat.com";
   const isRegister = type === "register";
   const title = isRegister
     ? "Xác thực đăng ký tài khoản NexusChat"
@@ -67,7 +143,7 @@ export const sendOtpEmail = async (email, otp, type) => {
         <h1 style="background: linear-gradient(to right, #a855f7, #6366f1, #ec4899); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-size: 28px; margin: 0; font-weight: 800;">
           NexusChat
         </h1>
-        <p style="color: #94a3b8; font-size: 14px; margin-top: 4px;">Xác thực tài khoản Gmail</p>
+        <p style="color: #94a3b8; font-size: 14px; margin-top: 4px;">Xác thực tài khoản</p>
       </div>
 
       <div style="background-color: #1e293b; border-radius: 12px; padding: 24px; border: 1px solid #475569; text-align: center;">
@@ -91,6 +167,25 @@ export const sendOtpEmail = async (email, otp, type) => {
     </div>
   `;
 
+  // Ưu tiên 1: Gửi qua Mailtrap HTTP API (Cổng 443 HTTPS - Hoạt động trên Render 100%)
+  if (process.env.MAILTRAP_TOKEN) {
+    const mailtrapResult = await sendViaMailtrapApi(email, otp, title, htmlContent);
+    if (mailtrapResult && mailtrapResult.success) {
+      return mailtrapResult;
+    }
+    console.warn("⚠️ [Mailtrap API] Gửi thất bại, đang thử phương thức dự phòng...");
+  }
+
+  // Ưu tiên 2: Gửi qua Mailtrap Sandbox SMTP (Email Testing)
+  if (process.env.MAILTRAP_USER && process.env.MAILTRAP_PASS) {
+    const mailtrapSmtpResult = await sendViaMailtrapSmtp(email, otp, title, htmlContent);
+    if (mailtrapSmtpResult && mailtrapSmtpResult.success) {
+      return mailtrapSmtpResult;
+    }
+    console.warn("⚠️ [Mailtrap SMTP] Gửi thất bại, đang thử phương thức dự phòng...");
+  }
+
+  // Ưu tiên 3: Gửi qua Gmail SMTP (cổng 465 / 587 - Thích hợp khi chạy Localhost)
   const mailOptions = {
     from: `"NexusChat" <${user}>`,
     to: email,
@@ -98,32 +193,28 @@ export const sendOtpEmail = async (email, otp, type) => {
     html: htmlContent,
   };
 
-  // Lần thử 1: Sử dụng cổng 465 (Direct SSL - tiêu chuẩn cao nhất cho Gmail)
   try {
-    const transporter465 = createTransporter(465);
+    const transporter465 = createGmailTransporter(465);
     if (!transporter465) {
       return { success: false, reason: "missing_config" };
     }
 
     await transporter465.sendMail(mailOptions);
-    console.log(`✅ [Nodemailer] Đã gửi email OTP thành công tới ${email} (cổng 465 SSL)`);
+    console.log(`✅ [Gmail SMTP] Đã gửi email OTP thành công tới ${email} (cổng 465 SSL)`);
     return { success: true };
   } catch (err465) {
-    console.warn(`⚠️ [Nodemailer] Gửi qua cổng 465 không thành công: ${err465.message}. Đang thử cổng 587 (STARTTLS)...`);
-
-    // Lần thử 2: Dự phòng sang cổng 587 (STARTTLS) nếu mạng hoặc tường lửa chặn cổng 465
+    console.warn(`⚠️ [Gmail SMTP] Cổng 465 thất bại: ${err465.message}. Đang thử cổng 587...`);
     try {
-      const transporter587 = createTransporter(587);
+      const transporter587 = createGmailTransporter(587);
       if (!transporter587) {
         return { success: false, reason: "missing_config" };
       }
 
       await transporter587.sendMail(mailOptions);
-      console.log(`✅ [Nodemailer] Đã gửi email OTP thành công tới ${email} (cổng 587 STARTTLS)`);
+      console.log(`✅ [Gmail SMTP] Đã gửi email OTP thành công tới ${email} (cổng 587 STARTTLS)`);
       return { success: true };
     } catch (err587) {
-      console.error("❌ [Nodemailer] Không thể gửi email qua Gmail SMTP:", err587.message);
-      console.log(`💡 Mẹo: Sử dụng mã OTP [${otp}] đã được in ở trên console để tiếp tục.`);
+      console.error("❌ [Gmail SMTP] Không thể gửi email qua Gmail SMTP:", err587.message);
       return { success: false, error: err587.message };
     }
   }

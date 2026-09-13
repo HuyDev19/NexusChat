@@ -92,9 +92,14 @@ export const sendOtp = async (req, res) => {
     // Gửi OTP qua Gmail
     const mailResult = await sendOtpEmail(emailTrimmed, otp, type);
 
-    if (mailResult && mailResult.success === false && mailResult.reason === "missing_config") {
-      return res.status(200).json({
-        message: "Mã OTP đã được tạo (Vui lòng xem mã trong Terminal/Console Backend do chưa cấu hình Gmail)",
+    if (mailResult && mailResult.success === false) {
+      if (mailResult.reason === "missing_config") {
+        return res.status(500).json({
+          message: "Máy chủ chưa cấu hình EMAIL_USER hoặc EMAIL_PASS trên môi trường Deploy (Environment Variables).",
+        });
+      }
+      return res.status(500).json({
+        message: `Không thể gửi email OTP: ${mailResult.error || "Lỗi kết nối máy chủ gửi mail"}`,
       });
     }
 
