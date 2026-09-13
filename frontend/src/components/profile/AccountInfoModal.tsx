@@ -20,8 +20,11 @@ import {
   User as UserIcon,
   Plus,
   Smile,
-  ZoomIn
+  ZoomIn,
+  Trash2
 } from "lucide-react";
+
+const EMOJI_REACTIONS = ["❤️", "😂", "😮", "😢", "🔥"];
 import { useState, useEffect, useRef } from "react";
 import { toast } from "sonner";
 import { cn, isNoteExpired, getEffectiveStatus } from "@/lib/utils";
@@ -46,8 +49,18 @@ const AccountInfoModal = () => {
   const [photoCaption, setPhotoCaption] = useState("");
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const photoInputRef = useRef<HTMLInputElement>(null);
+  const [selectedPhoto, setSelectedPhoto] = useState<ProfilePhoto | null>(null);
 
   const profilePhotos = profileUser?.photos || [];
+
+  useEffect(() => {
+    if (selectedPhoto) {
+      const updatedPhoto = profilePhotos.find((p) => p._id === selectedPhoto._id);
+      if (updatedPhoto) {
+        setSelectedPhoto(updatedPhoto);
+      }
+    }
+  }, [profilePhotos]);
 
   // Tìm cuộc trò chuyện trực tiếp nếu có
   const directConvo = (conversations || []).find(
@@ -201,15 +214,33 @@ const AccountInfoModal = () => {
   };
 
   const handleOpenPhoto = (photo: ProfilePhoto, idx: number) => {
-    const mediaItems = profilePhotos.map((p) => ({
-      _id: p._id,
-      url: p.url,
-      senderName: profileUser?.displayName || "Người dùng",
-      senderAvatar: profileUser?.avatarUrl || null,
-      createdAt: p.createdAt,
-      content: p.caption,
-    }));
-    useMediaViewerStore.getState().openViewer(mediaItems, idx);
+    setSelectedPhoto(photo);
+  };
+
+  const handleReactPhoto = async (photoId: string, emoji: string) => {
+    if (!profileUser?._id || !currentUser?._id) return;
+    try {
+      const res = await userService.reactProfilePhoto(profileUser._id, photoId, emoji);
+      setUserPhotos(res.photos);
+    } catch (error) {
+      console.error("Lỗi tương tác ảnh:", error);
+      toast.error("Không thể gửi cảm xúc");
+    }
+  };
+
+  const handleDeletePhoto = async (photoId: string) => {
+    if (!window.confirm("Bạn có chắc chắn muốn xóa ảnh này khỏi trang cá nhân không?")) return;
+    try {
+      const res = await userService.deleteProfilePhoto(photoId);
+      if (currentUser && currentUser._id === profileUser?._id) {
+        useAuthStore.getState().setUser({ ...currentUser, photos: res.photos });
+      }
+      setUserPhotos(res.photos);
+      setSelectedPhoto(null);
+      toast.success("Đã xóa ảnh thành công");
+    } catch (error) {
+      toast.error("Không thể xóa ảnh");
+    }
   };
 
   const noteText = typeof profileUser?.note === "string" 
@@ -536,14 +567,29 @@ const AccountInfoModal = () => {
 
                         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent opacity-90 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-2">
                           {photo.caption && (
-                            <p className="text-[11px] text-white font-medium truncate mb-1 drop-shadow-sm">
+                            <p className="text-[11px] text-white font-medium truncate mb-0.5 drop-shadow-sm">
                               {photo.caption}
                             </p>
                           )}
-                          <div className="flex items-center gap-1 text-[10px] text-white/70 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <Smile className="size-3" />
-                            <span>Bấm để xem ảnh</span>
-                          </div>
+                          {(() => {
+                            const totalReactions = (photo.reactions || []).length;
+                            const reactionCountMap: Record<string, number> = {};
+                            (photo.reactions || []).forEach((r: any) => {
+                              reactionCountMap[r.emoji] = (reactionCountMap[r.emoji] || 0) + 1;
+                            });
+                            const topEmojis = Object.keys(reactionCountMap).slice(0, 3);
+                            return totalReactions > 0 ? (
+                              <div className="flex items-center gap-1 bg-black/60 backdrop-blur-sm w-fit px-1.5 py-0.5 rounded-full border border-white/20 mt-1">
+                                <span className="text-[10px]">{topEmojis.join("")}</span>
+                                <span className="text-[10px] text-white font-bold">{totalReactions}</span>
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-1 text-[10px] text-white/70 opacity-0 group-hover:opacity-100 transition-opacity mt-1">
+                                <Smile className="size-3" />
+                                <span>Bấm để thả cảm xúc</span>
+                              </div>
+                            );
+                          })()}
                         </div>
                       </div>
                     ))}
@@ -558,6 +604,100 @@ const AccountInfoModal = () => {
       {/* ========================================================= */}
       {/* MODAL THÊM ẢNH CHO TRANG CÁ NHÂN                         */}
       {/* ========================================================= */}
+      {selectedPhoto && (
+        <Dialog open={!!selectedPhoto} onOpenChange={() => setSelectedPhoto(null)}>
+          <DialogContent className="sm:max-w-4xl max-h-[95vh] p-0 bg-black/90 backdrop-blur-xl border border-white/10 shadow-2xl flex flex-col overflow-hidden rounded-2xl text-white z-[99999]">
+            <div className="relative flex-1 flex items-center justify-center bg-black/50 p-2 min-h-[50vh] max-h-[70vh] overflow-hidden">
+              <img
+                src={selectedPhoto.url}
+                alt={selectedPhoto.caption || "Photo"}
+                className="max-h-[68vh] max-w-full object-contain rounded-lg shadow-2xl"
+              />
+            </div>
+
+            <div className="p-4 bg-zinc-900/90 border-t border-white/10 flex flex-col gap-3">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  {selectedPhoto.caption && (
+                    <p className="text-sm font-medium text-white mb-1 leading-snug">
+                      {selectedPhoto.caption}
+                    </p>
+                  )}
+                  <p className="text-xs text-zinc-400">
+                    Đăng ngày {new Date(selectedPhoto.createdAt).toLocaleDateString("vi-VN", {
+                      day: "2-digit",
+                      month: "2-digit",
+                      year: "numeric"
+                    })}
+                  </p>
+                </div>
+
+                {isSelf && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="text-red-400 hover:text-red-300 hover:bg-red-500/20 rounded-xl gap-1.5 h-8"
+                    onClick={() => handleDeletePhoto(selectedPhoto._id)}
+                  >
+                    <Trash2 className="size-4" />
+                    Xóa ảnh
+                  </Button>
+                )}
+              </div>
+
+              {/* Emoji Reaction Bar */}
+              <div className="flex items-center justify-between gap-2 pt-2 border-t border-white/10">
+                <div className="flex items-center gap-1.5 sm:gap-2">
+                  {EMOJI_REACTIONS.map((emoji) => {
+                    const isMyReaction = (selectedPhoto.reactions || []).some(
+                      (r: any) => (r.userId?._id || r.userId)?.toString() === currentUser?._id && r.emoji === emoji
+                    );
+                    const reactionsForEmoji = (selectedPhoto.reactions || []).filter((r: any) => r.emoji === emoji);
+                    const count = reactionsForEmoji.length;
+
+                    return (
+                      <div key={emoji} className="relative group/reaction">
+                        <button
+                          onClick={() => handleReactPhoto(selectedPhoto._id, emoji)}
+                          className={cn(
+                            "px-3 py-1.5 rounded-full flex items-center gap-1.5 text-base transition-all duration-200 hover:scale-110 active:scale-95",
+                            isMyReaction
+                              ? "bg-primary text-primary-foreground ring-2 ring-primary/60 font-bold shadow-md shadow-primary/30"
+                              : "bg-white/10 hover:bg-white/20 text-white"
+                          )}
+                          title={`Thả cảm xúc ${emoji}`}
+                        >
+                          <span>{emoji}</span>
+                          {count > 0 && <span className="text-xs font-semibold">{count}</span>}
+                        </button>
+                        
+                        {count > 0 && (
+                          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover/reaction:flex flex-col gap-1.5 bg-black/90 backdrop-blur-md p-2 rounded-xl border border-white/20 shadow-xl min-w-[140px] z-[100000]">
+                            <span className="text-[10px] text-zinc-400 font-semibold px-1 uppercase tracking-wider">Đã thả {emoji}</span>
+                            <div className="flex flex-col gap-1 max-h-32 overflow-y-auto beautiful-scrollbar">
+                              {reactionsForEmoji.map((r: any, i: number) => (
+                                <div key={i} className="flex items-center gap-2 text-xs text-white bg-white/5 p-1 rounded-md">
+                                  <img src={r.userId?.avatarUrl || "https://github.com/shadcn.png"} alt="avatar" className="size-4 rounded-full object-cover" />
+                                  <span className="truncate max-w-[90px]">{r.userId?.displayName || "Người dùng"}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div className="text-xs font-medium text-zinc-400">
+                  {(selectedPhoto.reactions || []).length} lượt cảm xúc
+                </div>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+
       {showAddPhotoModal && (
         <Dialog open={showAddPhotoModal} onOpenChange={setShowAddPhotoModal}>
           <DialogContent className="max-w-md p-6 bg-background border border-border rounded-2xl shadow-2xl">
