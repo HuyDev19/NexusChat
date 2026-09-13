@@ -243,9 +243,8 @@ export const Footer = ({ onOpenFeedback }: FooterProps) => {
                 alt={member.name}
                 className="w-10 h-10 rounded-full object-cover ring-2 ring-white/20 group-hover:ring-purple-400/60 transition-all shrink-0"
               />
-              <div className="min-w-0">
+              <div className="min-w-0 flex items-center h-full">
                 <p className="text-sm font-semibold text-white truncate leading-tight">{member.name}</p>
-                <p className="text-[11px] mt-0.5 truncate" style={{ color: "rgba(255,255,255,0.5)" }}>{member.role}</p>
               </div>
               <Github className="w-4 h-4 ml-auto shrink-0 opacity-0 group-hover:opacity-60 transition-opacity" style={{ color: "rgba(255,255,255,0.8)" }} />
             </a>
