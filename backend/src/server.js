@@ -144,15 +144,20 @@ io.on("connection", (socket) => {
   socket.on("disconnect", async (reason) => {
     console.log(`Socket disconnected: ${socket.id} (${reason})`);
     if (userId) {
-      onlineUsers.delete(userId);
-      const lastActiveAt = new Date();
-      try {
-        await User.findByIdAndUpdate(userId, { lastActiveAt });
-      } catch (err) {
-        console.error("Error updating lastActiveAt on disconnect", err);
+      const userSockets = await io.in(`user:${userId}`).fetchSockets();
+      if (userSockets.length === 0) {
+        onlineUsers.delete(userId);
+        const lastActiveAt = new Date();
+        try {
+          await User.findByIdAndUpdate(userId, { lastActiveAt });
+        } catch (err) {
+          console.error("Error updating lastActiveAt on disconnect", err);
+        }
+        io.emit("online-users", Array.from(onlineUsers));
+        io.emit("user:last-active", { userId, lastActiveAt });
+      } else {
+        console.log(`User ${userId} still has ${userSockets.length} active sockets.`);
       }
-      io.emit("online-users", Array.from(onlineUsers));
-      io.emit("user:last-active", { userId, lastActiveAt });
     }
   });
 });

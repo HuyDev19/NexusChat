@@ -55,6 +55,11 @@ export const sendFriendRequest = async (req, res) => {
       message,
     });
 
+    const io = req.app.get("io");
+    if (io) {
+      io.to(`user:${to.toString()}`).emit("friend-request:new", request);
+    }
+
     return res
       .status(201)
       .json({ message: "Gửi lời mời kết bạn thành công", request });
@@ -97,6 +102,11 @@ export const acceptFriendRequest = async (req, res) => {
       .select("_id displayName avatarUrl presenceStatus")
       .lean();
 
+    const io = req.app.get("io");
+    if (io) {
+      io.to(`user:${request.from.toString()}`).to(`user:${request.to.toString()}`).emit("friend-request:accepted", friend);
+    }
+
     return res.status(200).json({
       message: "Chấp nhận lời mời kết bạn thành công",
       newFriend: {
@@ -131,6 +141,11 @@ export const declineFriendRequest = async (req, res) => {
     }
 
     await FriendRequest.findByIdAndDelete(requestId);
+
+    const io = req.app.get("io");
+    if (io) {
+      io.to(`user:${request.from.toString()}`).emit("friend-request:declined", request);
+    }
 
     return res.sendStatus(204);
   } catch (error) {
@@ -251,6 +266,11 @@ export const removeFriend = async (req, res) => {
       }
     } catch (streakErr) {
       console.error("Lỗi khi reset streak:", streakErr);
+    }
+
+    const io = req.app.get("io");
+    if (io) {
+      io.to(`user:${userId}`).to(`user:${friendId}`).emit("friend:removed", { userId, friendId });
     }
 
     return res.status(200).json({ message: "Đã xóa bạn bè thành công" });

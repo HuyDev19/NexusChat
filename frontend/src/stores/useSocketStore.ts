@@ -287,6 +287,32 @@ export const useSocketStore = create<SocketState>((set, get) => ({
       useChatStore.getState().setTypingStatus(conversationId, userId, false);
     });
 
+    // ─── LẮNG NGHE CÁC SỰ KIỆN KẾT BẠN ───────────────────
+    socket.on("friend-request:new", () => {
+      import("./useFriendStore").then((store) => {
+        store.useFriendStore.getState().getAllFriendRequests();
+      });
+    });
+
+    socket.on("friend-request:accepted", () => {
+      import("./useFriendStore").then((store) => {
+        store.useFriendStore.getState().getFriends();
+        store.useFriendStore.getState().getAllFriendRequests();
+      });
+    });
+
+    socket.on("friend-request:declined", () => {
+      import("./useFriendStore").then((store) => {
+        store.useFriendStore.getState().getAllFriendRequests();
+      });
+    });
+
+    socket.on("friend:removed", () => {
+      import("./useFriendStore").then((store) => {
+        store.useFriendStore.getState().getFriends();
+      });
+    });
+
     // ─── LẮNG NGHE CÁC SỰ KIỆN VIDEO CALL ───────────────────
     socket.on("call:incoming", (callInfo) => {
       // Import store động tránh import tròn (circular dependency)
@@ -377,6 +403,10 @@ export const useSocketStore = create<SocketState>((set, get) => ({
       socket.off("story:new");
       socket.off("story:viewed");
       socket.off("story:reacted");
+      socket.off("friend-request:new");
+      socket.off("friend-request:accepted");
+      socket.off("friend-request:declined");
+      socket.off("friend:removed");
       socket.disconnect();
       set({ socket: null });
     }
