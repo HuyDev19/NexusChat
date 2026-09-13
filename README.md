@@ -1,7 +1,7 @@
 <div align="center">
   <img src="https://raw.githubusercontent.com/lucide-icons/lucide/main/icons/message-square-dashed.svg" alt="NexusChat Logo" width="100"/>
   <h1>💬 NexusChat</h1>
-  <p><strong>A modern, feature-rich web messaging application built for seamless social communication.</strong></p>
+  <p><strong>Ứng dụng nhắn tin đa nền tảng hiện đại, đa tính năng dành cho giao tiếp thời gian thực.</strong></p>
   
   <p>
     <img src="https://img.shields.io/badge/React-19-blue?style=flat-square&logo=react" alt="React" />
@@ -14,121 +14,121 @@
 
 ---
 
-**NexusChat** provides a highly responsive chat interface, secure authentication, real-time Video/Audio calls (1:1 and Group), AI integrations, and much more.
+**NexusChat** cung cấp giao diện nhắn tin mượt mà, xác thực bảo mật, gọi Video/Audio thời gian thực (1:1 và Nhóm), tích hợp trí tuệ nhân tạo (AI) và nhiều tính năng tiên tiến khác.
 
-## ✨ Key Features
+## ✨ Tính Năng Nổi Bật
 
-### 🚀 Core Chat Experience
-- **Real-time Messaging**: Instant message delivery powered by Socket.IO.
-- **Direct & Group Chats**: Create 1:1 conversations or manage large group chats with role-based permissions (Admin, Deputy, Member).
-- **Public Channels**: Broadcast messages to followers in public or private channels.
-- **Rich Media & Attachments**: Share images, videos, audio messages, and files (Google Drive integration).
-- **Advanced Message Actions**:
-  - Edit, recall, and pin messages.
-  - Delete for me (local wipe).
-  - React to messages with emojis.
-  - Schedule messages for the future.
-- **Markdown & Rich Text**: Support for bold, italics, lists, and code blocks.
-- **Polls**: Create and vote on polls in group chats.
+### 🚀 Trải Nghiệm Nhắn Tin Cốt Lõi
+- **Nhắn tin thời gian thực**: Gửi và nhận tin nhắn tức thì với độ trễ siêu thấp (Socket.IO).
+- **Chat Cá Nhân & Nhóm**: Tạo cuộc trò chuyện 1:1 hoặc quản lý nhóm lớn với hệ thống phân quyền (Trưởng nhóm, Phó nhóm, Thành viên).
+- **Kênh Công Khai (Channels)**: Tạo và tham gia các kênh công khai hoặc riêng tư để theo dõi tin tức.
+- **Đa Phương Tiện & Đính Kèm**: Chia sẻ hình ảnh, video, tin nhắn thoại, và tệp tin (Tích hợp Google Drive).
+- **Tương Tác Tin Nhắn Nâng Cao**:
+  - Chỉnh sửa, thu hồi và ghim tin nhắn.
+  - Xóa tin nhắn ở phía người dùng (Delete for me).
+  - Thả cảm xúc tin nhắn (Emoji reactions).
+  - Hẹn giờ gửi tin nhắn (Scheduled messages).
+- **Markdown & Rich Text**: Hỗ trợ định dạng văn bản (in đậm, in nghiêng, danh sách, khối code).
+- **Bình chọn (Polls)**: Tạo và tham gia khảo sát/bình chọn trong nhóm chat.
 
-### 📞 Real-Time Audio & Video Calls (Messenger-style)
-- **High-Quality Calls**: Powered by **LiveKit SFU** for low-latency 1:1 and Group video/audio calls.
-- **AI Noise Cancellation**: Integrated **Krisp** for two-way background noise filtering.
-- **Screen Sharing**: Easily share your screen with participants.
-- **Device Controls**: Adjust camera, microphone, and speaker settings in real-time.
-- **Picture-in-Picture (PiP)**: Minimize the call to a floating panel to continue chatting.
-- **Web Push Notifications**: Automatic browser alerts for incoming calls.
+### 📞 Gọi Trực Tuyến Âm Thanh & Video
+- **Chất Lượng Cao**: Sử dụng **LiveKit SFU** cho các cuộc gọi video và âm thanh 1:1 hoặc theo nhóm với độ trễ cực thấp.
+- **Lọc Tiếng Ồn Bằng AI**: Tích hợp **Krisp** giúp khử tiếng ồn hai chiều một cách chuyên nghiệp.
+- **Chia sẻ màn hình**: Dễ dàng chia sẻ toàn bộ màn hình hoặc cửa sổ làm việc cho các thành viên.
+- **Cài Đặt Thiết Bị**: Tùy chỉnh camera, micro và loa trực tiếp ngay trong cuộc gọi.
+- **Chế độ cửa sổ thu nhỏ (PiP)**: Thu nhỏ cuộc gọi thành một khung nổi có thể di chuyển để vừa gọi vừa nhắn tin.
+- **Thông Báo Web Push**: Nhận thông báo cuộc gọi đến tự động ngay trên trình duyệt.
 
-### 🤖 AI Integrations (@NexusAI)
-- **Smart Chatbot**: Call `@NexusAI` in any chat to ask questions or get assistance (Powered by Google Gemini API).
-- **Conversation Summarization**: Quickly catch up on long chats with AI-generated summaries of the latest messages.
-- **Speech-to-Text**: Real-time transcription for voice messages.
-- **In-app Translation**: Translate messages on the fly using Google Translate API.
+### 🤖 Tích Hợp AI (@NexusAI)
+- **Trợ Lý Thông Minh**: Gọi `@NexusAI` trong bất kỳ cuộc trò chuyện nào để hỏi đáp hoặc nhờ trợ giúp (Được phát triển dựa trên Google Gemini API).
+- **Tóm Tắt Cuộc Trò Chuyện**: Phân tích và tạo tóm tắt nhanh chóng cho các đoạn chat dài bằng AI.
+- **Chuyển Giọng Nói Thành Văn Bản (Speech-to-Text)**: Hiển thị phụ đề thời gian thực cho tin nhắn thoại.
+- **Dịch Thuật Trực Tiếp**: Dịch tin nhắn ngay trong ứng dụng với Google Translate API.
 
-### 🔒 Privacy & Security
-- **Incognito Mode (Chat Ẩn Danh)**: Secure, temporary 1:1 chats where messages expire and are wiped upon exiting.
-- **Disappearing Messages**: Set timers for messages to self-destruct (5 mins, 1 hour, 24 hours).
-- **View Once Media**: Send images or voice notes that disappear after being viewed.
-- **Chat Lock**: Protect sensitive conversations with a 4-digit PIN.
-- **Block/Unblock Users**: Manage your communication boundaries effectively.
+### 🔒 Quyền Riêng Tư & Bảo Mật
+- **Chế Độ Ẩn Danh (Incognito Mode)**: Cuộc trò chuyện 1:1 bí mật, tin nhắn tự động biến mất và bị xóa hoàn toàn khi thoát.
+- **Tin Nhắn Tự Hủy**: Tùy chỉnh thời gian tự xóa cho tin nhắn (5 phút, 1 giờ, 24 giờ).
+- **Truyền Thông Tin Xem Một Lần (View Once)**: Gửi hình ảnh và âm thanh chỉ có thể xem/nghe một lần rồi tự hủy.
+- **Khóa Trò Chuyện**: Bảo vệ các cuộc hội thoại nhạy cảm bằng mã PIN gồm 4 chữ số.
+- **Chặn Người Dùng**: Quản lý và chặn/bỏ chặn những người dùng không mong muốn.
 
-### 🎨 Personalization & Social
-- **Stories**: Share 24-hour expiring status updates with friends.
-- **Customization**: Set custom chat wallpapers and shared nicknames per conversation.
-- **Mini Profiles**: Quickly view a friend's details via a sidebar.
-- **Offline Sync**: Graceful handling of network disconnects with an offline banner and sync store.
+### 🎨 Cá Nhân Hóa & Xã Hội
+- **Tin (Stories)**: Chia sẻ khoảnh khắc trong 24 giờ cho bạn bè.
+- **Tùy Chỉnh**: Đặt biệt danh và hình nền riêng cho từng cuộc trò chuyện.
+- **Thông Tin Tóm Tắt**: Xem nhanh hồ sơ của người dùng khác qua thanh bên (sidebar).
+- **Đồng Bộ Ngoại Tuyến (Offline)**: Quản lý kết nối linh hoạt, thông báo mất mạng và đồng bộ trạng thái lưu trữ.
 
 ---
 
-## 🛠️ Tech Stack
+## 🛠️ Công Nghệ Sử Dụng
 
 ### Frontend
 - **Framework**: React 19, TypeScript, Vite
-- **State Management**: Zustand
-- **Styling**: Tailwind CSS, Radix UI, Framer Motion
+- **Quản lý trạng thái (State)**: Zustand
+- **Giao diện (Styling)**: Tailwind CSS, Radix UI, Framer Motion
 - **WebRTC**: LiveKit Client, @livekit/components-react
-- **Other**: React Hook Form, Zod, Axios, Socket.IO Client
+- **Khác**: React Hook Form, Zod, Axios, Socket.IO Client
 
 ### Backend
 - **Runtime**: Node.js, Express.js
-- **Database**: MongoDB, Mongoose
-- **Real-time**: Socket.IO
+- **Cơ sở dữ liệu**: MongoDB, Mongoose
+- **Thời gian thực**: Socket.IO
 - **WebRTC**: LiveKit Server SDK
-- **AI & Integrations**: `@google/genai`, Vercel AI SDK, Cloudinary, Nodemailer
-- **Authentication**: JWT, bcrypt
+- **AI & Tiện ích**: `@google/genai`, Vercel AI SDK, Cloudinary, Nodemailer
+- **Xác thực**: JWT, bcrypt
 
 ---
 
-## 🚀 Getting Started
+## 🚀 Hướng Dẫn Cài Đặt
 
-### Prerequisites
-- Node.js (v18+)
+### Yêu Cầu Hệ Thống
+- Node.js (v18 trở lên)
 - MongoDB
-- LiveKit Server (Cloud or Self-hosted)
-- Cloudinary Account (for image hosting)
+- LiveKit Server (Cloud hoặc Tự lưu trữ)
+- Cloudinary Account (Để lưu trữ ảnh)
 
-### Installation
+### Các Bước Cài Đặt
 
-1. **Clone the repository**
+1. **Clone repository về máy**
    ```bash
    git clone https://github.com/HuyDev19/NexusChat.git
    cd NexusChat
    ```
 
-2. **Backend Setup**
+2. **Cài Đặt Backend**
    ```bash
    cd backend
    npm install
    ```
-   Create a `.env` file in the `backend` directory and configure your environment variables (MongoDB URI, JWT Secret, LiveKit API keys, Cloudinary credentials, Gemini API key, etc.).
+   Tạo tệp `.env` trong thư mục `backend` và điền các biến môi trường của bạn (MongoDB URI, JWT Secret, LiveKit API keys, Cloudinary credentials, Gemini API key, v.v.).
    
-   Start the backend server:
+   Khởi động server backend:
    ```bash
    npm run dev
    ```
 
-3. **Frontend Setup**
+3. **Cài Đặt Frontend**
    ```bash
    cd ../frontend
    npm install
    ```
-   Create a `.env` file in the `frontend` directory and add your frontend environment variables.
+   Tạo tệp `.env` trong thư mục `frontend` và thêm các biến môi trường của ứng dụng React.
    
-   Start the frontend server:
+   Khởi động server frontend:
    ```bash
    npm run dev
    ```
 
-4. Open your browser and navigate to `http://localhost:5173` (or the port specified by Vite).
+4. Mở trình duyệt và truy cập `http://localhost:5173` (Hoặc port do Vite cấu hình).
 
 ---
 
-## 👥 Development Team
+## 👥 Nhóm Phát Triển
 
-- **Huỳnh Nhất Huy** (Leader) - Architecture, Auth, Real-time & AI
-- **Đoàn Phan Vĩnh Phú** - UI & User Experience
-- **Lê Nguyễn Nhật Duy** - API, Database & Integrations
+- **Huỳnh Nhất Huy** (Leader) - Kiến trúc dự án, Xác thực, Thời gian thực (Real-time) & Trí tuệ nhân tạo (AI)
+- **Đoàn Phan Vĩnh Phú** - Giao diện & Trải nghiệm người dùng (UX/UI)
+- **Lê Nguyễn Nhật Duy** - API, Cơ sở dữ liệu & Tích hợp
 
 ---
 
-*This project is built as a software engineering capstone project (Đồ án thực tế CNPM — DH GTVT TP.HCM 2026).*
+*Dự án này được xây dựng như một Đồ án thực tế bộ môn Công Nghệ Phần Mềm (CNPM) — Trường Đại Học Giao Thông Vận Tải TP.HCM 2026.*
