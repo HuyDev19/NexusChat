@@ -88,6 +88,19 @@ export const createConversation = async (req, res) => {
       participants: formattedParticipants,
     };
 
+    let clearedTime = null;
+    if (formattedConversation.clearedAt) {
+      clearedTime = formattedConversation.clearedAt instanceof Map 
+        ? formattedConversation.clearedAt.get(userId.toString()) 
+        : formattedConversation.clearedAt[userId.toString()];
+    }
+
+    if (clearedTime && formattedConversation.lastMessageAt) {
+      if (new Date(formattedConversation.lastMessageAt) <= new Date(clearedTime)) {
+        formattedConversation.lastMessage = null;
+      }
+    }
+
     const io = req.app.get("io");
     if (io) {
       formattedConversation.participants.forEach((p) => {
@@ -143,18 +156,37 @@ export const getConversations = async (req, res) => {
         ? Object.fromEntries(convo.nicknames) 
         : convo.nicknames || {};
 
+      const convoObj = convo.toObject();
+
+      let clearedTime = null;
+      if (convoObj.clearedAt) {
+        // Handle both Map and Object representations
+        clearedTime = convoObj.clearedAt instanceof Map 
+          ? convoObj.clearedAt.get(userId.toString()) 
+          : convoObj.clearedAt[userId.toString()];
+      }
+
+      if (clearedTime && convoObj.lastMessageAt) {
+        if (new Date(convoObj.lastMessageAt) <= new Date(clearedTime)) {
+          convoObj.lastMessage = null;
+        }
+      }
+
       return {
-        ...convo.toObject(),
+        ...convoObj,
         streak: getEffectiveStreak(convo.streak),
         unreadCounts: convo.unreadCounts || {},
         participants,
         nicknames: nicknamesObj,
       };
     }).filter(convo => {
-      // Direct conversations are always kept so friends are never lost on reload
-      if (convo.type === "direct") return true;
+      // Ignore direct conversations if the other user has deleted their account
+      if (convo.type === "direct") {
+        const hasDeletedUser = convo.participants.some(p => !p._id);
+        if (hasDeletedUser) return false;
+      }
 
-      // Ignore group conversations if cleared and no new messages
+      // Ignore conversations if cleared and no new messages (applies to all types)
       if (convo.clearedAt && convo.clearedAt instanceof Map) {
         const clearedTime = convo.clearedAt.get(userId.toString());
         if (clearedTime && convo.lastMessageAt) {
@@ -969,6 +1001,7 @@ export const clearChatHistory = async (req, res) => {
       conversation.clearedAt = new Map();
     }
     conversation.clearedAt.set(userId.toString(), new Date());
+    conversation.markModified("clearedAt");
     await conversation.save();
 
     const io = req.app.get("io");
