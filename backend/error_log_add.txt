@@ -1,0 +1,5 @@
+TypeError: Cannot read properties of null (reading '_id')
+    at file:///D:/DH_GTVT_HCM/L%E1%BA%ADp_Tr%C3%ACnh_Web/NexusChat/backend/src/controllers/conversationController.js:617:32
+    at Proxy.forEach (<anonymous>)
+    at addGroupMembers (file:///D:/DH_GTVT_HCM/L%E1%BA%ADp_Tr%C3%ACnh_Web/NexusChat/backend/src/controllers/conversationController.js:616:33)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)

@@ -614,12 +614,14 @@ export const addGroupMembers = async (req, res) => {
     const io = req.app.get("io");
     if (io) {
       conversation.participants.forEach(p => {
-        io.to(`user:${p.userId._id}`).emit("conversation:update", {
+        if (!p.userId) return;
+        const pId = p.userId._id || p.userId;
+        io.to(`user:${pId}`).emit("conversation:update", {
           conversationId: id,
           updates: { participants: formattedParticipants }
         });
-        if (memberIds.includes(p.userId._id.toString())) {
-          io.to(`user:${p.userId._id}`).emit("new-group", formattedConversation);
+        if (memberIds.includes(pId.toString())) {
+          io.to(`user:${pId}`).emit("new-group", formattedConversation);
         }
       });
     }
@@ -676,7 +678,9 @@ export const removeGroupMember = async (req, res) => {
     if (io) {
       io.to(`user:${memberId}`).emit("conversation:removed", { conversationId: id });
       conversation.participants.forEach(p => {
-        io.to(`user:${p.userId._id}`).emit("conversation:update", {
+        if (!p.userId) return;
+        const pId = p.userId._id || p.userId;
+        io.to(`user:${pId}`).emit("conversation:update", {
           conversationId: id,
           updates: { participants: formattedParticipants }
         });
@@ -734,7 +738,9 @@ export const updateGroupRole = async (req, res) => {
     const io = req.app.get("io");
     if (io) {
       conversation.participants.forEach(p => {
-        io.to(`user:${p.userId._id}`).emit("conversation:update", {
+        if (!p.userId) return;
+        const pId = p.userId._id || p.userId;
+        io.to(`user:${pId}`).emit("conversation:update", {
           conversationId: id,
           updates: { participants: formattedParticipants }
         });
@@ -1031,7 +1037,9 @@ export const leaveGroup = async (req, res) => {
         }));
 
         conversation.participants.forEach((p) => {
-          io.to(`user:${p.userId._id}`).emit("conversation:update", {
+          if (!p.userId) return;
+          const pId = p.userId._id || p.userId;
+          io.to(`user:${pId}`).emit("conversation:update", {
             conversationId: id,
             updates: { participants: formattedParticipants }
           });
@@ -1242,9 +1250,14 @@ export const joinChannel = async (req, res) => {
     const io = req.app.get("io");
     if (io) {
       io.to(`user:${userId}`).emit("new-group", formattedConversation);
-      io.to(`conversation:${id}`).emit("conversation:update", {
-        conversationId: id,
-        updates: { participantsCount: conversation.participants.length }
+      
+      formattedConversation.participants.forEach(p => {
+        if (p._id && p._id.toString() !== userId.toString()) {
+          io.to(`user:${p._id}`).emit("conversation:update", {
+            conversationId: id,
+            updates: { participants: formattedParticipants }
+          });
+        }
       });
     }
 
@@ -1358,7 +1371,9 @@ export const banGroupMember = async (req, res) => {
       }));
 
       conversation.participants.forEach(p => {
-        io.to(`user:${p.userId._id}`).emit("conversation:update", {
+        if (!p.userId) return;
+        const pId = p.userId._id || p.userId;
+        io.to(`user:${pId}`).emit("conversation:update", {
           conversationId: id,
           updates: { participants: formattedParticipants }
         });

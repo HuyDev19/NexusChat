@@ -1,3 +1,5 @@
-ReferenceError: formattedParticipants is not defined
-    at removeGroupMember (file:///C:/Chat_Realtime/NexusChat/backend/src/controllers/conversationController.js:458:87)
+TypeError: Cannot read properties of null (reading '_id')
+    at file:///D:/DH_GTVT_HCM/L%E1%BA%ADp_Tr%C3%ACnh_Web/NexusChat/backend/src/controllers/conversationController.js:679:32
+    at Proxy.forEach (<anonymous>)
+    at removeGroupMember (file:///D:/DH_GTVT_HCM/L%E1%BA%ADp_Tr%C3%ACnh_Web/NexusChat/backend/src/controllers/conversationController.js:678:33)
     at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
