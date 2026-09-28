@@ -65,14 +65,14 @@ export const handleAIResponse = async (conversationId, io, senderId) => {
       .sort({ createdAt: -1 })
       .limit(15)
       .populate("senderId", "displayName");
-    
+
     recentMessages.reverse(); // chronological order
 
     // Build history for Gemini
     const history = recentMessages.map((msg) => {
       const isBot = msg.senderId?._id?.toString() === NEXUS_AI_ID;
       const senderName = isBot ? "NexusAI" : (msg.senderId?.displayName || "Người dùng");
-      
+
       let textContent = msg.content || "";
       if (msg.imgUrl) textContent += " [Hình ảnh đính kèm]";
       if (msg.audioUrl) textContent += " [Âm thanh đính kèm]";
@@ -87,7 +87,7 @@ export const handleAIResponse = async (conversationId, io, senderId) => {
     // Wait, the last message is already in recentMessages and is the one that triggered the bot.
     // It's better to pass the whole history up to the N-1 message, and the last one as the main prompt.
     // However, if the trigger message is in history, we can just pop it and send it as the current message.
-    
+
     if (history.length === 0) return;
 
     const currentPromptObj = history.pop(); // The message that triggered the bot
@@ -131,7 +131,7 @@ export const handleAIResponse = async (conversationId, io, senderId) => {
     console.error("Lỗi khi xử lý phản hồi AI:", error);
     const roomId = conversationId.toString();
     io.to(roomId).emit("typing-end", { conversationId: roomId, userId: NEXUS_AI_ID });
-    
+
     try {
       const conversation = await Conversation.findById(conversationId);
       if (conversation) {
@@ -139,7 +139,7 @@ export const handleAIResponse = async (conversationId, io, senderId) => {
         if (error.status === 429) {
           errorMessage = "Xin lỗi cậu, API Key hiện tại đã hết hạn mức sử dụng (Quota Exceeded / Rate Limit). Vui lòng cập nhật API Key mới nhé! 😢";
         }
-        
+
         const aiMessage = await Message.create({
           conversationId: conversation._id,
           senderId: NEXUS_AI_ID,

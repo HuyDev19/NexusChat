@@ -1,119 +1,56 @@
-import nodemailer from "nodemailer";
-
 /**
- * 1. Gửi email qua Mailtrap HTTP REST API (Cổng 443 HTTPS - Hoạt động trên Render 100%, không lo bị chặn cổng)
- * Hoạt động khi có MAILTRAP_TOKEN (từ mục Email Sending)
+ * Gửi email qua Brevo HTTP API (Không cần tên miền, dùng Gmail cá nhân)
+ * Chạy mượt mà trên cả Localhost lẫn Deploy (Render/Railway...)
  */
-const sendViaMailtrapApi = async (email, otp, title, htmlContent) => {
-  const mailtrapToken = process.env.MAILTRAP_TOKEN?.trim().replace(/^["']|["']$/g, "");
-  if (!mailtrapToken) return null;
+const sendViaBrevoApi = async (email, otp, title, htmlContent) => {
+  const brevoApiKey = process.env.BREVO_API_KEY?.trim().replace(/^["']|["']$/g, "");
+  if (!brevoApiKey) {
+    return { success: false, reason: "missing_config", error: "Thiếu biến BREVO_API_KEY" };
+  }
 
-  const senderEmail =
-    process.env.MAILTRAP_SENDER_EMAIL?.trim().replace(/^["']|["']$/g, "") || "hello@demomailtrap.co";
+  // Lấy email đã xác minh trên Brevo từ biến môi trường (Ví dụ: Gmail cá nhân của bạn)
+  const senderEmail = process.env.EMAIL_USER?.trim().replace(/^["']|["']$/g, "");
+
+  if (!senderEmail || senderEmail.includes("your-email@gmail.com")) {
+      console.warn("⚠️ [Brevo API] Cần cấu hình EMAIL_USER (email đã xác minh trên Brevo) để gửi mail.");
+      return { success: false, reason: "missing_config", error: "Thiếu biến EMAIL_USER" };
+  }
 
   try {
-    const response = await fetch("https://send.api.mailtrap.io/api/send", {
+    const response = await fetch("https://api.brevo.com/v3/smtp/email", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${mailtrapToken}`,
+        "api-key": brevoApiKey,
         "Content-Type": "application/json",
+        "Accept": "application/json"
       },
       body: JSON.stringify({
-        from: {
-          email: senderEmail,
+        sender: {
           name: "NexusChat",
+          email: senderEmail,
         },
         to: [
           {
             email: email,
-          },
+          }
         ],
         subject: `[NexusChat] ${title} - Mã OTP: ${otp}`,
-        html: htmlContent,
+        htmlContent: htmlContent,
       }),
     });
 
-    const data = await response.json();
-    if (response.ok && data.success !== false) {
-      console.log(`✅ [Mailtrap API] Đã gửi email OTP thành công tới ${email} qua HTTPS API`);
+    if (response.ok) {
+      console.log(`✅ [Brevo API] Đã gửi email OTP thành công tới ${email} qua HTTPS API`);
       return { success: true };
     } else {
-      console.error("❌ [Mailtrap API] Lỗi từ máy chủ Mailtrap:", data);
-      return { success: false, error: data.errors?.join(", ") || data.message || "Lỗi Mailtrap API" };
+      const data = await response.json();
+      console.error("❌ [Brevo API] Lỗi từ máy chủ Brevo:", data);
+      return { success: false, error: data.message || "Lỗi Brevo API" };
     }
   } catch (err) {
-    console.error("❌ [Mailtrap API] Lỗi kết nối Mailtrap:", err.message);
+    console.error("❌ [Brevo API] Lỗi kết nối Brevo:", err.message);
     return { success: false, error: err.message };
   }
-};
-
-/**
- * 2. Gửi email qua Mailtrap Sandbox SMTP (Email Testing / Hộp thư ảo)
- * Hoạt động khi có MAILTRAP_USER và MAILTRAP_PASS (từ mục Email Testing -> Inboxes)
- */
-const sendViaMailtrapSmtp = async (email, otp, title, htmlContent) => {
-  const user = process.env.MAILTRAP_USER?.trim().replace(/^["']|["']$/g, "");
-  const pass = process.env.MAILTRAP_PASS?.trim().replace(/^["']|["']$/g, "");
-  if (!user || !pass) return null;
-
-  try {
-    const transporter = nodemailer.createTransport({
-      host: "sandbox.smtp.mailtrap.io",
-      port: 2525,
-      auth: {
-        user,
-        pass,
-      },
-    });
-
-    await transporter.sendMail({
-      from: `"NexusChat" <no-reply@nexuschat.com>`,
-      to: email,
-      subject: `[NexusChat] ${title} - Mã OTP: ${otp}`,
-      html: htmlContent,
-    });
-
-    console.log(`✅ [Mailtrap Sandbox] Đã gửi OTP tới hộp thư thử nghiệm Mailtrap cho ${email}`);
-    return { success: true };
-  } catch (err) {
-    console.error("❌ [Mailtrap Sandbox] Lỗi gửi mail:", err.message);
-    return { success: false, error: err.message };
-  }
-};
-
-/**
- * 3. Transporter kết nối SMTP Gmail dự phòng (Dùng khi chạy Localhost)
- */
-const createGmailTransporter = (port = 465) => {
-  const user = process.env.EMAIL_USER?.trim().replace(/^["']|["']$/g, "");
-  const rawPass = process.env.EMAIL_PASS?.trim().replace(/^["']|["']$/g, "");
-  const pass = rawPass ? rawPass.replace(/[\s"']/g, "") : "";
-
-  const isPlaceholder =
-    !user ||
-    !pass ||
-    user.includes("your-email@gmail.com") ||
-    pass.includes("your-app-password");
-
-  if (isPlaceholder) {
-    return null;
-  }
-
-  return nodemailer.createTransport({
-    host: "smtp.gmail.com",
-    port: port,
-    secure: port === 465,
-    auth: {
-      user,
-      pass,
-    },
-    tls: {
-      rejectUnauthorized: false,
-    },
-    connectionTimeout: 12000,
-    greetingTimeout: 10000,
-    socketTimeout: 15000,
-  });
 };
 
 /**
@@ -128,7 +65,6 @@ export const sendOtpEmail = async (email, otp, type) => {
   console.log(`👉 MÃ OTP: [ ${otp} ]`);
   console.log(`========================================\n`);
 
-  const user = process.env.EMAIL_USER?.trim().replace(/^["']|["']$/g, "") || "no-reply@nexuschat.com";
   const isRegister = type === "register";
   const title = isRegister
     ? "Xác thực đăng ký tài khoản NexusChat"
@@ -167,55 +103,6 @@ export const sendOtpEmail = async (email, otp, type) => {
     </div>
   `;
 
-  // Ưu tiên 1: Gửi qua Mailtrap HTTP API (Cổng 443 HTTPS - Hoạt động trên Render 100%)
-  if (process.env.MAILTRAP_TOKEN) {
-    const mailtrapResult = await sendViaMailtrapApi(email, otp, title, htmlContent);
-    if (mailtrapResult && mailtrapResult.success) {
-      return mailtrapResult;
-    }
-    console.warn("⚠️ [Mailtrap API] Gửi thất bại, đang thử phương thức dự phòng...");
-  }
-
-  // Ưu tiên 2: Gửi qua Mailtrap Sandbox SMTP (Email Testing)
-  if (process.env.MAILTRAP_USER && process.env.MAILTRAP_PASS) {
-    const mailtrapSmtpResult = await sendViaMailtrapSmtp(email, otp, title, htmlContent);
-    if (mailtrapSmtpResult && mailtrapSmtpResult.success) {
-      return mailtrapSmtpResult;
-    }
-    console.warn("⚠️ [Mailtrap SMTP] Gửi thất bại, đang thử phương thức dự phòng...");
-  }
-
-  // Ưu tiên 3: Gửi qua Gmail SMTP (cổng 465 / 587 - Thích hợp khi chạy Localhost)
-  const mailOptions = {
-    from: `"NexusChat" <${user}>`,
-    to: email,
-    subject: `[NexusChat] ${title} - Mã OTP: ${otp}`,
-    html: htmlContent,
-  };
-
-  try {
-    const transporter465 = createGmailTransporter(465);
-    if (!transporter465) {
-      return { success: false, reason: "missing_config" };
-    }
-
-    await transporter465.sendMail(mailOptions);
-    console.log(`✅ [Gmail SMTP] Đã gửi email OTP thành công tới ${email} (cổng 465 SSL)`);
-    return { success: true };
-  } catch (err465) {
-    console.warn(`⚠️ [Gmail SMTP] Cổng 465 thất bại: ${err465.message}. Đang thử cổng 587...`);
-    try {
-      const transporter587 = createGmailTransporter(587);
-      if (!transporter587) {
-        return { success: false, reason: "missing_config" };
-      }
-
-      await transporter587.sendMail(mailOptions);
-      console.log(`✅ [Gmail SMTP] Đã gửi email OTP thành công tới ${email} (cổng 587 STARTTLS)`);
-      return { success: true };
-    } catch (err587) {
-      console.error("❌ [Gmail SMTP] Không thể gửi email qua Gmail SMTP:", err587.message);
-      return { success: false, error: err587.message };
-    }
-  }
+  // Duy nhất sử dụng Brevo API cho mọi môi trường (Local và Deploy)
+  return await sendViaBrevoApi(email, otp, title, htmlContent);
 };

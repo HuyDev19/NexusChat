@@ -277,7 +277,7 @@ const MessageItem = ({
   const currentUserParticipant = participants.find((p: Participant) => p?._id?.toString() === user?._id?.toString());
   const isChannelAdmin = isChannel && (currentUserParticipant?.role === "leader" || currentUserParticipant?.role === "deputy");
   const isIncognito = selectedConvo?.type === "direct" && selectedConvo?.incognitoMode?.isActive;
-  
+
   const canPin = (!isChannel || isChannelAdmin) && !message.isViewOnce && !isIncognito;
   const canReply = (!isChannel || isChannelAdmin) && !message.isViewOnce;
 
@@ -402,8 +402,8 @@ const MessageItem = ({
   const isStoryReply = message.content?.startsWith("[STORY_REPLY] ");
   const isImageReply = !isStoryReply && !!message.replyTo?.imgUrl && !message.replyTo?.isViewOnce && !message.replyTo?.isRecalled;
   const isOverlayReply = (isStoryReply || isImageReply) && !message.isRecalled;
-  const actualContent = isStoryReply 
-    ? message.content!.replace("[STORY_REPLY] ", "").replace(/^Đã trả lời tin( của bạn| của [^:]+)?: /i, "").trim() 
+  const actualContent = isStoryReply
+    ? message.content!.replace("[STORY_REPLY] ", "").replace(/^Đã trả lời tin( của bạn| của [^:]+)?: /i, "").trim()
     : message.content;
 
   const replyImgUrl = isStoryReply ? message.imgUrl : undefined;
@@ -477,8 +477,8 @@ const MessageItem = ({
             const replySenderId = typeof reply.senderId === "object"
               ? (reply.senderId as any)?._id || String(reply.senderId)
               : reply.senderId
-              ? String(reply.senderId)
-              : undefined;
+                ? String(reply.senderId)
+                : undefined;
 
             const isReplyToOwn = replySenderId === user?._id;
             const replyParticipant = selectedConvo.participants.find((p) => {
@@ -508,7 +508,7 @@ const MessageItem = ({
                       {replyHeaderText}
                     </span>
                   </div>
-                  <div 
+                  <div
                     className="relative overflow-hidden rounded-2xl max-w-[150px] sm:max-w-[180px] max-h-[140px] cursor-pointer shadow-xs border border-border/40 hover:opacity-95 hover:brightness-105 transition-all group/replyimg bg-muted/30 flex items-center justify-center shrink-0"
                     onClick={() => {
                       if (reply._id) {
@@ -532,10 +532,10 @@ const MessageItem = ({
                     }}
                     title="Bấm để xem ảnh hoặc chuyển đến tin nhắn gốc"
                   >
-                    <img 
-                      src={reply.imgUrl} 
-                      alt="Hình ảnh trả lời" 
-                      className="w-auto h-auto max-w-full max-h-[140px] rounded-2xl object-cover" 
+                    <img
+                      src={reply.imgUrl}
+                      alt="Hình ảnh trả lời"
+                      className="w-auto h-auto max-w-full max-h-[140px] rounded-2xl object-cover"
                     />
                   </div>
                 </div>
@@ -562,12 +562,12 @@ const MessageItem = ({
                       {reply.isViewOnce
                         ? "[Tin nhắn xem một lần]"
                         : reply.isRecalled
-                        ? "Tin nhắn đã thu hồi"
-                        : reply.audioUrl
-                        ? "🎵 Tin nhắn thoại"
-                        : reply.fileUrl
-                        ? `📎 ${reply.fileName || "Tệp đính kèm"}`
-                        : reply.content}
+                          ? "Tin nhắn đã thu hồi"
+                          : reply.audioUrl
+                            ? "🎵 Tin nhắn thoại"
+                            : reply.fileUrl
+                              ? `📎 ${reply.fileName || "Tệp đính kèm"}`
+                              : reply.content}
                     </span>
                   </div>
                 </div>
@@ -589,7 +589,7 @@ const MessageItem = ({
                 <Reply className="size-3.5 shrink-0 opacity-90" />
                 <span className="text-[12px] font-medium truncate">{replyHeaderName}</span>
               </div>
-              <div 
+              <div
                 className="relative overflow-hidden rounded-2xl w-40 sm:w-44 aspect-[3/4] cursor-pointer shadow-sm border border-border/40 hover:opacity-95 hover:brightness-105 transition-all group/storyimg bg-muted shrink-0"
                 onClick={() => {
                   if (replyImgUrl) {
@@ -636,8 +636,8 @@ const MessageItem = ({
                 message.isRecalled
                   ? "bg-muted/60 border border-border text-muted-foreground"
                   : message.isOwn
-                  ? "chat-bubble-sent border-0 !bg-primary"
-                  : "chat-bubble-received !bg-card",
+                    ? "chat-bubble-sent border-0 !bg-primary"
+                    : "chat-bubble-received !bg-card",
                 isIncognito ? "select-none pointer-events-auto" : "",
                 isOverlayReply ? "rounded-[20px] px-3.5 py-2 shadow-md ring-2 ring-background opacity-100" : ""
               )}
@@ -809,8 +809,8 @@ const MessageItem = ({
                   {isStoryReply ? (
                     <div className="text-[13.5px] leading-relaxed">
                       <span className="font-normal">
-                        {message.isOwn 
-                          ? `Đã trả lời tin của ${getRecipientDisplayName()}: ` 
+                        {message.isOwn
+                          ? `Đã trả lời tin của ${getRecipientDisplayName()}: `
                           : "Đã trả lời tin của bạn: "}
                       </span>
                       <span className="font-medium">
@@ -1045,7 +1045,7 @@ const MessageItem = ({
                   .map((vid) => {
                     const p = participants.find((part) => part._id?.toString() === vid);
                     if (!p) return null;
-                    
+
                     if (isIncognito) {
                       return (
                         <div
