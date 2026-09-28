@@ -155,6 +155,21 @@ export const useSocketStore = create<SocketState>((set, get) => ({
       // message clear
     socket.on("conversation:clear", ({ conversationId }) => {
       import("./useChatStore").then((mod) => {
+        mod.useChatStore.setState((state) => {
+          const newMessages = { ...state.messages };
+          if (newMessages[conversationId]) {
+              newMessages[conversationId] = {
+                  ...newMessages[conversationId],
+                  items: newMessages[conversationId].items.filter((m) => !m.expiresAt),
+              };
+          }
+          return { messages: newMessages };
+        });
+      });
+    });
+
+    socket.on("conversation:remove", ({ conversationId }) => {
+      import("./useChatStore").then((mod) => {
         mod.useChatStore.getState().removeConversation(conversationId);
       });
     });

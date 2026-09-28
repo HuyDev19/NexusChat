@@ -1006,7 +1006,7 @@ export const clearChatHistory = async (req, res) => {
 
     const io = req.app.get("io");
     if (io) {
-      io.to(`user:${userId}`).emit("conversation:clear", { conversationId: id });
+      io.to(`user:${userId}`).emit("conversation:remove", { conversationId: id });
     }
 
     return res.status(200).json({ message: "Xóa đoạn chat thành công" });
