@@ -83,6 +83,12 @@ async function translateWithMyMemory(text, targetLang = "vi") {
   }
 
   const data = await response.json();
+  
+  // MyMemory trả về status 200 HTTP nhưng responseStatus bên trong JSON có thể là 403 (Invalid source language)
+  if (data.responseStatus && data.responseStatus !== 200) {
+    throw new Error(`MyMemory API Error: ${data.responseDetails || data.responseData?.translatedText}`);
+  }
+
   if (data?.responseData?.translatedText) {
     return data.responseData.translatedText;
   }
