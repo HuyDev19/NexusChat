@@ -441,10 +441,57 @@ export const deleteAccountWithOtp = async (req, res) => {
 
     // Xoá hoàn toàn User khỏi MongoDB -> Giải phóng email và username
     await User.deleteOne({ _id: userId });
+
+    const Conversation = (await import("../models/Conversation.js")).default;
+    const Friend = (await import("../models/Friend.js")).default;
+    const FriendRequest = (await import("../models/FriendRequest.js")).default;
+
+    // Lấy danh sách conversation để emit socket
+    const conversations = await Conversation.find({ "participants.userId": userId });
+
+    // Cập nhật Database: Xóa user khỏi tất cả participants
+    await Conversation.updateMany(
+      { "participants.userId": userId },
+      { $pull: { participants: { userId: userId } } }
+    );
+    // Xóa bạn bè và lời mời kết bạn
+    await Friend.deleteMany({ $or: [{ userA: userId }, { userB: userId }] });
+    await FriendRequest.deleteMany({ $or: [{ from: userId }, { to: userId }] });
+
     // Xoá tất cả phiên làm việc
     await Session.deleteMany({ userId });
     // Xoá OTP
     await Otp.deleteMany({ email: emailTrimmed, type: "delete_account" });
+
+    // Emit Socket.IO cập nhật participants mới cho các user còn lại
+    const io = req.app.get("io");
+    if (io) {
+      for (const convo of conversations) {
+        // Lấy lại conversation đã update
+        const updatedConvo = await Conversation.findById(convo._id).populate("participants.userId", "displayName avatarUrl coverUrl note presenceStatus");
+        if (updatedConvo) {
+          const formattedParticipants = updatedConvo.participants.map(p => ({
+            _id: p.userId?._id,
+            displayName: p.userId?.displayName,
+            avatarUrl: p.userId?.avatarUrl ?? null,
+            coverUrl: p.userId?.coverUrl ?? null,
+            note: p.userId?.note,
+            presenceStatus: p.userId?.presenceStatus ?? 'online',
+            joinedAt: p.joinedAt,
+            role: p.role,
+          }));
+
+          updatedConvo.participants.forEach(p => {
+            if (!p.userId) return;
+            const pId = p.userId._id || p.userId;
+            io.to(`user:${pId}`).emit("conversation:update", {
+              conversationId: updatedConvo._id,
+              updates: { participants: formattedParticipants }
+            });
+          });
+        }
+      }
+    }
 
     return res.status(200).json({ message: "Đã xoá tài khoản thành công" });
   } catch (error) {
