@@ -37,13 +37,20 @@ export interface Group {
 
 export interface LastMessage {
   _id: string;
-  content: string;
+  content?: string | null;
   createdAt: string;
-  sender: {
+  sender?: {
     _id: string;
     displayName: string;
     avatarUrl?: string | null;
   };
+  senderId?: any;
+  isRecalled?: boolean;
+  imgUrl?: string | null;
+  audioUrl?: string | null;
+  fileUrl?: string | null;
+  poll?: any;
+  sharedContact?: any;
 }
 
 export interface Conversation {

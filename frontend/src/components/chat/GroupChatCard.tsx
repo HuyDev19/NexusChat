@@ -28,15 +28,16 @@ const GroupChatCard = ({ convo }: { convo: Conversation }) => {
 
   const renderSubtitle = () => {
     if (convo.lastMessage) {
-      const senderIdStr = typeof convo.lastMessage.senderId === "object"
-        ? (convo.lastMessage.senderId as any)?._id || String(convo.lastMessage.senderId)
-        : String(convo.lastMessage.senderId);
+      const senderIdRaw = convo.lastMessage.sender?._id || convo.lastMessage.senderId;
+      const senderIdStr = typeof senderIdRaw === "object"
+        ? (senderIdRaw as any)?._id || String(senderIdRaw)
+        : String(senderIdRaw || "");
 
       const senderName = senderIdStr === user._id
         ? "Bạn"
         : senderIdStr === "000000000000000000000000"
           ? "NexusAI"
-          : participants.find(p => (p?._id || (p as any)?.userId?._id)?.toString() === senderIdStr)?.displayName || "Người dùng";
+          : (convo.lastMessage.sender?.displayName || participants.find(p => (p?._id || (p as any)?.userId?._id)?.toString() === senderIdStr)?.displayName || "Người dùng");
 
       let content = "";
       if (convo.lastMessage.isRecalled) {
