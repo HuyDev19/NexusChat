@@ -469,7 +469,7 @@ const AccountInfoModal = () => {
                       <UserIcon className="size-4 text-muted-foreground/70" />
                       Giới tính
                     </span>
-                    <span className="font-medium text-foreground">{profileUser.gender || "Nam"}</span>
+                    <span className="font-medium text-foreground">{profileUser.gender || "Không muốn tiết lộ"}</span>
                   </div>
 
                   <div className="flex items-center justify-between py-1">

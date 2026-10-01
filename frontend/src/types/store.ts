@@ -195,6 +195,7 @@ export interface UserState {
     phone?: string;
     bio?: string;
     presenceStatus?: 'online' | 'offline' | 'busy';
+    gender?: string;
     lockedConversations?: { conversationId: string; pin: string }[];
   }) => Promise<void>;
   toggleReadReceipts: (enabled: boolean) => Promise<void>;

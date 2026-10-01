@@ -49,6 +49,11 @@ const userSchema = new mongoose.Schema(
       type: String,
       sparse: true, // cho phép null, nhưng không được trùng
     },
+    gender: {
+      type: String,
+      enum: ['Nam', 'Nữ', 'Không muốn tiết lộ'],
+      default: 'Không muốn tiết lộ',
+    },
     presenceStatus: {
       type: String,
       enum: ['online', 'offline', 'busy'],

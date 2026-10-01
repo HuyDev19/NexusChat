@@ -11,6 +11,7 @@ export interface User {
     expiresAt: string | null;
   };
   bio?: string;
+  gender?: "Nam" | "Nữ" | "Không muốn tiết lộ" | string;
   phone?: string;
   presenceStatus?: 'online' | 'offline' | 'busy';
   lastActiveAt?: string;

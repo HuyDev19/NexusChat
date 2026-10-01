@@ -49,6 +49,7 @@ const PersonalInfoForm = ({ userInfo }: Props) => {
     displayName: "",
     phone: "",
     bio: "",
+    gender: "Không muốn tiết lộ",
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -68,6 +69,7 @@ const PersonalInfoForm = ({ userInfo }: Props) => {
         displayName: userInfo.displayName || "",
         phone: userInfo.phone || "",
         bio: userInfo.bio || "",
+        gender: userInfo.gender || "Không muốn tiết lộ",
       });
     }
   }, [userInfo]);
@@ -87,6 +89,7 @@ const PersonalInfoForm = ({ userInfo }: Props) => {
       displayName: formData.displayName,
       phone: formData.phone,
       bio: formData.bio,
+      gender: formData.gender,
     });
     setIsSubmitting(false);
   };
@@ -202,19 +205,35 @@ const PersonalInfoForm = ({ userInfo }: Props) => {
             ))}
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="bio">Tiểu sử</Label>
-            <Textarea
-              id="bio"
-              value={formData.bio}
-              onChange={handleChange}
-              className="resize-none glass-light border-border/30 rounded-2xl"
-              rows={3}
-              maxLength={150}
-            />
-            <p className="text-xs text-muted-foreground text-right">
-              {formData.bio.length}/150
-            </p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="bio">Tiểu sử</Label>
+              <Textarea
+                id="bio"
+                value={formData.bio}
+                onChange={handleChange}
+                className="resize-none glass-light border-border/30 rounded-2xl"
+                rows={3}
+                maxLength={150}
+              />
+              <p className="text-xs text-muted-foreground text-right">
+                {formData.bio.length}/150
+              </p>
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="gender">Giới tính</Label>
+              <select
+                id="gender"
+                value={formData.gender}
+                onChange={(e) => setFormData(prev => ({ ...prev, gender: e.target.value }))}
+                className="flex h-10 w-full glass-light border-border/30 rounded-2xl border bg-transparent px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <option value="Nam" className="bg-background text-foreground">Nam</option>
+                <option value="Nữ" className="bg-background text-foreground">Nữ</option>
+                <option value="Không muốn tiết lộ" className="bg-background text-foreground">Không muốn tiết lộ</option>
+              </select>
+            </div>
           </div>
 
           <Button

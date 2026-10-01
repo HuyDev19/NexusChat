@@ -84,13 +84,14 @@ export const getUserProfile = async (req, res) => {
 export const updateMe = async (req, res) => {
   try {
     const userId = req.user._id;
-    const { displayName, phone, bio, presenceStatus } = req.body;
+    const { displayName, phone, bio, presenceStatus, gender } = req.body;
 
     const updateData = {};
     if (displayName !== undefined) updateData.displayName = displayName;
     if (phone !== undefined) updateData.phone = phone;
     if (bio !== undefined) updateData.bio = bio;
     if (presenceStatus !== undefined) updateData.presenceStatus = presenceStatus;
+    if (gender !== undefined) updateData.gender = gender;
 
     const updatedUser = await User.findByIdAndUpdate(
       userId,
